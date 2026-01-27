@@ -8,6 +8,7 @@ This project is a template with some basic functionality for the ASW labs.
 
 ## Contributors
 - Marcelo Díez Domínguez - UO293820
+- Mario Amandi San Martín - UO302457
 
 
 ## Project Structure
