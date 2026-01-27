@@ -7,11 +7,8 @@
 This project is a template with some basic functionality for the ASW labs.
 
 ## Contributors
-- Marcelo Díez Domínguez - UO293820
-- Mario Amandi San Martín - UO302457
-- Eloy Rubio Suárez - UO298184
 
-  | Name                          | GitHub Username                              |
+  | Nombres                          | Perfil GitHub                              |
   |------------------------------------|----------------------------------------------|
   | Marcelo Díez Domínguez       | <a href="https://github.com/marceloodiezz"><img src="https://img.shields.io/badge/Marcelo Díez Domínguez-yellow"></a>   |
   | Mario Amandi San Martín      | <a href="https://github.com/uo302457"><img src="https://img.shields.io/badge/Mario Amandi San Martín-green"></a> |
