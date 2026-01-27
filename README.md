@@ -13,6 +13,7 @@ This project is a template with some basic functionality for the ASW labs.
   | Marcelo Díez Domínguez       | <a href="https://github.com/marceloodiezz"><img src="https://img.shields.io/badge/Marcelo Díez Domínguez-yellow"></a>   |
   | Mario Amandi San Martín      | <a href="https://github.com/uo302457"><img src="https://img.shields.io/badge/Mario Amandi San Martín-green"></a> |
   | Eloy Rubio Suárez            | <a href="https://github.com/EloyRsua"><img src="https://img.shields.io/badge/Eloy Rubio Suárez-orange"></a> |
+  | Andrea Ivanov García         | <a href="https://github.com/andrea-ivanov"><img src="https://img.shields.io/badge/Andrea Ivanov García-0589FF"></a> |
 
 
 
