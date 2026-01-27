@@ -6,6 +6,10 @@
 
 This project is a template with some basic functionality for the ASW labs.
 
+## Contributors
+- Marcelo Díez Domínguez - UO293820
+
+
 ## Project Structure
 
 The project is divided into three main components, each in its own directory:
