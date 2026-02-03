@@ -6,3 +6,5 @@ docs/build
 .env
 webapp/.env
 .vscode/
+
+.DS_Store
