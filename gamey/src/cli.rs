@@ -1,13 +1,9 @@
 //! Command-line interface for the Y game.
 //!
 //! This module provides the CLI application for playing Y games interactively.
-//! It supports three modes:
-//! - Human vs Human: Two players take turns at the same terminal
-//! - Human vs Computer: Play against a bot
-//! - Server: Run as an HTTP server for bot API
 
 use crate::{
-    Coordinates, GameAction, Movement, RandomBot, RenderOptions, YBot, YBotRegistry, game,
+    Coordinates, GameAction, MctsBot, GreedyBot, RandomBot, Movement, RenderOptions, YBot, YBotRegistry, game
 };
 use crate::{GameStatus, GameY, PlayerId};
 use anyhow::Result;
@@ -30,11 +26,15 @@ pub struct CliArgs {
     #[arg(short, long, default_value_t = Mode::Human)]
     pub mode: Mode,
 
-    /// The bot to use (only used with --mode=computer), default = random_bot
+    /// The bot to use (only used with --mode=computer).
     #[arg(short, long, default_value = "random_bot")]
     pub bot: String,
 
-    /// Port to run the server on (only used with --mode=server)
+    /// If true, the bot will make the first move (only in computer mode).
+    #[arg(long, default_value_t = false)]
+    pub bot_first: bool,
+
+    /// Port to run the server on (only used with --mode=server).
     #[arg(short, long, default_value_t = 3000)]
     pub port: u16,
 }
@@ -42,11 +42,8 @@ pub struct CliArgs {
 /// The game mode determining how the game is played.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq)]
 pub enum Mode {
-    /// Play against a computer bot.
     Computer,
-    /// Two humans playing at the same terminal.
     Human,
-    /// Run as an HTTP server for bot API.
     Server,
 }
 
@@ -62,14 +59,17 @@ impl Display for Mode {
 }
 
 /// Runs the interactive CLI game loop.
-///
-/// This function parses command-line arguments, initializes the game,
-/// and runs the main game loop where players enter moves via the terminal.
 pub fn run_cli_game() -> Result<()> {
     let args = CliArgs::parse();
     let mut render_options = crate::RenderOptions::default();
     let mut rl = DefaultEditor::new()?;
-    let bots_registry = YBotRegistry::new().with_bot(Arc::new(RandomBot));
+    
+    // Registro de bots disponibles
+    let bots_registry = YBotRegistry::new()
+        .with_bot(Arc::new(RandomBot))
+        .with_bot(Arc::new(GreedyBot))
+        .with_bot(Arc::new(MctsBot::new(15000))); // Nivel de dificultad alto
+
     let bot: Arc<dyn YBot> = match bots_registry.find(&args.bot) {
         Some(b) => b,
         None => {
@@ -81,7 +81,15 @@ pub fn run_cli_game() -> Result<()> {
             return Ok(());
         }
     };
+
     let mut game = game::GameY::new(args.size);
+
+    // Lógica de inicio: ¿Empieza el bot?
+    if args.mode == Mode::Computer && args.bot_first {
+        println!("El bot ({}) está calculando su primer movimiento...", bot.name());
+        trigger_bot_move(&mut game, bot.as_ref());
+    }
+
     loop {
         println!("{}", game.render(&render_options));
         let status = game.status();
@@ -106,10 +114,10 @@ pub fn run_cli_game() -> Result<()> {
                         println!("Error: {:?}", err);
                         continue;
                     }
-                    Ok(realine) => {
-                        rl.add_history_entry(realine.as_str())?;
+                    Ok(line) => {
+                        rl.add_history_entry(line.as_str())?;
                         process_input(
-                            &realine,
+                            &line,
                             &mut game,
                             &player,
                             &mut render_options,
@@ -145,76 +153,34 @@ fn process_input(
             };
             apply_move(game, movement, "Error adding resign move");
         }
-        Command::Show3DCoords => {
-            render_options.show_3d_coords = !render_options.show_3d_coords;
-        }
-        Command::ShowIdx => {
-            render_options.show_idx = !render_options.show_idx;
-        }
-        Command::ShowColors => {
-            render_options.show_colors = !render_options.show_colors;
-        }
-        Command::Help => {
-            print_help();
-        }
+        Command::Show3DCoords => render_options.show_3d_coords = !render_options.show_3d_coords,
+        Command::ShowIdx => render_options.show_idx = !render_options.show_idx,
+        Command::ShowColors => render_options.show_colors = !render_options.show_colors,
+        Command::Help => print_help(),
         Command::Exit => {
             println!("Exiting the game.");
             std::process::exit(0);
         }
-        Command::None => {
-            println!("No command entered.");
-        }
-        Command::Error { message } => {
-            println!("Error parsing command: {}", message);
-        }
+        Command::None => println!("No command entered."),
+        Command::Error { message } => println!("Error parsing command: {}", message),
         Command::Save { filename } => {
             let path = std::path::Path::new(&filename);
             game.save_to_file(path)?;
-            tracing::info!("Game saved to {}", filename);
         }
         Command::Load { filename } => {
             let path = std::path::Path::new(&filename);
             *game = GameY::load_from_file(path)?;
-            tracing::info!("Game loaded from {}", filename);
         }
     }
     Ok(())
 }
 
-/// Parses a user input string into a Command.
-///
-/// # Arguments
-/// * `input` - The raw input string from the user
-/// * `bound` - The upper bound for valid cell indices (total cells on board)
-///
-/// # Returns
-/// A `Command` variant representing the parsed action.
 pub fn parse_command(input: &str, bound: u32) -> Command {
     let parts: Vec<&str> = input.split_whitespace().collect();
-    if parts.is_empty() {
-        return Command::None;
-    }
+    if parts.is_empty() { return Command::None; }
     match parts[0] {
-        "save" => {
-            if parts.len() < 2 {
-                return Command::Error {
-                    message: "Filename required for save command".to_string(),
-                };
-            }
-            Command::Save {
-                filename: parts[1].to_string(),
-            }
-        }
-        "load" => {
-            if parts.len() < 2 {
-                return Command::Error {
-                    message: "Filename required for load command".to_string(),
-                };
-            }
-            Command::Load {
-                filename: parts[1].to_string(),
-            }
-        }
+        "save" => if parts.len() < 2 { Command::Error { message: "File required".into() } } else { Command::Save { filename: parts[1].into() } },
+        "load" => if parts.len() < 2 { Command::Error { message: "File required".into() } } else { Command::Load { filename: parts[1].into() } },
         "resign" => Command::Resign,
         "help" => Command::Help,
         "exit" => Command::Exit,
@@ -223,110 +189,55 @@ pub fn parse_command(input: &str, bound: u32) -> Command {
         "show_idx" => Command::ShowIdx,
         str => match parse_idx(str, bound) {
             Ok(idx) => Command::Place { idx },
-            Err(e) => Command::Error {
-                message: format!("Error parsing command: {e}"),
-            },
+            Err(e) => Command::Error { message: e },
         },
     }
 }
 
-/// Prints the help message listing all available commands.
 fn print_help() {
-    println!("Available commands:");
-    println!("  <number>        - Place a piece at the specified index number");
-    println!("  resign          - Resign from the game");
-    println!("  show_coords     - Toggle showing coordinates on the board");
-    println!("  show_idx        - Toggle showing index numbers on the board");
-    println!("  show_colors     - Toggle showing colors on the board");
-    println!("  save <filename> - Save the current game state to a file");
-    println!("  load <filename> - Load a game state from a file");
-    println!("  exit            - Exit the game");
-    println!("  help            - Show this help message");
+    println!("Commands: <number> (place), resign, show_coords, show_idx, show_colors, save/load <file>, exit, help");
 }
 
-/// Represents a parsed CLI command.
 #[derive(Debug, PartialEq)]
 pub enum Command {
-    /// Place a piece at the given cell index.
     Place { idx: u32 },
-    /// Resign from the game.
     Resign,
-    /// No command was entered (empty input).
     None,
-    /// An error occurred while parsing the command.
     Error { message: String },
-    /// Save the game to a file.
     Save { filename: String },
-    /// Load a game from a file.
     Load { filename: String },
-    /// Toggle display of 3D coordinates.
     Show3DCoords,
-    /// Toggle display of colors.
     ShowColors,
-    /// Toggle display of cell indices.
     ShowIdx,
-    /// Exit the game.
     Exit,
-    /// Show help message.
     Help,
 }
 
-/// Parses a string as a cell index and validates it's within bounds.
-///
-/// # Arguments
-/// * `part` - The string to parse as a number
-/// * `bound` - The exclusive upper bound (index must be < bound)
-///
-/// # Returns
-/// * `Ok(index)` if parsing succeeds and index is valid
-/// * `Err(message)` if parsing fails or index is out of bounds
 pub fn parse_idx(part: &str, bound: u32) -> Result<u32, String> {
-    let n = part
-        .parse::<u32>()
-        .map_err(|_| "Invalid index (not a number)".to_string())?;
-    if n >= bound {
-        return Err(format!("Index out of bounds: {} > {}", n, bound - 1));
-    }
+    let n = part.parse::<u32>().map_err(|_| "Not a number".to_string())?;
+    if n >= bound { return Err(format!("Out of bounds: {}", n)); }
     Ok(n)
 }
 
-/// Application logic for a Move command (Human + optional Bot response)
-fn handle_place_command(
-    game: &mut GameY,
-    idx: u32,
-    player: PlayerId,
-    mode: Mode,
-    bot: &dyn YBot,
-) {
+fn handle_place_command(game: &mut GameY, idx: u32, player: PlayerId, mode: Mode, bot: &dyn YBot) {
     let coords = Coordinates::from_index(idx, game.board_size());
     let movement = Movement::Placement { player, coords };
-
-    if apply_move(game, movement, "Error adding move") {
-        // Only trigger bot if the human move was valid, mode is computer, and game isn't over
+    if apply_move(game, movement, "Invalid move") {
         if mode == Mode::Computer && !game.check_game_over() {
             trigger_bot_move(game, bot);
         }
     }
 }
 
-/// AI logic extracted to its own function
 fn trigger_bot_move(game: &mut GameY, bot: &dyn YBot) {
     if let Some(bot_coords) = bot.choose_move(game) {
-        // Assuming next_player() is safe to unwrap here because the game isn't over
         if let Some(bot_player) = game.next_player() {
-            let bot_movement = Movement::Placement {
-                player: bot_player,
-                coords: bot_coords,
-            };
-            apply_move(game, bot_movement, "Error adding bot move");
+            let bot_movement = Movement::Placement { player: bot_player, coords: bot_coords };
+            apply_move(game, bot_movement, "Bot move error");
         }
-    } else {
-        println!("No available moves for the bot.");
     }
 }
 
-/// Generic helper to apply a move and handle the Result printing
-/// Returns true if the move was successful
 fn apply_move(game: &mut GameY, movement: Movement, error_msg: &str) -> bool {
     match game.add_move(movement) {
         Ok(()) => true,
@@ -336,7 +247,6 @@ fn apply_move(game: &mut GameY, movement: Movement, error_msg: &str) -> bool {
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
