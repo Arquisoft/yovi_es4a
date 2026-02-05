@@ -1,0 +1,1 @@
+cargo run --  --mode computer  --bot mcts_bot --bot-first --size=9     
