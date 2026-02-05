@@ -3,7 +3,7 @@
 //! This module provides the CLI application for playing Y games interactively.
 
 use crate::{
-    Coordinates, GameAction, MctsBot, GreedyBot, RandomBot, Movement, RenderOptions, YBot, YBotRegistry, game
+    Coordinates, GameAction, MctsBot, RandomBot, Movement, RenderOptions, YBot, YBotRegistry, game
 };
 use crate::{GameStatus, GameY, PlayerId};
 use anyhow::Result;
@@ -67,7 +67,6 @@ pub fn run_cli_game() -> Result<()> {
     // Registro de bots disponibles
     let bots_registry = YBotRegistry::new()
         .with_bot(Arc::new(RandomBot))
-        .with_bot(Arc::new(GreedyBot))
         .with_bot(Arc::new(MctsBot::new(15000))); // Nivel de dificultad alto
 
     let bot: Arc<dyn YBot> = match bots_registry.find(&args.bot) {

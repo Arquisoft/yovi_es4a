@@ -10,11 +10,9 @@
 pub mod random;
 pub mod ybot;
 pub mod ybot_registry;
-pub mod greedy;
 pub mod mcts;
 
 pub use random::*;
 pub use ybot::*;
 pub use ybot_registry::*;
-pub use greedy::*;
 pub use mcts::*;
