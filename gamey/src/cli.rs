@@ -178,8 +178,8 @@ pub fn parse_command(input: &str, bound: u32) -> Command {
     let parts: Vec<&str> = input.split_whitespace().collect();
     if parts.is_empty() { return Command::None; }
     match parts[0] {
-        "save" => if parts.len() < 2 { Command::Error { message: "File required".into() } } else { Command::Save { filename: parts[1].into() } },
-        "load" => if parts.len() < 2 { Command::Error { message: "File required".into() } } else { Command::Load { filename: parts[1].into() } },
+        "save" => if parts.len() < 2 { Command::Error { message: "Filename required".into() } } else { Command::Save { filename: parts[1].into() } },
+        "load" => if parts.len() < 2 { Command::Error { message: "Filename required".into() } } else { Command::Load { filename: parts[1].into() } },
         "resign" => Command::Resign,
         "help" => Command::Help,
         "exit" => Command::Exit,
@@ -188,7 +188,7 @@ pub fn parse_command(input: &str, bound: u32) -> Command {
         "show_idx" => Command::ShowIdx,
         str => match parse_idx(str, bound) {
             Ok(idx) => Command::Place { idx },
-            Err(e) => Command::Error { message: e },
+            Err(e) => Command::Error { message: format!("Error parsing: {}", e) },
         },
     }
 }
@@ -213,8 +213,8 @@ pub enum Command {
 }
 
 pub fn parse_idx(part: &str, bound: u32) -> Result<u32, String> {
-    let n = part.parse::<u32>().map_err(|_| "Not a number".to_string())?;
-    if n >= bound { return Err(format!("Out of bounds: {}", n)); }
+    let n = part.parse::<u32>().map_err(|_| "not a number".to_string())?;
+    if n >= bound { return Err(format!("out of bounds: {}", n)); }
     Ok(n)
 }
 
