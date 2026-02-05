@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 
-const RegisterForm: React.FC = () => {
+interface RegisterFormProps {
+  onUserRegistered: (username: string) => void;
+}
+
+const RegisterForm: React.FC<RegisterFormProps> = ({ onUserRegistered }) => {
   const [username, setUsername] = useState('');
-  const [responseMessage, setResponseMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setResponseMessage(null);
     setError(null);
 
     if (!username.trim()) {
@@ -29,8 +31,7 @@ const RegisterForm: React.FC = () => {
 
       const data = await res.json();
       if (res.ok) {
-        setResponseMessage(data.message);
-        setUsername('');
+        onUserRegistered(username);
       } else {
         setError(data.error || 'Server error');
       }
@@ -44,7 +45,7 @@ const RegisterForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="register-form">
       <div className="form-group">
-        <label htmlFor="username">Whats your name?</label>
+        <label htmlFor="username">¿Cuál es tu nombre?</label>
         <input
           type="text"
           id="username"
@@ -54,14 +55,8 @@ const RegisterForm: React.FC = () => {
         />
       </div>
       <button type="submit" className="submit-button" disabled={loading}>
-        {loading ? 'Entering...' : 'Lets go!'}
+        {loading ? 'Iniciando sesión' : 'Vamos!'}
       </button>
-
-      {responseMessage && (
-        <div className="success-message" style={{ marginTop: 12, color: 'green' }}>
-          {responseMessage}
-        </div>
-      )}
 
       {error && (
         <div className="error-message" style={{ marginTop: 12, color: 'red' }}>
