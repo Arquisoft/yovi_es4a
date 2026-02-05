@@ -1,22 +1,23 @@
-import './App.css'
-import RegisterForm from './components/log/RegisterForm';
-import reactLogo from './assets/react.svg'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import HomePage from './pages/HomePage';
+import GamePage from './pages/GamePage';
+import './App.css';
 
 function App() {
   return (
-    <div className="App">
-      <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-
-      <h2>Welcome to the Software Arquitecture 2025-2026 course</h2>
-      <RegisterForm />
-    </div>
+    <Router>
+      <Routes>
+        {/* Ruta raíz: Carga el Login */}
+        <Route path="/" element={<LoginPage />} />
+        
+        {/* Ruta home: Menú principal */}
+        <Route path="/home" element={<HomePage />} />
+        
+        {/* Ruta game: El tablero */}
+        <Route path="/game" element={<GamePage />} />
+      </Routes>
+    </Router>
   );
 }
 

@@ -4,14 +4,9 @@ export interface HexCoord {
   s: number;
 }
 
-/**
- * Generador de tablero de hexagonos en forma de triangulo con tamaño de lado especificado en size.
- * @param size 
- * @returns 
- */
+// Genera un triángulo (pirámide) con la punta hacia ARRIBA
 export const generateTriangleGrid = (size: number): HexCoord[] => {
   const hexas: HexCoord[] = [];
-  
   for (let row = 0; row < size; row++) {
     for (let column = -row; column <= 0; column++) {
       const s = -column - row;
