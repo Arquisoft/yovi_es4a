@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "react-hexgrid": "^2.0.1",
+    "react-router-dom": "^7.13.0"
+  }
+}
