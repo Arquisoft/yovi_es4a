@@ -47,6 +47,7 @@ const Board: React.FC<BoardProps> = ({ username, size, onExit }) => {
   const [occupied, setOccupied] = useState<Record<string, number>>({});
   const [nextPlayer, setNextPlayer] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCell, setSelectedCell] = useState<Coord | null>(null);
 
   const GAMEY_URL = import.meta.env.VITE_GAMEY_URL ?? 'http://localhost:4000';
 
@@ -122,9 +123,7 @@ const Board: React.FC<BoardProps> = ({ username, size, onExit }) => {
   }, [cells, size]);
 
   const handleCellClick = (c: Coord) => {
-    // De momento solo log. En futuras implementaciones aquí:
-    // 1) enviar movimiento al backend
-    // 2) actualizar estado con respuesta
+    setSelectedCell(c);
     console.log('Clicked cell:', c);
   };
 
@@ -152,45 +151,95 @@ const Board: React.FC<BoardProps> = ({ username, size, onExit }) => {
 
       <div
         style={{
-          position: 'relative',
-          height: 40 + size * 48 + 60,
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
           marginTop: 16,
-          borderRadius: 12,
-          padding: 12,
         }}
       >
-        {loading && (
-          <div style={{ opacity: 0.85, marginBottom: 8 }}>
-            Cargando tablero…
-          </div>
-        )}
+        {/* TABLERO */}
+        <div
+          style={{
+            position: 'relative',
+            height: 40 + size * 48 + 60,
+            flex: '1 1 auto',
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          {loading && (
+            <div style={{ opacity: 0.85, marginBottom: 8 }}>
+              Cargando tablero…
+            </div>
+          )}
 
-        {positioned.map(({ c, left, top }) => {
-          const k = keyOf(c);
-          const owner = occupied[k]; // undefined si vacío
+          {positioned.map(({ c, left, top }) => {
+            const k = keyOf(c);
+            const owner = occupied[k]; // undefined si vacío
+            const isSelected = selectedCell && keyOf(selectedCell) === k;
 
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => handleCellClick(c)}
-              aria-label={`cell ${k}`}
-              title={`(${c.x},${c.y},${c.z})`}
-              style={{
-                position: 'absolute',
-                left,
-                top,
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                border: '1px solid rgba(255,255,255,0.35)',
-                background: owner === 0 ? 'rgba(0,0,0,0.35)' : owner === 1 ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
-                cursor: 'pointer',
-              }}
-            />
-          );
-        })}
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => handleCellClick(c)}
+                aria-label={`cell ${k}`}
+                title={`(${c.x},${c.y},${c.z})`}
+                style={{
+                  position: 'absolute',
+                  left,
+                  top,
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  border: isSelected ? '2px solid white' : '1px solid rgba(255,255,255,0.35)',
+                  background:
+                    owner === 0
+                      ? 'rgba(0,0,0,0.35)'
+                      : owner === 1
+                      ? 'rgba(255,255,255,0.35)'
+                      : 'rgba(0,0,0,0.35)',
+                  cursor: 'pointer',
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* PANEL LATERAL */}
+        <div
+          style={{
+            width: 240,
+            borderRadius: 12,
+            padding: 12,
+            border: '1px solid rgba(255,255,255,0.2)',
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>Celda seleccionada</h3>
+
+          {selectedCell ? (
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              <div>
+                <strong>x</strong>: {selectedCell.x}
+              </div>
+              <div>
+                <strong>y</strong>: {selectedCell.y}
+              </div>
+              <div>
+                <strong>z</strong>: {selectedCell.z}
+              </div>
+              <div style={{ marginTop: 8, opacity: 0.85 }}>
+                ({selectedCell.x}, {selectedCell.y}, {selectedCell.z})
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 14, opacity: 0.85 }}>
+              Pulsa una celda para ver sus coordenadas baricéntricas.
+            </div>
+          )}
+        </div>
       </div>
+
     </div>
   );
 };
