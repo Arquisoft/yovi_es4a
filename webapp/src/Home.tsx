@@ -1,3 +1,5 @@
+import React from 'react';
+
 interface HomeProps {
   username: string;
   onPlay: () => void;
