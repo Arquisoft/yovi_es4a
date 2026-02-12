@@ -6,7 +6,7 @@
 // configure EN settings for asciidoc
 include::src/config.adoc[]
 
-= image:arc42-logo.png[arc42] yovi_es4a
+= image:yovi-logo.png[arc42, width=15%] yovi_es4a
 :revnumber: 8.2 EN
 :revdate: January 2023
 :revremark: (based upon AsciiDoc version)

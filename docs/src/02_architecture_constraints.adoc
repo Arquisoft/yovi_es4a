@@ -1,29 +1,60 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-architecture-constraints]]
-== Architecture Constraints
+== Restricciones Arquitectónicas
 
+=== Restricciones técnicas y estructurales
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Any requirement that constraints software architects in their freedom of design and implementation decisions or decision about the development process. These constraints sometimes go beyond individual systems and are valid for whole organizations and companies.
+[cols="2,3", options="header"]
+|===
+| Restricción | Descripción
 
-.Motivation
-Architects should know exactly where they are free in their design decisions and where they must adhere to constraints.
-Constraints must always be dealt with; they may be negotiable, though.
+| Frontend desarrollado con Vite y React
+| La interfaz gráfica debe implementarse con Vite y/o React.
 
-.Form
-Simple tables of constraints with explanations.
-If needed you can subdivide them into
-technical constraints, organizational and political constraints and
-conventions (e.g. programming or versioning guidelines, documentation or naming conventions)
+| Servicio de usuarios desarrollado con Node.js y Express
+| El servicio dedicado a la gestión de usaurios debe ser un REST API implementado con Node.js y/o Express.
 
+| Juego desarrollado con Rust
+| La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y expuesta como servicio web.
 
-.Further Information
+| Comunicación por JSON usando notación YEN
+| Los mensajes entre los módulos de interfaz (`webapp`) y el servicio Rust (`gamey`) deben usar JSON y representar posiciones con la notación YEN.
 
-See https://docs.arc42.org/section-2/[Architecture Constraints] in the arc42 documentation.
+| Soporte de tablero de tamaño variable
+| El sistema debe soportar un tablero cuyo tamaño sea variable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente).
 
-****
-endif::arc42help[]
+| Diverentes estrategias de bot (dificultad)
+| El bot debe tener más de una estrategia y el usuario debe poder elegirla (relacionado con niveles de dificultad).
+
+| Host en Docker
+| El sistema deberá estar "levantado" con Docker en una máquina virtual para la entrega final.
+
+| Documentación con arc42
+| La documentación debe seguir la estructura base de la plantilla arc42.
+
+| Control de versiones
+| El proyecto se desarrollará mediante Git, alojándolo en GitHub.
+|===
+
+=== Restricciones organizativas y de proceso
+
+[cols="2,3", options="header"]
+|===
+| Restricción | Descripción
+
+| Énfasis en calidad y evaluación
+| Se valora explícitamente documentación, pruebas, despliegue, repositorio y calidad general.
+
+| Trabajo en equipo y control de cambios
+| Al ser un proyecto en grupo, se necesita un flujo de trabajo con control de versiones, revisiones y acuerdos, además de comunicación entre compañeros.
+
+| Gestión de tareas
+| Se utilizará la funcionalidad de Github "Github Issues" para asignar y gestionar las tareas de cada miembro del equipo.
+
+| Tiempo y alcance limitados
+| El proyecto tiene diferentes entregas a lo largo de su desarrollo (versiones).
+
+| Reuniones de equipo
+| Se realizará al lo menos una reunión semanal (sesión de laboratorio). Además, se harán reuniones extras cuando se vea necesario (presenciales o telemáticas) para poner de acuerso diferentes implementaciones. Estas quedarán reflejadas en sus respectivas actas en el apartado "Wiki" del repositorio de GitHub.
+|===

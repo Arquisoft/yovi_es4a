@@ -1,101 +1,129 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-introduction-and-goals]]
-== Introduction and Goals
+== Introducción y Objetivos
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Describes the relevant requirements and the driving forces that software architects and development team must consider. 
-These include
+=== Descripción de los requisitos
 
-* underlying business goals, 
-* essential features, 
-* essential functional requirements, 
-* quality goals for the architecture and
-* relevant stakeholders and their expectations
-****
-endif::arc42help[]
+* La app tendrá una interfaz web para jugar al juego Y.
+* Se ofrecerán dos funcionalidades de juego:
+** El usuario podrá enfrentarse a otro usuario.
+** El usuario podrá enfrentarse a un bot implementado.
+*** El bot tendrá diferentes estrategias, y el usuario podrá elegir cuál de ellas usar (nivel de dificultad).
+* El tablero tendrá tamaño variable (a elección del usuario, sino el tamaño será el establecido como automático).
+* El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.
+** Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).
+* Se proporcionará un API externo (documentado) para que los bots puedan usar el sistema.
+** El API permitirá consultar/gestionar info de usuarios y partidas.
+** El API tendrá un método `play` que recibe al menos `position` (en notación YEN) y devuelve el siguiente movimiento (también en YEN).
+* El “motor” del juego estará en un módulo/servicio aparte (implementado en Rust), y la web lo llamará por HTTP mediante JSON (usando YEN).
 
-=== Requirements Overview
+*Casos de uso:*
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Short description of the functional requirements, driving forces, extract (or abstract)
-of requirements. Link to (hopefully existing) requirements documents
-(with version number and information where to find it).
+[cols="1,3,2,4", options="header"]
+|===
+| ID | Caso de uso | Actor | ¿Qué pasa?
 
-.Motivation
-From the point of view of the end users a system is created or modified to
-improve support of a business activity and/or improve the quality.
+| UC-01
+| *Registrarse / iniciar sesión*
+| Usuario
+| El usuario se crea cuenta o entra con su cuenta para poder guardar partidas y ver estadísticas.
 
-.Form
-Short textual description, probably in tabular use-case format.
-If requirements documents exist this overview should refer to these documents.
+| UC-02
+| *Crear partida con tamaño de tablero*
+| Usuario
+| El usuario crea una partida eligiendo el tamaño y el modo (vs. otro usuario o vs. bot).
 
-Keep these excerpts as short as possible. Balance readability of this document with potential redundancy w.r.t to requirements documents.
+| UC-03
+| *Jugar un turno desde la web*
+| Usuario
+| El usuario hace un movimiento y el sistema actualiza el estado de la partida.
+
+| UC-04
+| *Jugar contra bot (pedir movimiento)*
+| Sistema / Usuario
+| Si es el turno del bot, se llama al servicio (módulo `gamey') para que sugiera el siguiente movimiento según la estrategia/dificultad escogida.
+
+| UC-05
+| *Comprobar si alguien ha ganado*
+| Sistema
+| Después de cada movimiento, se comprueba si la partida está ganada.
+
+| UC-06
+| *Ver historial y estadísticas*
+| Usuario registrado
+| El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.
+
+| UC-07
+| *Consultar/gestionar datos vía API*
+| Bot
+| El bot puede acceder/gestionar información de usuarios y partidas (según los permisos establecidos).
+|===
 
 
-.Further Information
+=== Objetivos de calidad
 
-See https://docs.arc42.org/section-1/[Introduction and Goals] in the arc42 documentation.
+[cols="1,3,4,2", options="header"]
+|===
+| ID | Atributo de Calidad | Descripción | Prioridad
 
-****
-endif::arc42help[]
+| AC-01
+| *Usabilidad*
+| La web debe ser fácil de entender: crear partida, elegir tamaño/estrategia y jugar de forma fluida, sin dificultades ni necesitar unas instrucciones previas.
+| Alta
 
-=== Quality Goals
+| AC-02
+| *Rendimiento*
+| Las funcionalidad básicas (cargar partida, mover, pedir jugada al bot y comprobar victoria) tienen que responder “rápido” y sin sensación de lag, incluso con varios usuarios a la vez en la web.
+| Media-Alta
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-The top three (max five) quality goals for the architecture whose fulfillment is of highest importance to the major stakeholders. 
-We really mean quality goals for the architecture. Don't confuse them with project goals.
-They are not necessarily identical.
+| AC-03
+| *Compatibilidad / interoperabilidad*
+| El API externo para bots tiene que ser estable y estar bien documentado.
+  La comunicación entre módulos (`webapp` ↔ `gamey`) va por JSON con notación YEN, de forma que tiene que estar claro y validado.
+| Alta
 
-Consider this overview of potential topics (based upon the ISO 25010 standard):
+| AC-04
+| *Seguridad*
+| Al haber un registro/login y un API público, hay que controlar los accesos, además de validar los atributos básicos: auth, inputs, etc.
+| Media
 
-image::01_2_iso-25010-topics-EN.drawio.png["Categories of Quality Requirements"]
+| AC-05
+| *Fiabilidad / disponibilidad*
+| El sistema debe soportar fallos “normales” sin romperse.
+| Media
 
-.Motivation
-You should know the quality goals of your most important stakeholders, since they will influence fundamental architectural decisions. 
-Make sure to be very concrete about these qualities, avoid buzzwords.
-If you as an architect do not know how the quality of your work will be judged...
+| AC-06
+| *Mantenibilidad*
+| Como se quiere poder añadir estrategias nuevas del bot, inlcuir nuevas reglas/variantes o cambiar cosas del API, todo esto se debe implementar sin "modificar" el resto.
+| Alta
 
-.Form
-A table with quality goals and concrete scenarios, ordered by priorities
-****
-endif::arc42help[]
+| AC-07
+| *Testabilidad*
+| El sistema tendrá una serie de pruebas que se realizaran para garantizar su correcto funcionamiento. También servirá para identificar errores y poder solucionarlos.
+| Media-Alta
+|===
+
 
 === Stakeholders
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-Explicit overview of stakeholders of the system, i.e. all person, roles or organizations that
-
-* should know the architecture
-* have to be convinced of the architecture
-* have to work with the architecture or with code
-* need the documentation of the architecture for their work
-* have to come up with decisions about the system or its development
-
-.Motivation
-You should know all parties involved in development of the system or affected by the system.
-Otherwise, you may get nasty surprises later in the development process.
-These stakeholders determine the extent and the level of detail of your work and its results.
-
-.Form
-Table with role names, person names, and their expectations with respect to the architecture and its documentation.
-****
-endif::arc42help[]
-
-[options="header",cols="1,2,2"]
+[cols="1,3,4", options="header"]
 |===
-|Role/Name|Contact|Expectations
-| _<Role-1>_ | _<Contact-1>_ | _<Expectation-1>_
-| _<Role-2>_ | _<Contact-2>_ | _<Expectation-2>_
+| Stakeholder | Descripción | Expectativas / motivaciones
+
+| Jugador (usuario final)
+| Persona que entra a la web para jugar al juego Y (contra otra persona o contra el bot).
+| Que sea fácil de usar, que cargue rápido, que el juego no dé errores raros, poder elegir tamaño/estrategia y ver su historial y estadísticas.
+
+| Equipo de desarrollo
+| Mario Amandi, Marcelo Díez, Andrea Ivanov y Eloy Rubio
+| Poder avanzar sin bloqueos, tener una arquitectura modular, poder implementar buenos tests y desplegar el sistema, además de mejorar las habilidades de programación (nuevos lenguajes), desarrollo y trabajo en equipo.
+
+| Profesorado
+| Jose E. Labra Gayo, Pablo González, Diego Martín Fernández y Celia Melendi Lavandera
+| Que se cumplan los requisitos, que se justifiquen las decisiones arquitectónicas, que haya pruebas de código y que el despliegue sea accesible por web.
+
+| Micrati
+| Empresa que decide apostar por el desarrollo del juego y encarga el proyecto.
+| Que el producto final sea usable y presentable, que cumpla los requisitos establecidos, que sea fácil de mantener/mejorar y que no tenga fallos.
 |===
