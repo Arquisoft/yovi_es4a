@@ -1,8 +1,6 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-deployment-view]]
-
-
 == Deployment View
 
 ifdef::arc42help[]
@@ -46,32 +44,45 @@ endif::arc42help[]
 
 === Infrastructure Level 1
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-Describe (usually in a combination of diagrams, tables, and text):
+La arquitectura de despliegue se basa en la contenedorización de los servicios, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción dentro de la infraestructura de Microsoft Azure.
 
-* distribution of a system to multiple locations, environments, computers, processors, .., as well as physical connections between them
-* important justifications or motivations for this deployment structure
-* quality and/or performance features of this infrastructure
-* mapping of software artifacts to elements of this infrastructure
+image::DiagramaDespliegue_07_01.drawio.png["Diagrama correspondiente al Despliegue", width=50%]
 
-For multiple environments or alternative deployments please copy and adapt this section of arc42 for all relevant environments.
-****
-endif::arc42help[]
+Motivación::
+Se ha elegido Azure por su capacidad de integración con flujos de CI/CD (GitHub Actions) y su robustez. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de prueba, evitando el clásico "en mi máquina funciona".
 
-_**<Overview Diagram>**_
+Características de calidad y/o rendimiento::
+* **Disponibilidad:** Azure garantiza un SLA elevado para sus servicios de computación.
+* **Observabilidad:** La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real.
+* **Escalabilidad:** Azure ofrece escalado automático, lo que permite ajustar los recursos según la demanda.
 
-Motivation::
+Mapeo de los bloques de construcción a la infraestructura::
+[cols="1,1", options="header"]
+|===
+| Bloque de Construcción | Puerto Externo
+| webapp | 80
+| users | 3000
+| gamey | 4000
+| prometheus | 9090
+| grafana | 9091
+|===
 
-_<explanation in text form>_
+=== Infrastructura Nivel 2
 
-Quality and/or Performance Features::
+==== Servicios de Aplicación 
 
-_<explanation in text form>_
+Estos contenedores representan la lógica de negocio y la interfaz de usuario:
 
-Mapping of Building Blocks to Infrastructure::
-_<description of the mapping>_
+* **webapp (Puerto 80):** Servidor web (Nginx/Apache) que sirve la aplicación frontend. Se comunica con el backend a través de la URL de API configurada.
+* **users (Puerto 3000):** Microservicio encargado de la gestión de usuarios y autenticación.
+* **gamey (Puerto 4000):** Microservicio encargado de la lógica del juego.
+
+==== Servicios de Monitorización
+
+Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo carga:
+
+* **Prometheus (Puerto 9090):** Recolecta métricas de los servicios `users` y otros componentes.
+* **Grafana (Puerto 9091):** Visualiza las métricas recolectadas mediante paneles de control (dashboards) configurados mediante volúmenes de aprovisionamiento.
 
 
 === Infrastructure Level 2

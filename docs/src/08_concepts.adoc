@@ -1,8 +1,7 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-concepts]]
-== Cross-cutting Concepts
-
+== Conceptos Transversales (Cross-cutting Concepts)
 
 ifdef::arc42help[]
 [role="arc42help"]
@@ -57,18 +56,22 @@ See https://docs.arc42.org/section-8/[Concepts] in the arc42 documentation.
 ****
 endif::arc42help[]
 
-=== _<Concept 1>_
+=== Monitorización y Observabilidad
+Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal:
 
-_<explanation>_
+* **Recolección de métricas:** Prometheus actúa como el recolector central, extrayendo datos de rendimiento de los diferentes contenedores.
+* **Visualización:** Grafana proporciona tableros de control para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos.
 
+=== Proceso de Desarrollo y Gestión (GitHub Ecosystem)
+Para asegurar la calidad del software y la organización del equipo, se utiliza el ecosistema de GitHub de manera integral:
 
+* **Gestión de Tareas (Kanban):** Se utiliza **GitHub Projects** con una metodología Kanban para visualizar el flujo de trabajo (To Do, In Progress, Done...). Esto permite el seguimiento en tiempo real del estado de cada funcionalidad.
+* **Seguimiento de Tareas (Issues):** Cada nueva funcionalidad, error o mejora se documenta mediante **Issues**, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos.
+* **Flujo de Trabajo (Pull Requests):** El código no se integra directamente en la rama principal. Se utilizan **Pull Requests (PRs)** para la revisión, asegurando que el código cumpla con los estándares antes de ser fusionado.
 
-=== _<Concept 2>_
+=== Tecnologías
+El sistema adopta un enfoque de varios lenguajes, seleccionando la herramienta más adecuada para cada dominio del problema:
 
-_<explanation>_
-
-...
-
-=== _<Concept n>_
-
-_<explanation>_
+* **Backend de Gestión (Node.js/Express):** El servicio `users` utiliza un entorno basado en eventos y JavaScript para gestionar la lógica de usuario de forma ágil y escalable.
+* **Motor de Juego de Alto Rendimiento (Rust):** El servicio `gamey` está desarrollado en Rust para garantizar la seguridad de memoria y un alto rendimiento en la lógica del juego, ofreciendo además versatilidad al poder ejecutarse tanto en modo servidor como en modo CLI.
+* **Frontend Moderno (React + Vite):** La interfaz de usuario (`webapp`) utiliza React para una gestión eficiente del estado de la UI y Vite como herramienta de construcción rápida.

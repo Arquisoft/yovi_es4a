@@ -35,3 +35,33 @@ There you will find links and examples about ADR.
 
 ****
 endif::arc42help[]
+
+== Decisiones de Arquitectura (ADR)
+
+En esta sección se documentan las decisiones arquitectónicas fundamentales que rigen el diseño y desarrollo de **Yovi_es4a**, detallando su justificación y las alternativas consideradas.
+
+=== ADR 1: Uso de MongoDB como Base de Datos
+* **Estado:** Aceptada.
+* **Contexto:** Se requiere un sistema de persistencia para almacenar los datos de los usuarios y del juego que sea flexible y compatible con el ecosistema tecnológico actual.
+* **Alternativas:** Bases de datos relacionales (como MySQL).
+* **Justificación:** ** **Compatibilidad:** MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en **React** y el uso de **TypeScript**.
+** **Integración con Rust:** La seguridad de tipos permite convertir documentos de la base de datos en `structs` de **Rust** con una sola línea de código, garantizando datos válidos en el motor `gamey`.
+** **Facilidad de despliegue:** Gracias a **Docker**, levantar una instancia de MongoDB es inmediato, facilitando la adición de requisitos sin necesidad de migraciones complejas.
+** **Idoneidad:** Es ideal para estructuras de datos no excesivamente complejas, como las de un juego web.
+* **Consecuencias:** Se espera una mayor flexibilidad y rapidez en el desarrollo al no depender de esquemas rígidos.
+
+=== ADR 2: Uso inicial de PlantUML para diagramación
+* **Estado:** Reemplazada (por ADR 3).
+* **Contexto:** Necesidad de una herramienta para crear los diagramas técnicos de la documentación arc42.
+* **Alternativas:** Editores visuales como draw.io.
+* **Justificación:**  **Enfoque técnico:** Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico.
+** **Mantenibilidad:** El uso de código facilita la realización de cambios rápidos y el control de versiones.
+* **Consecuencias:** Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual.
+
+=== ADR 3: Adopción de draw.io para diagramas
+* **Estado:** Aceptada.
+* **Contexto:** Tras evaluar el uso de PlantUML, se identificó la necesidad de una representación más esquemática y visual de los componentes.
+* **Alternativas:** PlantUML (mantenida como opción de respaldo).
+* **Justificación:**  **Intuitividad:** Es una herramienta más visual que no requiere aprendizaje previo para su manejo.
+** **Control Visual:** Permite ubicar los componentes (`webapp`, `users`, `gamey`) libremente, facilitando la representación de relaciones y jerarquías de forma más clara y esquemática.
+* **Consecuencias:** Aunque requiere algo más de tiempo manual para la creación, resulta más cómoda y comunicativa para el equipo de desarrollo.
