@@ -2,7 +2,6 @@ ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-quality-scenarios]]
 == Quality Requirements
-En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo el modelo ISO/IEC 25010, el cuál nos facilita una serie de puntos imprescindibles para cumplir los estándares internacionales de ingeniería del software.
 
 ifdef::arc42help[]
 [role="arc42help"]
@@ -27,9 +26,11 @@ See https://docs.arc42.org/section-10/[Quality Requirements] in the arc42 docume
 ****
 endif::arc42help[]
 
+En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo el modelo ISO/IEC 25010, el cuál nos facilita una serie de puntos imprescindibles para cumplir los estándares internacionales de ingeniería del software.
+
 === Quality Tree
 
-image::docs\images\requisitos de calidad.png[arbol de calidad]
+image::\requisitos de calidad.png[arbol de calidad]
 
 *Adecuación funcional*
 
