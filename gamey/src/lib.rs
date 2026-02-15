@@ -40,5 +40,12 @@ pub use cli::*;
 pub use core::*;
 pub use gamey_error::*;
 pub use notation::*;
-pub use bot_server::*;
 pub use game_server::*;
+
+pub use bot_server::{ErrorResponse, MoveResponse, run_bot_server};
+pub use bot_server::state;
+
+pub use bot_server::{create_default_state as create_bot_default_state};
+pub use bot_server::{create_router as create_bot_router};
+
+pub use bot_server::version::{check_api_version, SUPPORTED_VERSION};

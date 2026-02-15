@@ -29,7 +29,8 @@ pub use choose::MoveResponse;
 pub use error::ErrorResponse;
 pub use version::*;
 
-use crate::{GameYError, RandomBot, YBotRegistry, state::AppState};
+use crate::{GameYError, RandomBot, YBotRegistry};
+use self::state::AppState;
 
 /// Creates the Axum router with the given state.
 ///
