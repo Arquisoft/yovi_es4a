@@ -478,25 +478,33 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#section-deployment-view">7. Deployment View</a>
 <ul class="sectlevel2">
 <li><a href="#_infrastructure_level_1">7.1. Infrastructure Level 1</a></li>
-<li><a href="#_infrastructure_level_2">7.2. Infrastructure Level 2</a></li>
+<li><a href="#_infrastructura_nivel_2">7.2. Infrastructura Nivel 2</a></li>
+<li><a href="#_infrastructure_level_2">7.3. Infrastructure Level 2</a></li>
 </ul>
 </li>
-<li><a href="#section-concepts">8. Cross-cutting Concepts</a>
+<li><a href="#section-concepts">8. Conceptos Transversales (Cross-cutting Concepts)</a>
 <ul class="sectlevel2">
-<li><a href="#_concept_1">8.1. <em>&lt;Concept 1&gt;</em></a></li>
-<li><a href="#_concept_2">8.2. <em>&lt;Concept 2&gt;</em></a></li>
-<li><a href="#_concept_n">8.3. <em>&lt;Concept n&gt;</em></a></li>
+<li><a href="#_monitorización_y_observabilidad">8.1. Monitorización y Observabilidad</a></li>
+<li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.2. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
+<li><a href="#_tecnologías">8.3. Tecnologías</a></li>
 </ul>
 </li>
 <li><a href="#section-design-decisions">9. Architecture Decisions</a></li>
-<li><a href="#section-quality-scenarios">10. Quality Requirements</a>
+<li><a href="#_decisiones_de_arquitectura_adr">10. Decisiones de Arquitectura (ADR)</a>
 <ul class="sectlevel2">
-<li><a href="#_quality_tree">10.1. Quality Tree</a></li>
-<li><a href="#_quality_scenarios">10.2. Quality Scenarios</a></li>
+<li><a href="#_adr_1_uso_de_mongodb_como_base_de_datos">10.1. ADR 1: Uso de MongoDB como Base de Datos</a></li>
+<li><a href="#_adr_2_uso_inicial_de_plantuml_para_diagramación">10.2. ADR 2: Uso inicial de PlantUML para diagramación</a></li>
+<li><a href="#_adr_3_adopción_de_draw_io_para_diagramas">10.3. ADR 3: Adopción de draw.io para diagramas</a></li>
 </ul>
 </li>
-<li><a href="#section-technical-risks">11. Risks and Technical Debts</a></li>
-<li><a href="#section-glossary">12. Glossary</a></li>
+<li><a href="#section-quality-scenarios">11. Quality Requirements</a>
+<ul class="sectlevel2">
+<li><a href="#_quality_tree">11.1. Quality Tree</a></li>
+<li><a href="#_quality_scenarios">11.2. Quality Scenarios</a></li>
+</ul>
+</li>
+<li><a href="#section-technical-risks">12. Risks and Technical Debts</a></li>
+<li><a href="#section-glossary">13. Glossary</a></li>
 </ul>
 </div>
 </div>
@@ -1348,54 +1356,114 @@ when your infrastructure is more complex.</p>
 </div>
 <div class="sect2">
 <h3 id="_infrastructure_level_1">7.1. Infrastructure Level 1</h3>
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<p>Describe (usually in a combination of diagrams, tables, and text):</p>
+<p>La arquitectura de despliegue se basa en la contenedorización de los servicios, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción dentro de la infraestructura de Microsoft Azure.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/DiagramaDespliegue_07_01.drawio.png" alt="Diagrama correspondiente al Despliegue" width="50%">
+</div>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Motivación</dt>
+<dd>
+<p>Se ha elegido Azure por su capacidad de integración con flujos de CI/CD (GitHub Actions) y su robustez. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de prueba, evitando el clásico "en mi máquina funciona".</p>
+</dd>
+<dt class="hdlist1">Características de calidad y/o rendimiento</dt>
+<dd>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Disponibilidad:</strong> Azure garantiza un SLA elevado para sus servicios de computación.</p>
+</li>
+<li>
+<p><strong>Observabilidad:</strong> La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real.</p>
+</li>
+<li>
+<p><strong>Escalabilidad:</strong> Azure ofrece escalado automático, lo que permite ajustar los recursos según la demanda.</p>
+</li>
+</ul>
+</div>
+</dd>
+<dt class="hdlist1">Mapeo de los bloques de construcción a la infraestructura</dt>
+</dl>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bloque de Construcción</th>
+<th class="tableblock halign-left valign-top">Puerto Externo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">webapp</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">users</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3000</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">gamey</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4000</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">prometheus</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9090</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">grafana</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9091</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_infrastructura_nivel_2">7.2. Infrastructura Nivel 2</h3>
+<div class="sect3">
+<h4 id="_servicios_de_aplicación">7.2.1. Servicios de Aplicación</h4>
+<div class="paragraph">
+<p>Estos contenedores representan la lógica de negocio y la interfaz de usuario:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>distribution of a system to multiple locations, environments, computers, processors, .., as well as physical connections between them</p>
+<p><strong>webapp (Puerto 80):</strong> Servidor web (Nginx/Apache) que sirve la aplicación frontend. Se comunica con el backend a través de la URL de API configurada.</p>
 </li>
 <li>
-<p>important justifications or motivations for this deployment structure</p>
+<p><strong>users (Puerto 3000):</strong> Microservicio encargado de la gestión de usuarios y autenticación.</p>
 </li>
 <li>
-<p>quality and/or performance features of this infrastructure</p>
-</li>
-<li>
-<p>mapping of software artifacts to elements of this infrastructure</p>
+<p><strong>gamey (Puerto 4000):</strong> Microservicio encargado de la lógica del juego.</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_servicios_de_monitorización">7.2.2. Servicios de Monitorización</h4>
 <div class="paragraph">
-<p>For multiple environments or alternative deployments please copy and adapt this section of arc42 for all relevant environments.</p>
+<p>Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo carga:</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Prometheus (Puerto 9090):</strong> Recolecta métricas de los servicios <code>users</code> y otros componentes.</p>
+</li>
+<li>
+<p><strong>Grafana (Puerto 9091):</strong> Visualiza las métricas recolectadas mediante paneles de control (dashboards) configurados mediante volúmenes de aprovisionamiento.</p>
+</li>
+</ul>
 </div>
-</div>
-<div class="paragraph">
-<p><em><strong>&lt;Overview Diagram&gt;</strong></em></p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Motivation</dt>
-<dd>
-<p><em>&lt;explanation in text form&gt;</em></p>
-</dd>
-<dt class="hdlist1">Quality and/or Performance Features</dt>
-<dd>
-<p><em>&lt;explanation in text form&gt;</em></p>
-</dd>
-<dt class="hdlist1">Mapping of Building Blocks to Infrastructure</dt>
-<dd>
-<p><em>&lt;description of the mapping&gt;</em></p>
-</dd>
-</dl>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_infrastructure_level_2">7.2. Infrastructure Level 2</h3>
+<h3 id="_infrastructure_level_2">7.3. Infrastructure Level 2</h3>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1407,13 +1475,13 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_infrastructure_element_1">7.2.1. <em>&lt;Infrastructure Element 1&gt;</em></h4>
+<h4 id="_infrastructure_element_1">7.3.1. <em>&lt;Infrastructure Element 1&gt;</em></h4>
 <div class="paragraph">
 <p><em>&lt;diagram + explanation&gt;</em></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_infrastructure_element_2">7.2.2. <em>&lt;Infrastructure Element 2&gt;</em></h4>
+<h4 id="_infrastructure_element_2">7.3.2. <em>&lt;Infrastructure Element 2&gt;</em></h4>
 <div class="paragraph">
 <p><em>&lt;diagram + explanation&gt;</em></p>
 </div>
@@ -1422,7 +1490,7 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_infrastructure_element_n">7.2.3. <em>&lt;Infrastructure Element n&gt;</em></h4>
+<h4 id="_infrastructure_element_n">7.3.3. <em>&lt;Infrastructure Element n&gt;</em></h4>
 <div class="paragraph">
 <p><em>&lt;diagram + explanation&gt;</em></p>
 </div>
@@ -1432,7 +1500,7 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-concepts">8. Cross-cutting Concepts</h2>
+<h2 id="section-concepts">8. Conceptos Transversales (Cross-cutting Concepts)</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -1534,24 +1602,57 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_1">8.1. <em>&lt;Concept 1&gt;</em></h3>
+<h3 id="_monitorización_y_observabilidad">8.1. Monitorización y Observabilidad</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
+<p>Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Recolección de métricas:</strong> Prometheus actúa como el recolector central, extrayendo datos de rendimiento de los diferentes contenedores.</p>
+</li>
+<li>
+<p><strong>Visualización:</strong> Grafana proporciona tableros de control para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_2">8.2. <em>&lt;Concept 2&gt;</em></h3>
+<h3 id="_proceso_de_desarrollo_y_gestión_github_ecosystem">8.2. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
+<p>Para asegurar la calidad del software y la organización del equipo, se utiliza el ecosistema de GitHub de manera integral:</p>
 </div>
-<div class="paragraph">
-<p>&#8230;&#8203;</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Gestión de Tareas (Kanban):</strong> Se utiliza <strong>GitHub Projects</strong> con una metodología Kanban para visualizar el flujo de trabajo (To Do, In Progress, Done&#8230;&#8203;). Esto permite el seguimiento en tiempo real del estado de cada funcionalidad.</p>
+</li>
+<li>
+<p><strong>Seguimiento de Tareas (Issues):</strong> Cada nueva funcionalidad, error o mejora se documenta mediante <strong>Issues</strong>, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos.</p>
+</li>
+<li>
+<p><strong>Flujo de Trabajo (Pull Requests):</strong> El código no se integra directamente en la rama principal. Se utilizan <strong>Pull Requests (PRs)</strong> para la revisión, asegurando que el código cumpla con los estándares antes de ser fusionado.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_concept_n">8.3. <em>&lt;Concept n&gt;</em></h3>
+<h3 id="_tecnologías">8.3. Tecnologías</h3>
 <div class="paragraph">
-<p><em>&lt;explanation&gt;</em></p>
+<p>El sistema adopta un enfoque de varios lenguajes, seleccionando la herramienta más adecuada para cada dominio del problema:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Backend de Gestión (Node.js/Express):</strong> El servicio <code>users</code> utiliza un entorno basado en eventos y JavaScript para gestionar la lógica de usuario de forma ágil y escalable.</p>
+</li>
+<li>
+<p><strong>Motor de Juego de Alto Rendimiento (Rust):</strong> El servicio <code>gamey</code> está desarrollado en Rust para garantizar la seguridad de memoria y un alto rendimiento en la lógica del juego, ofreciendo además versatilidad al poder ejecutarse tanto en modo servidor como en modo CLI.</p>
+</li>
+<li>
+<p><strong>Frontend Moderno (React + Vite):</strong> La interfaz de usuario (<code>webapp</code>) utiliza React para una gestión eficiente del estado de la UI y Vite como herramienta de construcción rápida.</p>
+</li>
+</ul>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1604,11 +1705,112 @@ There you will find links and examples about ADR.</p>
 </div>
 </div>
 </div>
-<div style="page-break-after: always;"></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-quality-scenarios">10. Quality Requirements</h2>
+<h2 id="_decisiones_de_arquitectura_adr">10. Decisiones de Arquitectura (ADR)</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>En esta sección se documentan las decisiones arquitectónicas fundamentales que rigen el diseño y desarrollo de <strong>Yovi_es4a</strong>, detallando su justificación y las alternativas consideradas.</p>
+</div>
+<div class="sect2">
+<h3 id="_adr_1_uso_de_mongodb_como_base_de_datos">10.1. ADR 1: Uso de MongoDB como Base de Datos</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> Se requiere un sistema de persistencia para almacenar los datos de los usuarios y del juego que sea flexible y compatible con el ecosistema tecnológico actual.</p>
+</li>
+<li>
+<p><strong>Alternativas:</strong> Bases de datos relacionales (como MySQL).</p>
+</li>
+<li>
+<p><strong>Justificación:</strong> <strong> </strong>Compatibilidad:<strong> MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en </strong>React<strong> y el uso de </strong>TypeScript**.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Integración con Rust:</strong> La seguridad de tipos permite convertir documentos de la base de datos en <code>structs</code> de <strong>Rust</strong> con una sola línea de código, garantizando datos válidos en el motor <code>gamey</code>.</p>
+</li>
+<li>
+<p><strong>Facilidad de despliegue:</strong> Gracias a <strong>Docker</strong>, levantar una instancia de MongoDB es inmediato, facilitando la adición de requisitos sin necesidad de migraciones complejas.</p>
+</li>
+<li>
+<p><strong>Idoneidad:</strong> Es ideal para estructuras de datos no excesivamente complejas, como las de un juego web.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Se espera una mayor flexibilidad y rapidez en el desarrollo al no depender de esquemas rígidos.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_2_uso_inicial_de_plantuml_para_diagramación">10.2. ADR 2: Uso inicial de PlantUML para diagramación</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Reemplazada (por ADR 3).</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> Necesidad de una herramienta para crear los diagramas técnicos de la documentación arc42.</p>
+</li>
+<li>
+<p><strong>Alternativas:</strong> Editores visuales como draw.io.</p>
+</li>
+<li>
+<p><strong>Justificación:</strong>  <strong>Enfoque técnico:</strong> Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mantenibilidad:</strong> El uso de código facilita la realización de cambios rápidos y el control de versiones.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_3_adopción_de_draw_io_para_diagramas">10.3. ADR 3: Adopción de draw.io para diagramas</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> Tras evaluar el uso de PlantUML, se identificó la necesidad de una representación más esquemática y visual de los componentes.</p>
+</li>
+<li>
+<p><strong>Alternativas:</strong> PlantUML (mantenida como opción de respaldo).</p>
+</li>
+<li>
+<p><strong>Justificación:</strong>  <strong>Intuitividad:</strong> Es una herramienta más visual que no requiere aprendizaje previo para su manejo.</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Control Visual:</strong> Permite ubicar los componentes (<code>webapp</code>, <code>users</code>, <code>gamey</code>) libremente, facilitando la representación de relaciones y jerarquías de forma más clara y esquemática.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Aunque requiere algo más de tiempo manual para la creación, resulta más cómoda y comunicativa para el equipo de desarrollo.</p>
+</li>
+</ul>
+</div>
+<div style="page-break-after: always;"></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="section-quality-scenarios">11. Quality Requirements</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -1633,7 +1835,7 @@ concrete and measurable.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_quality_tree">10.1. Quality Tree</h3>
+<h3 id="_quality_tree">11.1. Quality Tree</h3>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1665,7 +1867,7 @@ concrete and measurable.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_quality_scenarios">10.2. Quality Scenarios</h3>
+<h3 id="_quality_scenarios">11.2. Quality Scenarios</h3>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1709,7 +1911,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-technical-risks">11. Risks and Technical Debts</h2>
+<h2 id="section-technical-risks">12. Risks and Technical Debts</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -1738,7 +1940,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-glossary">12. Glossary</h2>
+<h2 id="section-glossary">13. Glossary</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
