@@ -42,7 +42,7 @@ See https://docs.arc42.org/section-7/[Deployment View] in the arc42 documentatio
 ****
 endif::arc42help[]
 
-=== Infrastructure Level 1
+=== Infrastructura Nivel 1
 
 La arquitectura de despliegue se basa en la contenedorización de los servicios, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción dentro de la infraestructura de Microsoft Azure.
 
@@ -84,9 +84,6 @@ Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo 
 * **Prometheus (Puerto 9090):** Recolecta métricas de los servicios `users` y otros componentes.
 * **Grafana (Puerto 9091):** Visualiza las métricas recolectadas mediante paneles de control (dashboards) configurados mediante volúmenes de aprovisionamiento.
 
-
-=== Infrastructure Level 2
-
 ifdef::arc42help[]
 [role="arc42help"]
 ****
@@ -95,17 +92,3 @@ Here you can include the internal structure of (some) infrastructure elements fr
 Please copy the structure from level 1 for each selected element.
 ****
 endif::arc42help[]
-
-==== _<Infrastructure Element 1>_
-
-_<diagram + explanation>_
-
-==== _<Infrastructure Element 2>_
-
-_<diagram + explanation>_
-
-...
-
-==== _<Infrastructure Element n>_
-
-_<diagram + explanation>_
