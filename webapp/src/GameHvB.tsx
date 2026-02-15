@@ -11,6 +11,7 @@ export default function GameHvB() {
   const [statusText, setStatusText] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
 
   const cells = useMemo(() => {
     if (!yen) return [];
@@ -25,6 +26,7 @@ export default function GameHvB() {
       const r = await newGame(size);
       setYen(r.yen);
       setStatusText("Game created. Your move.");
+      setGameOver(false);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -33,7 +35,8 @@ export default function GameHvB() {
   }
 
   async function handleCellClick(cellId: number) {
-    if (!yen) return;
+    if (!yen || gameOver) return;
+
     setError("");
     setLoading(true);
     try {
@@ -47,6 +50,7 @@ export default function GameHvB() {
         : `Ongoing — next: ${r.status.next}`;
 
       setStatusText(`${human} | ${bot} | ${st}`);
+      setGameOver(r.status.state === "finished");
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -102,7 +106,12 @@ export default function GameHvB() {
         <p>Create a new game to start.</p>
       ) : (
         <div style={{ display: "grid", gap: 14 }}>
-          <Board size={yen.size} cells={cells} disabled={loading} onCellClick={handleCellClick} />
+          <Board
+            size={yen.size}
+            cells={cells}
+            disabled={loading || gameOver}
+            onCellClick={handleCellClick}
+          />
 
           <details>
             <summary>Debug: current YEN</summary>

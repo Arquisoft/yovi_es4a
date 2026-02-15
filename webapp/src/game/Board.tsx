@@ -28,8 +28,8 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             const isClickable = isEmpty && !disabled;
 
             const bg =
-              cell.value === "B" ? "#2563eb" :
-              cell.value === "R" ? "#dc2626" :
+              cell.value === "B" ? "#28BBF5" :
+              cell.value === "R" ? "#FF7B00" :
               "#e5e7eb";
 
             const color = cell.value === "." ? "#111827" : "white";
@@ -48,14 +48,14 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                   background: bg,
                   color,
                   cursor: isClickable ? "pointer" : "not-allowed",
-                  opacity: disabled && isEmpty ? 0.6 : 1,
+                  opacity: disabled ? 0.65 : 1,
                   display: "grid",
                   placeItems: "center",
                   fontWeight: 700,
                   userSelect: "none",
                 }}
               >
-                {cellLabel(cell.value)}
+                {cell.value === "." ? "" : cell.value}
               </button>
             );
           })}
