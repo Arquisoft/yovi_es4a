@@ -63,46 +63,16 @@ ifndef::imagesdir[:imagesdir: ../images]
 
 === Objetivos de calidad
 
-[cols="1,3,4,2", options="header"]
-|===
-| ID | Atributo de Calidad | Descripción | Prioridad
+Los objetivos de calidad del sistema se concretan y evaluarán en la sección "10. Atributos de Calidad" siguiendo el modelo ISO/IEC 25010, mediante un árbol de calidad y escenarios. De forma resumida, la arquitectura prioriza:
 
-| AC-01
-| *Usabilidad*
-| La web debe ser fácil de entender: crear partida, elegir tamaño/estrategia y jugar de forma fluida, sin dificultades ni necesitar unas instrucciones previas.
-| Alta
-
-| AC-02
-| *Rendimiento*
-| Las funcionalidad básicas (cargar partida, mover, pedir jugada al bot y comprobar victoria) tienen que responder “rápido” y sin sensación de lag, incluso con varios usuarios a la vez en la web.
-| Media-Alta
-
-| AC-03
-| *Compatibilidad / interoperabilidad*
-| El API externo para bots tiene que ser estable y estar bien documentado.
-  La comunicación entre módulos (`webapp` ↔ `gamey`) va por JSON con notación YEN, de forma que tiene que estar claro y validado.
-| Alta
-
-| AC-04
-| *Seguridad*
-| Al haber un registro/login y un API público, hay que controlar los accesos, además de validar los atributos básicos: auth, inputs, etc.
-| Media
-
-| AC-05
-| *Fiabilidad / disponibilidad*
-| El sistema debe soportar fallos “normales” sin romperse.
-| Media
-
-| AC-06
-| *Mantenibilidad*
-| Como se quiere poder añadir estrategias nuevas del bot, inlcuir nuevas reglas/variantes o cambiar cosas del API, todo esto se debe implementar sin "modificar" el resto.
-| Alta
-
-| AC-07
-| *Testabilidad*
-| El sistema tendrá una serie de pruebas que se realizaran para garantizar su correcto funcionamiento. También servirá para identificar errores y poder solucionarlos.
-| Media-Alta
-|===
+* *Adecuación funcional*: El motor debe garantizar el cumplimiento de reglas y la validación del estado de la partida, evitando acciones inválidas y guiando al usuario durante el juego.
+* *Eficiencia de desempeño*: Se busca respuesta ágil y sin “lag” en las operaciones principales, con un uso eficiente de recursos y soporte de concurrencia, apoyado en el motor en Rust y el despliegue en contenedores.
+* *Compatibilidad / interoperabilidad*: La comunicación entre subsistemas y con bots externos debe ser estable, clara y validada, basada en JSON con notación YEN y un API bien documentado.
+* *Usabilidad*: La web debe ser intuitiva y fácil de aprender, con una interfaz que indique turnos, opciones y restricciones, reduciendo errores del usuario.
+* *Fiabilidad / disponibilidad*: El sistema debe mantener estabilidad ante fallos habituales y ser observable/monitorizable para detectar caídas o degradaciones.
+* *Seguridad*: Se controlarán accesos (registro/login y API pública), validación de entradas y medidas de protección de credenciales (por ejemplo, cifrado/hasheado de contraseñas).
+* *Mantenibilidad*: El diseño modular por microservicios y la separación de responsabilidades deben permitir incorporar nuevas estrategias/reglas o cambios en el API minimizando el impacto en el resto del sistema.
+* *Portabilidad*: Al basarse en Docker, el sistema debe ser desplegable en distintos entornos con una instalación reproducible.
 
 
 === Stakeholders

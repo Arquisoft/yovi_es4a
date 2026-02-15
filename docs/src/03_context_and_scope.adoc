@@ -4,7 +4,7 @@ ifndef::imagesdir[:imagesdir: ../images]
 == Contexto y Alcance
 
 === Contexto de negocio
-image::03_1-ContextoNegocio.png["Diagrama correspondiente al Contexto de Negocio", width=50%]
+image::03_1-ContextoNegocio.png["Diagrama correspondiente al Contexto de Negocio", width=75%]
 
 * *Jugador*: Usa el sistema para registrarse/iniciar sesión, jugar (elegir estrategia, contrincante y tamaño de tablero) y consultar resultados.
 * *Bot*: Consume el API para automatizar partidas y realizar jugadas.
