@@ -63,20 +63,16 @@ image::\requisitos de calidad.png[arbol de calidad]
 
 * Madurez: A lo largo de todo el proyecto se utiliza SonarCloud para mantener cierta calidad de código. Se han realizado pruebas unitarias y de integración para garantizar la estabilidad del sistema.
 * Disponibilidad: Se utilizan las herramientas Prometheus y Grafana para monitorizar el estado de los microservicios y detectar posibles caídas o problemas de rendimiento.
-* Tolerancia a fallos: <>
-* Recuperabilidad: <>
 
 *Seguridad*
 
 * Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas.
 * Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios, así nosotros tampoco contamos explicitamente con estas. **SC5**[[SC5, SC5]]
 * No repudio: Se guarda en la base de datos la interacción del usuario con la aplicación junto con una serie de datos estadísticos, por lo que el correo asociado con la cuenta guarda un registro de actividad.
-* Resistencia: <podemos saltarlo>
 
 *Mantenibilidad*
 
 * Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. **SC6**[[SC6]]
-* Reusabilidad: <Especificad el backend cómo conseguistéis esto>
 
 *Portabilidad*
 
