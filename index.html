@@ -508,7 +508,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </ul>
 </li>
 <li><a href="#section-technical-risks">12. Risks and Technical Debts</a></li>
-<li><a href="#section-glossary">13. Glossary</a></li>
 </ul>
 </div>
 </div>
@@ -1889,8 +1888,141 @@ concrete and measurable.</p>
 </div>
 </div>
 </div>
+<div class="paragraph">
+<p>En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo el modelo ISO/IEC 25010, el cuál nos facilita una serie de puntos imprescindibles para cumplir los estándares internacionales de ingeniería del software.</p>
+</div>
 <div class="sect2">
 <h3 id="_quality_tree">11.1. Quality Tree</h3>
+<div class="imageblock">
+<div class="content">
+<img src="./images/requisitos%20de%20calidad.png" alt="arbol de calidad">
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Adecuación funcional</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otros usuarios.</p>
+</li>
+<li>
+<p>Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. <strong>SC1</strong><a id="SC1"></a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Eficiencia de desempeño</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Comportamiento en el tiempo: Se garantiza un tiempo de respuesta óptimo al utilizarse Rust en el motor del juego. Además de la implementación de una estrategia cuidada del algoritmo de respuesta.</p>
+</li>
+<li>
+<p>Utilización de recursos: El despliegue mediante contenedores Docker permite una gestión eficiente de la memoria y la CPU para los tres subsistemas (webapp, users, gamey). <strong>SC4</strong><a id="SC4"></a></p>
+</li>
+<li>
+<p>Capacidad: Se limitan los tamaños de tablero dentro de un rango para que siga siendo jugable dentro de la configuración que el usuario escoja.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Compatibilidad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Facilidad para interoperar: El intercambio de información entre subsistemas se realiza estrictamente mediante mensajes JSON siguiendo la notación YEN, asegurando que el API sea compatible tanto con la WebApp como con bots externos.</p>
+</li>
+<li>
+<p>Coexistencia: Los microservicios están clasificados en sus contenedores correspondientes y facilmente se levantan y conectan entre sí en el docker-compose.yml.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Usabilidad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Inteligibilidad: Dispone de una interfaz clara e intuitiva diseñada con React para facilitar su uso a todo tipo de usuario. Se busca tener un aspecto actualizado.</p>
+</li>
+<li>
+<p>Capacidad de aprendizaje: El juego sigue reglas sencillas con facilidad de aprendizaje. La dificultad está presente en aprender qué estrategia seguir.</p>
+</li>
+<li>
+<p>Operabilidad: La propia interfaz te guía durante el juego mostrándote de quién es el turno, las casillas disponibles y opciones disponibles. <strong>SC2</strong><a id="SC2"></a></p>
+</li>
+<li>
+<p>Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego.</p>
+</li>
+<li>
+<p>Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.</p>
+</li>
+<li>
+<p>Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. <strong>SC3</strong><a id="SC3"></a></p>
+</li>
+<li>
+<p>Asistencia al usuario: Dispone de una ayuda para entender qué hace cada componente en cada caso, además de tooltips y mensajes descriptivos.</p>
+</li>
+<li>
+<p>Autodescripción: Se busca dejar lo más claro posible el uso de cada herramienta ya sea con un texto descriptivo en botones o dibujos que indiquen claramente su finalidad.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Fiabilidad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Madurez: A lo largo de todo el proyecto se utiliza SonarCloud para mantener cierta calidad de código. Se han realizado pruebas unitarias y de integración para garantizar la estabilidad del sistema.</p>
+</li>
+<li>
+<p>Disponibilidad: Se utilizan las herramientas Prometheus y Grafana para monitorizar el estado de los microservicios y detectar posibles caídas o problemas de rendimiento.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Seguridad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas.</p>
+</li>
+<li>
+<p>Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios, así nosotros tampoco contamos explicitamente con estas. <strong>SC5</strong><a id="SC5"></a></p>
+</li>
+<li>
+<p>No repudio: Se guarda en la base de datos la interacción del usuario con la aplicación junto con una serie de datos estadísticos, por lo que el correo asociado con la cuenta guarda un registro de actividad.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Mantenibilidad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Portabilidad</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Adaptabilidad: Al estar basado en Docker, el proyecto es independiente del sistema operativo, lo que facilita su despliegue en diferentes entornos.</p>
+</li>
+<li>
+<p>Instalabilidad: Mediante scripts de npm y comandos de Cargo, se levanta el entorno al completo rápidamente, con todos los componentes ya configurados.</p>
+</li>
+</ul>
+</div>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1923,6 +2055,55 @@ concrete and measurable.</p>
 </div>
 <div class="sect2">
 <h3 id="_quality_scenarios">11.2. Quality Scenarios</h3>
+<div class="paragraph">
+<p>A continuación se exponen distintos escenarios de uso identificados por un código, por ejemplo SC1. Este código se encontrará en el arbol de calidad en el apartado que lo satisface, si pinchas en él te redirige a requisito de calidad.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 16.6666%;">
+<col style="width: 33.3333%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">ID</th>
+<th class="tableblock halign-left valign-top">Atributo</th>
+<th class="tableblock halign-left valign-top">Escenario</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC1">SC1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adecuación funcional</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un usuario trata de colocar una ficha en un turno que no es el suyo. El sistema no le permite saltarse el turno.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC2">SC2</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un nuevo usuario juega por primera vez sin saber las reglas de turnos, la interfaz muestra claramente mediante identificadores visuales cuándo le toca.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC3">SC3</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Una persona que no sabe español accede al juego. No tiene otra opción que jugar en español, lo que dificulta su experiencia de usuario.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC4">SC4</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eficiencia de desempeño</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se quiere jugar una partida rápida, el juego responde rápido a los cambios de ventana y carga de componentes visuales.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC5">SC5</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC6">SC6</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mantenibilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Nos comunican que hay un nuevo requisito en la interfaz y que además se ha añadido una regla, son facilmente indentificables las zonas responsables de cada tarea.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1991,69 +2172,92 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </div>
 </div>
 </div>
-<div style="page-break-after: always;"></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="section-glossary">13. Glossary</h2>
-<div class="sectionbody">
-<div class="sidebarblock arc42help">
-<div class="content">
 <div class="paragraph">
-<div class="title">Contents</div>
-<p>The most important domain and technical terms that your stakeholders use when discussing the system.</p>
-</div>
-<div class="paragraph">
-<p>You can also see the glossary as source for translations if you work in multi-language teams.</p>
-</div>
-<div class="paragraph">
-<div class="title">Motivation</div>
-<p>You should clearly define your terms, so that all stakeholders</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>have an identical understanding of these terms</p>
-</li>
-<li>
-<p>do not use synonyms and homonyms</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Form</div>
-<p>A table with columns &lt;Term&gt; and &lt;Definition&gt;.</p>
-</div>
-<div class="paragraph">
-<p>Potentially more columns in case you need translations.</p>
-</div>
-<div class="paragraph">
-<div class="title">Further Information</div>
-<p>See <a href="https://docs.arc42.org/section-12/">Glossary</a> in the arc42 documentation.</p>
-</div>
-</div>
+<p>En esta sección se describen los riesgos encontrados en el desarrollo del proyecto y las soluciones propuestas.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 66.6667%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Term</th>
-<th class="tableblock halign-left valign-top">Definition</th>
+<th class="tableblock halign-left valign-top">Riesgo</th>
+<th class="tableblock halign-left valign-top">Descripción</th>
+<th class="tableblock halign-left valign-top">Solución</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Term-1&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;definition-1&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mezcla de lengueajes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Para este proyecto se usa Rust, Node.js y React, añadiendo dificultad extra ya que utilizan lenguajes con los que no estamos familiarizados, además de que el proyecto tiene equipos marcados para sección.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Estar al tanto revisando el trabajo todos de todos, respondiendo pull request y manteniendo en cada sección una documentación clara y un seguimiento del proyecto exhaustivo.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;Term-2&gt;</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><em>&lt;definition-2&gt;</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Curva de aprendizaje de Rust</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se trata de un lenguaje complejo con el que levantar un proyecto de cero sin conocer su sintaxis y funcionamiento puede suponer un retraso.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Documentarse muy bien, tomar ejemplos de otros proyectos y apoyarse en la IA como guía. Se empezó implementando algoritmos con dificultades más leves para ir mejorándolos.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tiempos de carga elevados</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol, lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implementar límites de tiempo de respuesta.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad en el servicio de usuarios</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.</p>
+<p class="tableblock">&lt;&lt;&lt;&lt;</p>
+<p class="tableblock"><a id="section-glossary"></a>
+== Glossary</p>
+<p class="tableblock">[role="arc42help"]
+<strong><strong>*
+.Contents
+The most important domain and technical terms that your stakeholders use when discussing the system.</p>
+<p class="tableblock">You can also see the glossary as source for translations if you work in multi-language teams.</p>
+<p class="tableblock">.Motivation
+You should clearly define your terms, so that all stakeholders</p>
+<p class="tableblock">* have an identical understanding of these terms
+* do not use synonyms and homonyms</p>
+<p class="tableblock">.Form</p>
+<p class="tableblock">A table with columns &lt;Term&gt; and &lt;Definition&gt;.</p>
+<p class="tableblock">Potentially more columns in case you need translations.</p>
+<p class="tableblock">.Further Information</p>
+<p class="tableblock">See <a href="https://docs.arc42.org/section-12/">Glossary</a> in the arc42 documentation.</p>
+<p class="tableblock"></strong></strong>*</p>
+<p class="tableblock">[cols="e,2e", options="header"]</p></td>
 </tr>
 </tbody>
+</table>
+<div class="paragraph">
+<p>|Term |Definition</p>
+</div>
+<div class="paragraph">
+<p>|<strong>Arc42</strong>
+|Plantilla de arquitectura de software utilizada para estructurar y documentar las decisiones de diseño de este proyecto.</p>
+</div>
+<div class="paragraph">
+<p>| <strong>Docker Compose</strong>
+| Herramienta utilizada para orquestar la ejecución simultánea de los servicios webapp, users y gamey, definiendo sus redes y puertos en un solo archivo de configuración.</p>
+</div>
+<div class="paragraph">
+<p>| <strong>SPA (Single Page Application)</strong>
+| Arquitectura del frontend (webapp) construida con React y Vite, donde la aplicación se carga una sola vez y actualiza dinámicamente el contenido sin recargar la página.</p>
+</div>
+<div class="paragraph">
+<p>| <strong>Coordenadas Baricéntricas</strong>
+| Sistema de coordenadas (x, y, z) utilizado para representar posiciones en el tablero triangular. Cumplen la restricción x + y + z = N - 1, lo que facilita el cálculo de distancias a los lados del triángulo.</p>
+</div>
+<div class="paragraph">
+<p>| <strong>MCTS (Monte Carlo Tree Search)</strong>
+| Algoritmo probabilístico que decide el mejor movimiento ejecutando miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria.</p>
+</div>
+<div class="paragraph">
+<p>| <strong>YEN (Y Exchange Notation)</strong>
+| Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
 </table>
 </div>
 </div>
@@ -2061,7 +2265,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <div id="footer">
 <div id="footer-text">
 Version 8.2 EN<br>
-Last updated 2026-02-15 18:26:43 +0100
+Last updated 2026-02-16 18:40:30 +0100
 </div>
 </div>
 </body>
