@@ -1,34 +1,80 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-solution-strategy]]
-== Solution Strategy
+= 4. Estrategia de Solución
 
+== 4.1. Decisiones Tecnológicas
 
-ifdef::arc42help[]
-[role="arc42help"]
-****
-.Contents
-A short summary and explanation of the fundamental decisions and solution strategies, that shape system architecture. It includes
+El sistema adopta una *arquitectura de microservicios* con tres componentes principales:
 
-* technology decisions
-* decisions about the top-level decomposition of the system, e.g. usage of an architectural pattern or design pattern
-* decisions on how to achieve key quality goals
-* relevant organizational decisions, e.g. selecting a development process or delegating certain tasks to third parties.
+* *webapp* (React + Vite + TypeScript): Interfaz web donde los usuarios juegan
+* *users* (Node.js + Express): Gestiona usuarios, autenticación y partidas
+* *gamey* (Rust): Motor del juego con las reglas y lógica del Juego Y
 
-.Motivation
-These decisions form the cornerstones for your architecture. They are the foundation for many other detailed decisions or implementation rules.
+=== Stack Tecnológico
 
-.Form
-Keep the explanations of such key decisions short.
+*Frontend (webapp)*:
 
-Motivate what was decided and why it was decided that way,
-based upon problem statement, quality goals and key constraints.
-Refer to details in the following sections.
+* React + TypeScript para crear una interfaz de usuario moderna y robusta
+* Vite para desarrollo rápido
 
+*Backend (users)*:
 
-.Further Information
+* Node.js + Express por su simplicidad para crear APIs REST
+* Swagger para documentar el API
+* Prometheus para recoger métricas del sistema
 
-See https://docs.arc42.org/section-4/[Solution Strategy] in the arc42 documentation.
+*Motor de juego (gamey)*:
 
-****
-endif::arc42help[]
+* Rust por su alto rendimiento y seguridad
+* Puede ejecutarse como servidor web o desde línea de comandos
+
+*Base de datos*:
+
+* MongoDB por su flexibilidad y fácil integración con JSON
+
+*Comunicación*:
+
+* HTTP/REST con JSON
+* Notación YEN para las posiciones del tablero
+
+*Despliegue*:
+
+* Azure para alojar la maquina virtual en la que se ejecuta la aplicación
+* Docker para que funcione igual en todos los entornos
+
+== 4.2. Patrones Arquitectónicos
+
+=== Frontend: Single Page Application (SPA)
+
+Webapp es una aplicación de página única con React que actualiza dinámicamente el contenido sin recargar la página.
+
+=== Motor de Juego: Separación entre Dominio e Infraestructura
+
+gamey separa la lógica del juego de los detalles técnicos:
+
+*Lógica del juego*:
+
+* `core/`: Núcleo del juego
+* `bot/`: Diferentes estrategias de bots
+
+*Infraestructura*:
+
+* `game_server/`: Servidor del juego con el servidor
+* `bot_server/`: Conexión del bot con el servidor
+* `notation/`: Conversión entre formatos (YEN, YGN)
+
+== 4.3. Decisiones Organizativas
+
+*Gestión*:
+
+* GitHub Issues para tareas y bugs
+* Kanban para seguimiento visual
+* Pull Requests con revisión obligatoria
+* Rama `master` protegida
+
+*Documentación*:
+
+* Arc42 para la documentación del proyecto
+* Draw.io para realizar los diagramas
+* Wiki para las actas de las reuniones

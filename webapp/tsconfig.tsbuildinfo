@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/gamedebug.tsx","./src/gamehvb.tsx","./src/registerform.tsx","./src/env.d.ts","./src/main.tsx","./src/__tests__/registerform.test.tsx","./src/api/gamey.ts","./src/game/board.tsx","./src/game/yen.ts","./vite.config.ts"],"version":"5.9.3"}
