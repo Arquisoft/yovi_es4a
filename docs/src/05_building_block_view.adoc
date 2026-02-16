@@ -1,10 +1,8 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-building-block-view]]
+==  Vista de bloques
 
-
-= 5. Vista de bloques
-
-== 5.1. Visión general
+=== Visión general
 image::05_1-Vista de bloque.drawio.png["Diagrama correspondiente a la visita de bloque general", width=90%]
 Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios) y gamey (motor del juego).

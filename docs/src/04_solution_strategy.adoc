@@ -1,9 +1,9 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-solution-strategy]]
-= 4. Estrategia de Solución
+== Estrategia de Solución
 
-== 4.1. Decisiones Tecnológicas
+=== Decisiones Tecnológicas
 
 El sistema adopta una *arquitectura de microservicios* con tres componentes principales:
 
@@ -11,7 +11,7 @@ El sistema adopta una *arquitectura de microservicios* con tres componentes prin
 * *users* (Node.js + Express): Gestiona usuarios, autenticación y partidas
 * *gamey* (Rust): Motor del juego con las reglas y lógica del Juego Y
 
-=== Stack Tecnológico
+==== Stack Tecnológico
 
 *Frontend (webapp)*:
 
@@ -43,13 +43,13 @@ El sistema adopta una *arquitectura de microservicios* con tres componentes prin
 * Azure para alojar la maquina virtual en la que se ejecuta la aplicación
 * Docker para que funcione igual en todos los entornos
 
-== 4.2. Patrones Arquitectónicos
+=== Patrones Arquitectónicos
 
-=== Frontend: Single Page Application (SPA)
+==== Frontend: Single Page Application (SPA)
 
 Webapp es una aplicación de página única con React que actualiza dinámicamente el contenido sin recargar la página.
 
-=== Motor de Juego: Separación entre Dominio e Infraestructura
+==== Motor de Juego: Separación entre Dominio e Infraestructura
 
 gamey separa la lógica del juego de los detalles técnicos:
 
@@ -64,7 +64,7 @@ gamey separa la lógica del juego de los detalles técnicos:
 * `bot_server/`: Conexión del bot con el servidor
 * `notation/`: Conversión entre formatos (YEN, YGN)
 
-== 4.3. Decisiones Organizativas
+=== Decisiones Organizativas
 
 *Gestión*:
 
