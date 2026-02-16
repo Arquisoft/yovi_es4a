@@ -1,7 +1,7 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-glossary]]
-== Glossary
+== Glosario
 
 ifdef::arc42help[]
 [role="arc42help"]

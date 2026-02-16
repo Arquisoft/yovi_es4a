@@ -1,7 +1,7 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-quality-scenarios]]
-== Quality Requirements
+== Requisitos de Calidad
 
 ifdef::arc42help[]
 [role="arc42help"]

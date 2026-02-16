@@ -1,7 +1,7 @@
 ifndef::imagesdir[:imagesdir: ../images]
 
 [[section-technical-risks]]
-== Risks and Technical Debts
+== Riesgos y Deudas Técnicas
 
 ifdef::arc42help[]
 [role="arc42help"]
@@ -46,3 +46,4 @@ En esta sección se describen los riesgos encontrados en el desarrollo del proye
 |Seguridad en el servicio de usuarios
 |Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.
 |Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.
+|===
