@@ -3,7 +3,6 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-quality-scenarios]]
 == Quality Requirements
 
-
 ifdef::arc42help[]
 [role="arc42help"]
 ****
@@ -27,7 +26,58 @@ See https://docs.arc42.org/section-10/[Quality Requirements] in the arc42 docume
 ****
 endif::arc42help[]
 
+En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo el modelo ISO/IEC 25010, el cuál nos facilita una serie de puntos imprescindibles para cumplir los estándares internacionales de ingeniería del software.
+
 === Quality Tree
+
+image::requisitos de calidad.png[arbol de calidad]
+
+*Adecuación funcional*
+
+* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otros usuarios.
+* Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. **SC1**[[SC1]]
+
+*Eficiencia de desempeño*
+
+* Comportamiento en el tiempo: Se garantiza un tiempo de respuesta óptimo al utilizarse Rust en el motor del juego. Además de la implementación de una estrategia cuidada del algoritmo de respuesta.
+* Utilización de recursos: El despliegue mediante contenedores Docker permite una gestión eficiente de la memoria y la CPU para los tres subsistemas (webapp, users, gamey). **SC4**[[SC4]]
+* Capacidad: Se limitan los tamaños de tablero dentro de un rango para que siga siendo jugable dentro de la configuración que el usuario escoja.
+
+*Compatibilidad*
+
+* Facilidad para interoperar: El intercambio de información entre subsistemas se realiza estrictamente mediante mensajes JSON siguiendo la notación YEN, asegurando que el API sea compatible tanto con la WebApp como con bots externos.
+* Coexistencia: Los microservicios están clasificados en sus contenedores correspondientes y facilmente se levantan y conectan entre sí en el docker-compose.yml. 
+
+*Usabilidad*
+
+* Inteligibilidad: Dispone de una interfaz clara e intuitiva diseñada con React para facilitar su uso a todo tipo de usuario. Se busca tener un aspecto actualizado.
+* Capacidad de aprendizaje: El juego sigue reglas sencillas con facilidad de aprendizaje. La dificultad está presente en aprender qué estrategia seguir.
+* Operabilidad: La propia interfaz te guía durante el juego mostrándote de quién es el turno, las casillas disponibles y opciones disponibles. **SC2**[[SC2]]
+* Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego.
+* Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.
+* Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. **SC3**[[SC3]]
+* Asistencia al usuario: Dispone de una ayuda para entender qué hace cada componente en cada caso, además de tooltips y mensajes descriptivos.
+* Autodescripción: Se busca dejar lo más claro posible el uso de cada herramienta ya sea con un texto descriptivo en botones o dibujos que indiquen claramente su finalidad.
+
+*Fiabilidad*
+
+* Madurez: A lo largo de todo el proyecto se utiliza SonarCloud para mantener cierta calidad de código. Se han realizado pruebas unitarias y de integración para garantizar la estabilidad del sistema.
+* Disponibilidad: Se utilizan las herramientas Prometheus y Grafana para monitorizar el estado de los microservicios y detectar posibles caídas o problemas de rendimiento.
+
+*Seguridad*
+
+* Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas.
+* Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios, así nosotros tampoco contamos explicitamente con estas. **SC5**[[SC5, SC5]]
+* No repudio: Se guarda en la base de datos la interacción del usuario con la aplicación junto con una serie de datos estadísticos, por lo que el correo asociado con la cuenta guarda un registro de actividad.
+
+*Mantenibilidad*
+
+* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. **SC6**[[SC6]]
+
+*Portabilidad*
+
+* Adaptabilidad: Al estar basado en Docker, el proyecto es independiente del sistema operativo, lo que facilita su despliegue en diferentes entornos.
+* Instalabilidad: Mediante scripts de npm y comandos de Cargo, se levanta el entorno al completo rápidamente, con todos los componentes ya configurados.
 
 ifdef::arc42help[]
 [role="arc42help"]
@@ -51,6 +101,37 @@ In any case the tree should include links to the scenarios of the following sect
 endif::arc42help[]
 
 === Quality Scenarios
+
+A continuación se exponen distintos escenarios de uso identificados por un código, por ejemplo SC1. Este código se encontrará en el arbol de calidad en el apartado que lo satisface, si pinchas en él te redirige a requisito de calidad.
+
+[cols="1,2,3", options="header"]
+|===
+|ID |Atributo |Escenario
+
+|<<SC1, SC1>>
+|Adecuación funcional
+|Un usuario trata de colocar una ficha en un turno que no es el suyo. El sistema no le permite saltarse el turno.
+
+|<<SC2, SC2>>
+|Usabilidad
+|Un nuevo usuario juega por primera vez sin saber las reglas de turnos, la interfaz muestra claramente mediante identificadores visuales cuándo le toca.
+
+|<<SC3, SC3>>
+|Usabilidad
+|Una persona que no sabe español accede al juego. No tiene otra opción que jugar en español, lo que dificulta su experiencia de usuario.
+
+|<<SC4, SC4>>
+|Eficiencia de desempeño
+|Se quiere jugar una partida rápida, el juego responde rápido a los cambios de ventana y carga de componentes visuales.
+
+|<<SC5, SC5>>
+|Seguridad
+|Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad.
+
+|<<SC6, SC6>>
+|Mantenibilidad
+|Nos comunican que hay un nuevo requisito en la interfaz y que además se ha añadido una regla, son facilmente indentificables las zonas responsables de cada tarea.
+|===
 
 ifdef::arc42help[]
 [role="arc42help"]

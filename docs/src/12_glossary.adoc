@@ -36,9 +36,22 @@ endif::arc42help[]
 |===
 |Term |Definition
 
-|<Term-1>
-|<definition-1>
+|**Arc42**
+|Plantilla de arquitectura de software utilizada para estructurar y documentar las decisiones de diseño de este proyecto.
 
-|<Term-2>
-|<definition-2>
+| **Docker Compose**
+| Herramienta utilizada para orquestar la ejecución simultánea de los servicios webapp, users y gamey, definiendo sus redes y puertos en un solo archivo de configuración.
+
+| **SPA (Single Page Application)**
+| Arquitectura del frontend (webapp) construida con React y Vite, donde la aplicación se carga una sola vez y actualiza dinámicamente el contenido sin recargar la página.
+
+| **Coordenadas Baricéntricas**
+| Sistema de coordenadas (x, y, z) utilizado para representar posiciones en el tablero triangular. Cumplen la restricción x + y + z = N - 1, lo que facilita el cálculo de distancias a los lados del triángulo.
+
+| **MCTS (Monte Carlo Tree Search)**
+| Algoritmo probabilístico que decide el mejor movimiento ejecutando miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria.
+
+| **YEN (Y Exchange Notation)**
+| Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.
+
 |===

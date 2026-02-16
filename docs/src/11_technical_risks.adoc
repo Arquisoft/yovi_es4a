@@ -3,7 +3,6 @@ ifndef::imagesdir[:imagesdir: ../images]
 [[section-technical-risks]]
 == Risks and Technical Debts
 
-
 ifdef::arc42help[]
 [role="arc42help"]
 ****
@@ -25,3 +24,25 @@ See https://docs.arc42.org/section-11/[Risks and Technical Debt] in the arc42 do
 
 ****
 endif::arc42help[]
+
+En esta sección se describen los riesgos encontrados en el desarrollo del proyecto y las soluciones propuestas.
+
+[cols="1,2,2", options="header"]
+|===
+| Riesgo | Descripción | Solución
+
+|Mezcla de lengueajes
+|Para este proyecto se usa Rust, Node.js y React, añadiendo dificultad extra ya que utilizan lenguajes con los que no estamos familiarizados, además de que el proyecto tiene equipos marcados para sección.
+|Estar al tanto revisando el trabajo todos de todos, respondiendo pull request y manteniendo en cada sección una documentación clara y un seguimiento del proyecto exhaustivo.
+
+|Curva de aprendizaje de Rust
+|Se trata de un lenguaje complejo con el que levantar un proyecto de cero sin conocer su sintaxis y funcionamiento puede suponer un retraso.
+|Documentarse muy bien, tomar ejemplos de otros proyectos y apoyarse en la IA como guía. Se empezó implementando algoritmos con dificultades más leves para ir mejorándolos.
+
+|Tiempos de carga elevados
+|El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol, lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.
+|Implementar límites de tiempo de respuesta.
+
+|Seguridad en el servicio de usuarios
+|Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.
+|Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.
