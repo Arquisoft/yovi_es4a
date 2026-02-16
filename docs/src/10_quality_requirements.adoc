@@ -30,7 +30,7 @@ En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo 
 
 === Quality Tree
 
-image::\requisitos de calidad.png[arbol de calidad]
+image::requisitos de calidad.png[arbol de calidad]
 
 *Adecuación funcional*
 
