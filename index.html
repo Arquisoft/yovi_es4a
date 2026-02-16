@@ -493,21 +493,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_tecnologías">8.3. Tecnologías</a></li>
 </ul>
 </li>
-<li><a href="#section-design-decisions">9. Architecture Decisions</a></li>
-<li><a href="#_decisiones_de_arquitectura_adr">10. Decisiones de Arquitectura (ADR)</a>
+<li><a href="#section-design-decisions">9. Decisiones de Arquitectura (ADR)</a>
 <ul class="sectlevel2">
-<li><a href="#_adr_1_uso_de_mongodb_como_base_de_datos">10.1. ADR 1: Uso de MongoDB como Base de Datos</a></li>
-<li><a href="#_adr_2_uso_inicial_de_plantuml_para_diagramación">10.2. ADR 2: Uso inicial de PlantUML para diagramación</a></li>
-<li><a href="#_adr_3_adopción_de_draw_io_para_diagramas">10.3. ADR 3: Adopción de draw.io para diagramas</a></li>
+<li><a href="#_adr_1_uso_de_mongodb_como_base_de_datos">9.1. ADR 1: Uso de MongoDB como Base de Datos</a></li>
+<li><a href="#_adr_2_uso_inicial_de_plantuml_para_diagramación">9.2. ADR 2: Uso inicial de PlantUML para diagramación</a></li>
+<li><a href="#_adr_3_adopción_de_draw_io_para_diagramas">9.3. ADR 3: Adopción de draw.io para diagramas</a></li>
 </ul>
 </li>
-<li><a href="#section-quality-scenarios">11. Quality Requirements</a>
+<li><a href="#section-quality-scenarios">10. Requisitos de Calidad</a>
 <ul class="sectlevel2">
-<li><a href="#_quality_tree">11.1. Quality Tree</a></li>
-<li><a href="#_quality_scenarios">11.2. Quality Scenarios</a></li>
+<li><a href="#_quality_tree">10.1. Quality Tree</a></li>
+<li><a href="#_quality_scenarios">10.2. Quality Scenarios</a></li>
 </ul>
 </li>
-<li><a href="#section-technical-risks">12. Risks and Technical Debts</a></li>
+<li><a href="#section-technical-risks">11. Riesgos y Deudas Técnicas</a></li>
+<li><a href="#section-glossary">12. Glosario</a></li>
 </ul>
 </div>
 </div>
@@ -1713,7 +1713,7 @@ on this list.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-design-decisions">9. Architecture Decisions</h2>
+<h2 id="section-design-decisions">9. Decisiones de Arquitectura (ADR)</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -1759,16 +1759,11 @@ There you will find links and examples about ADR.</p>
 </div>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_decisiones_de_arquitectura_adr">10. Decisiones de Arquitectura (ADR)</h2>
-<div class="sectionbody">
 <div class="paragraph">
 <p>En esta sección se documentan las decisiones arquitectónicas fundamentales que rigen el diseño y desarrollo de <strong>Yovi_es4a</strong>, detallando su justificación y las alternativas consideradas.</p>
 </div>
 <div class="sect2">
-<h3 id="_adr_1_uso_de_mongodb_como_base_de_datos">10.1. ADR 1: Uso de MongoDB como Base de Datos</h3>
+<h3 id="_adr_1_uso_de_mongodb_como_base_de_datos">9.1. ADR 1: Uso de MongoDB como Base de Datos</h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1803,7 +1798,7 @@ There you will find links and examples about ADR.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_adr_2_uso_inicial_de_plantuml_para_diagramación">10.2. ADR 2: Uso inicial de PlantUML para diagramación</h3>
+<h3 id="_adr_2_uso_inicial_de_plantuml_para_diagramación">9.2. ADR 2: Uso inicial de PlantUML para diagramación</h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1832,7 +1827,7 @@ There you will find links and examples about ADR.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_adr_3_adopción_de_draw_io_para_diagramas">10.3. ADR 3: Adopción de draw.io para diagramas</h3>
+<h3 id="_adr_3_adopción_de_draw_io_para_diagramas">9.3. ADR 3: Adopción de draw.io para diagramas</h3>
 <div class="ulist">
 <ul>
 <li>
@@ -1864,7 +1859,7 @@ There you will find links and examples about ADR.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-quality-scenarios">11. Quality Requirements</h2>
+<h2 id="section-quality-scenarios">10. Requisitos de Calidad</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -1892,7 +1887,7 @@ concrete and measurable.</p>
 <p>En esta sección se evaluarán los requisitos de calidad del proyecto siguiendo el modelo ISO/IEC 25010, el cuál nos facilita una serie de puntos imprescindibles para cumplir los estándares internacionales de ingeniería del software.</p>
 </div>
 <div class="sect2">
-<h3 id="_quality_tree">11.1. Quality Tree</h3>
+<h3 id="_quality_tree">10.1. Quality Tree</h3>
 <div class="imageblock">
 <div class="content">
 <img src="./images/requisitos%20de%20calidad.png" alt="arbol de calidad">
@@ -2054,7 +2049,7 @@ concrete and measurable.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_quality_scenarios">11.2. Quality Scenarios</h3>
+<h3 id="_quality_scenarios">10.2. Quality Scenarios</h3>
 <div class="paragraph">
 <p>A continuación se exponen distintos escenarios de uso identificados por un código, por ejemplo SC1. Este código se encontrará en el arbol de calidad en el apartado que lo satisface, si pinchas en él te redirige a requisito de calidad.</p>
 </div>
@@ -2147,7 +2142,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </div>
 </div>
 <div class="sect1">
-<h2 id="section-technical-risks">12. Risks and Technical Debts</h2>
+<h2 id="section-technical-risks">11. Riesgos y Deudas Técnicas</h2>
 <div class="sectionbody">
 <div class="sidebarblock arc42help">
 <div class="content">
@@ -2207,57 +2202,89 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad en el servicio de usuarios</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.</p>
-<p class="tableblock">&lt;&lt;&lt;&lt;</p>
-<p class="tableblock"><a id="section-glossary"></a>
-== Glossary</p>
-<p class="tableblock">[role="arc42help"]
-<strong><strong>*
-.Contents
-The most important domain and technical terms that your stakeholders use when discussing the system.</p>
-<p class="tableblock">You can also see the glossary as source for translations if you work in multi-language teams.</p>
-<p class="tableblock">.Motivation
-You should clearly define your terms, so that all stakeholders</p>
-<p class="tableblock">* have an identical understanding of these terms
-* do not use synonyms and homonyms</p>
-<p class="tableblock">.Form</p>
-<p class="tableblock">A table with columns &lt;Term&gt; and &lt;Definition&gt;.</p>
-<p class="tableblock">Potentially more columns in case you need translations.</p>
-<p class="tableblock">.Further Information</p>
-<p class="tableblock">See <a href="https://docs.arc42.org/section-12/">Glossary</a> in the arc42 documentation.</p>
-<p class="tableblock"></strong></strong>*</p>
-<p class="tableblock">[cols="e,2e", options="header"]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.</p></td>
 </tr>
 </tbody>
 </table>
+<div style="page-break-after: always;"></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="section-glossary">12. Glosario</h2>
+<div class="sectionbody">
+<div class="sidebarblock arc42help">
+<div class="content">
 <div class="paragraph">
-<p>|Term |Definition</p>
+<div class="title">Contents</div>
+<p>The most important domain and technical terms that your stakeholders use when discussing the system.</p>
 </div>
 <div class="paragraph">
-<p>|<strong>Arc42</strong>
-|Plantilla de arquitectura de software utilizada para estructurar y documentar las decisiones de diseño de este proyecto.</p>
+<p>You can also see the glossary as source for translations if you work in multi-language teams.</p>
 </div>
 <div class="paragraph">
-<p>| <strong>Docker Compose</strong>
-| Herramienta utilizada para orquestar la ejecución simultánea de los servicios webapp, users y gamey, definiendo sus redes y puertos en un solo archivo de configuración.</p>
+<div class="title">Motivation</div>
+<p>You should clearly define your terms, so that all stakeholders</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>have an identical understanding of these terms</p>
+</li>
+<li>
+<p>do not use synonyms and homonyms</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>| <strong>SPA (Single Page Application)</strong>
-| Arquitectura del frontend (webapp) construida con React y Vite, donde la aplicación se carga una sola vez y actualiza dinámicamente el contenido sin recargar la página.</p>
+<div class="title">Form</div>
+<p>A table with columns &lt;Term&gt; and &lt;Definition&gt;.</p>
 </div>
 <div class="paragraph">
-<p>| <strong>Coordenadas Baricéntricas</strong>
-| Sistema de coordenadas (x, y, z) utilizado para representar posiciones en el tablero triangular. Cumplen la restricción x + y + z = N - 1, lo que facilita el cálculo de distancias a los lados del triángulo.</p>
+<p>Potentially more columns in case you need translations.</p>
 </div>
 <div class="paragraph">
-<p>| <strong>MCTS (Monte Carlo Tree Search)</strong>
-| Algoritmo probabilístico que decide el mejor movimiento ejecutando miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria.</p>
+<div class="title">Further Information</div>
+<p>See <a href="https://docs.arc42.org/section-12/">Glossary</a> in the arc42 documentation.</p>
 </div>
-<div class="paragraph">
-<p>| <strong>YEN (Y Exchange Notation)</strong>
-| Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.</p>
+</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Term</th>
+<th class="tableblock halign-left valign-top">Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Arc42</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Plantilla de arquitectura de software utilizada para estructurar y documentar las decisiones de diseño de este proyecto.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Docker Compose</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Herramienta utilizada para orquestar la ejecución simultánea de los servicios webapp, users y gamey, definiendo sus redes y puertos en un solo archivo de configuración.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>SPA (Single Page Application)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Arquitectura del frontend (webapp) construida con React y Vite, donde la aplicación se carga una sola vez y actualiza dinámicamente el contenido sin recargar la página.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Coordenadas Baricéntricas</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Sistema de coordenadas (x, y, z) utilizado para representar posiciones en el tablero triangular. Cumplen la restricción x + y + z = N - 1, lo que facilita el cálculo de distancias a los lados del triángulo.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>MCTS (Monte Carlo Tree Search)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Algoritmo probabilístico que decide el mejor movimiento ejecutando miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>YEN (Y Exchange Notation)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.</em></p></td>
+</tr>
+</tbody>
 </table>
 </div>
 </div>
