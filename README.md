@@ -167,3 +167,9 @@ Each component has its own set of scripts defined in its `package.json`. Here ar
 - `cargo test`: Runs the unit tests.
 - `cargo run`: Runs the gamey application.
 - `cargo doc`: Generates documentation for the GameY engine application
+
+
+## Ejecución en local
+
+- En `gamey`: `cargo run --release -- --mode server --port 4000`
+- En `webapp`: `VITE_API_URL=http://localhost:4000 npm run dev`
