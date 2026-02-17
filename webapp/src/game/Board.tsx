@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import type { Cell } from "./yen";
 
 type Props = {
@@ -13,16 +14,24 @@ function cellLabel(v: string) {
 }
 
 export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
-  // Agrupar por fila
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
 
+  const cellSize = 45;
+  const gap = 8;
+
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ display: "grid", gap, justifyItems: "center" }}>
       {rows.map((rowCells, r) => (
-        <div key={r} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {/* indentación para forma triangular */}
-          <div style={{ width: (size - r - 1) * 18 }} />
+        <div
+          key={r}
+          style={{
+            display: "flex",
+            gap,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           {rowCells.map((cell) => {
             const isEmpty = cell.value === ".";
             const isClickable = isEmpty && !disabled;
@@ -30,33 +39,47 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             const bg =
               cell.value === "B" ? "#28BBF5" :
               cell.value === "R" ? "#FF7B00" :
-              "#e5e7eb";
+              "#f0f0f0";
 
             const color = cell.value === "." ? "#111827" : "white";
 
             return (
-              <button
-                key={cell.cellId}
+              <Button
+                shape="circle"
                 onClick={() => isClickable && onCellClick(cell.cellId)}
                 disabled={!isClickable}
-                title={`cellId=${cell.cellId} coords=(${cell.coords.x},${cell.coords.y},${cell.coords.z})`}
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  border: "1px solid #cbd5e1",
+                  width: cellSize,
+                  height: cellSize,
+                  padding: 0,
                   background: bg,
                   color,
-                  cursor: isClickable ? "pointer" : "not-allowed",
-                  opacity: disabled ? 0.65 : 1,
-                  display: "grid",
-                  placeItems: "center",
                   fontWeight: 700,
-                  userSelect: "none",
+                  opacity: disabled ? 0.65 : 1,
                 }}
               >
                 {cell.value === "." ? "" : cell.value}
-              </button>
+              </Button>
+
+              /*
+              <Button
+                className="hexBtn"
+                onClick={() => isClickable && onCellClick(cell.cellId)}
+                disabled={!isClickable}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  padding: 0,
+                  background: bg,
+                  color,
+                  fontWeight: 700,
+                  opacity: disabled ? 0.65 : 1,
+                  border: "none",
+                }}
+              >
+                {cell.value === "." ? "" : cell.value}
+              </Button>
+              */
             );
           })}
         </div>

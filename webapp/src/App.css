@@ -1,6 +1,11 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
+  padding: 0;
+  text-align: initial;
+}
+
+.home {
   padding: 2rem;
   text-align: center;
 }
@@ -93,4 +98,21 @@
 
 .submit-button:hover {
   background-color: #004AAD;
+}
+
+
+.hexBtn {
+  clip-path: polygon(
+    25% 6.7%,
+    75% 6.7%,
+    100% 50%,
+    75% 93.3%,
+    25% 93.3%,
+    0% 50%
+  );
+  transform: rotate(90deg);
+}
+
+.hexBtn.ant-btn {
+  border-radius: 0 !important;
 }

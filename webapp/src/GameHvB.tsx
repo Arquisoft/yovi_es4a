@@ -1,14 +1,19 @@
 import { useMemo, useState } from "react";
+import { Alert, Button, Card, Empty, Flex, InputNumber, Select, Space, Typography } from "antd";
+import { PlayCircleOutlined, RobotOutlined } from "@ant-design/icons";
+
 import { humanVsBotMove, newGame, type YEN } from "./api/gamey";
 import Board from "./game/Board";
 import { parseYenToCells } from "./game/yen";
+
+const { Title, Text } = Typography;
 
 export default function GameHvB() {
   const [size, setSize] = useState(7);
   const [botId, setBotId] = useState("random_bot");
 
   const [yen, setYen] = useState<YEN | null>(null);
-  const [statusText, setStatusText] = useState<string>("");
+  const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -18,20 +23,30 @@ export default function GameHvB() {
     return parseYenToCells(yen);
   }, [yen]);
 
+  const inGame = !!yen && !gameOver;
+  const controlsDisabled = loading || inGame;
+
   async function handleNewGame() {
     setError("");
-    setStatusText("");
     setLoading(true);
     try {
       const r = await newGame(size);
       setYen(r.yen);
-      setStatusText("Game created. Your move.");
       setGameOver(false);
+      setWinner(null);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleAbandonGame() {
+    setError("");
+    setLoading(false);
+    setGameOver(false);
+    setWinner(null);
+    setYen(null);
   }
 
   async function handleCellClick(cellId: number) {
@@ -43,14 +58,14 @@ export default function GameHvB() {
       const r = await humanVsBotMove(botId, yen, cellId);
       setYen(r.yen);
 
-      const human = `Human: cell ${r.human_move.cell_id}`;
-      const bot = r.bot_move ? `Bot: cell ${r.bot_move.cell_id}` : "Bot: (no move)";
-      const st = r.status.state === "finished"
-        ? `Finished — winner: ${r.status.winner}`
-        : `Ongoing — next: ${r.status.next}`;
+      const finished = r.status.state === "finished";
+      setGameOver(finished);
 
-      setStatusText(`${human} | ${bot} | ${st}`);
-      setGameOver(r.status.state === "finished");
+      if (r.status.state === "finished") {
+        setWinner(r.status.winner);
+      } else {
+        setWinner(null);
+      }
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -59,68 +74,104 @@ export default function GameHvB() {
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui", maxWidth: 1000, margin: "0 auto" }}>
-      <h1>Y — Human vs Bot</h1>
+    <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
+      <div style={{ width: "min(1000px, 100%)" }}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+          <Title level={2} style={{ margin: 0, textAlign: "center" }}>
+            Juego Y — Human vs Bot
+          </Title>
 
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-        <label>
-          Size:
-          <input
-            type="number"
-            min={2}
-            value={size}
-            onChange={(e) => setSize(parseInt(e.target.value, 10))}
-            style={{ marginLeft: 8, width: 90 }}
-            disabled={loading}
-          />
-        </label>
+          {/* Controls */}
+          <Card>
+            <Flex gap={16} wrap="wrap" align="end">
+              <div>
+                <Text type="secondary">Tamaño:</Text>
+                <div>
+                  <InputNumber
+                    min={2}
+                    value={size}
+                    onChange={(v) => setSize(typeof v === "number" ? v : 7)}
+                    disabled={controlsDisabled}
+                    style={{ width: 140 }}
+                  />
+                </div>
+              </div>
 
-        <label>
-          Bot ID:
-          <input
-            value={botId}
-            onChange={(e) => setBotId(e.target.value)}
-            style={{ marginLeft: 8, width: 180 }}
-            disabled={loading}
-          />
-        </label>
+              <div>
+                <Text type="secondary"><RobotOutlined /> Bot:</Text>
+                <div>
+                  <Select
+                    value={botId}
+                    onChange={(value) => setBotId(value)}
+                    disabled={controlsDisabled}
+                    style={{ width: 240 }}
+                    options={[
+                      { value: "random_bot", label: "Random bot" },
+                      { value: "mcts_bot", label: "MCTS bot" },
+                    ]}
+                  />
+                </div>
+              </div>
 
-        <button onClick={handleNewGame} disabled={loading} style={{ padding: "10px 14px", borderRadius: 10 }}>
-          {loading ? "Working..." : "New game"}
-        </button>
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                loading={loading}
+                onClick={handleNewGame}
+                disabled={controlsDisabled}
+              >
+                Jugar
+              </Button>
+            </Flex>
+          </Card>
+
+          {/* Feedback */}
+          {error && <Alert type="error" showIcon message={error} />}
+
+          {gameOver && winner && (
+            <Alert
+              showIcon
+              type={winner === "human" ? "success" : "error"}
+              message={winner === "human" ? "Felicidades, has ganado!" : "Game Over, ha ganado el bot!"}
+            />
+          )}
+
+          {/* Empty / Board */}
+          {!yen ? (
+            <Card>
+              <Empty
+                description="Crear un nuevo juego para empezar."
+                image={Empty.PRESENTED_IMAGE_DEFAULT}
+                imageStyle={{ height: 120 }}
+              />
+            </Card>
+          ) : (
+            <Space direction="vertical" size={14} style={{ width: "100%" }}>
+              <Card>
+                <Board
+                  size={yen.size}
+                  cells={cells}
+                  disabled={loading || gameOver}
+                  onCellClick={handleCellClick}
+                />
+              </Card>
+
+              {!gameOver && (
+                <Flex justify="center">
+                  <Button
+                    danger
+                    onClick={handleAbandonGame}
+                    disabled={loading}
+                  >
+                    Abandonar partida
+                  </Button>
+                </Flex>
+              )}
+            </Space>
+          )}
+
+        </Space>
       </div>
-
-      {error && (
-        <div style={{ color: "#b91c1c", marginBottom: 12, fontWeight: 600 }}>
-          {error}
-        </div>
-      )}
-
-      {statusText && (
-        <div style={{ marginBottom: 12, color: "#111827" }}>
-          {statusText}
-        </div>
-      )}
-
-      {!yen ? (
-        <p>Create a new game to start.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          <Board
-            size={yen.size}
-            cells={cells}
-            disabled={loading || gameOver}
-            onCellClick={handleCellClick}
-          />
-
-          <details>
-            <summary>Debug: current YEN</summary>
-            <pre style={{ background: "#f6f6f6", padding: 12, borderRadius: 8, overflowX: "auto" }}>
-              {JSON.stringify(yen, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
-    </div>
+    </Flex>
   );
 }
