@@ -44,6 +44,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             const color = cell.value === "." ? "#111827" : "white";
 
             return (
+              /*
               <Button
                 shape="circle"
                 onClick={() => isClickable && onCellClick(cell.cellId)}
@@ -60,8 +61,9 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
               >
                 {cell.value === "." ? "" : cell.value}
               </Button>
+              */
 
-              /*
+              
               <Button
                 className="hexBtn"
                 onClick={() => isClickable && onCellClick(cell.cellId)}
@@ -77,9 +79,11 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                   border: "none",
                 }}
               >
-                {cell.value === "." ? "" : cell.value}
+                <span className="hexBtn__content">
+                  {cell.value === "." ? "" : cell.value}
+                </span>
               </Button>
-              */
+              
             );
           })}
         </div>

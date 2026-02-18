@@ -113,6 +113,11 @@
   transform: rotate(90deg);
 }
 
+.hexBtn__content {
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
 .hexBtn.ant-btn {
   border-radius: 0 !important;
 }
