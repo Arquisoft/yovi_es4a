@@ -8,10 +8,12 @@ type Props = {
   onCellClick: (cellId: number) => void;
 };
 
+/*
 function cellLabel(v: string) {
   if (v === ".") return "";
   return v;
 }
+*/
 
 export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
   const rows: Cell[][] = Array.from({ length: size }, () => []);
@@ -66,6 +68,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
               
               <Button
                 className="hexBtn"
+                aria-label={`cell-${cell.cellId}`}
                 onClick={() => isClickable && onCellClick(cell.cellId)}
                 disabled={!isClickable}
                 style={{
