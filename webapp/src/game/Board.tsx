@@ -1,5 +1,6 @@
 import { Button } from "antd";
 import type { Cell } from "./yen";
+import '../estilos/Cell.css';
 
 type Props = {
   size: number;
@@ -46,7 +47,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             const color = cell.value === "." ? "#111827" : "white";
 
             return (
-              /*
+              
               <Button
                 shape="circle"
                 onClick={() => isClickable && onCellClick(cell.cellId)}
@@ -63,9 +64,9 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
               >
                 {cell.value === "." ? "" : cell.value}
               </Button>
-              */
-
               
+
+              /*
               <Button
                 className="hexBtn"
                 aria-label={`cell-${cell.cellId}`}
@@ -86,6 +87,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                   {cell.value === "." ? "" : cell.value}
                 </span>
               </Button>
+              */
               
             );
           })}
