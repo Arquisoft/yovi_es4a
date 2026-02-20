@@ -1,0 +1,26 @@
+.hexBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -2px;
+
+  clip-path: polygon(
+    50% 0%,
+    93.3% 25%,
+    93.3% 75%,
+    50% 100%,
+    6.7% 75%,
+    6.7% 25%
+  );
+
+  border-radius: 0 !important;
+}
+
+.hexBtn__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}

@@ -42,4 +42,48 @@ describe('RegisterForm', () => {
       ).toBeInTheDocument()
     })
   })
+
+  test('muestra "Server error" cuando res.ok es false y no hay data.error', async () => {
+    const user = userEvent.setup()
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({}),
+    } as any)
+
+    render(<RegisterForm />)
+
+    await user.type(screen.getByLabelText(/whats your name\?/i), 'Pablo')
+    await user.click(screen.getByRole('button', { name: /lets go!/i }))
+
+    expect(await screen.findByText(/server error/i)).toBeInTheDocument()
+  })
+
+  test("muestra el mensaje de error cuando fetch rechaza con Error(message)", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Connection lost"));
+
+    render(<RegisterForm />);
+
+    await user.type(screen.getByLabelText(/whats your name\?/i), "Pablo");
+    await user.click(screen.getByRole("button", { name: /lets go!/i }));
+
+    expect(await screen.findByText(/connection lost/i)).toBeInTheDocument();
+  });
+
+  test('muestra "Network error" cuando fetch rechaza sin message', async () => {
+    const user = userEvent.setup();
+
+    // Rechazamos con un objeto sin "message" (para forzar el fallback del OR)
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce({});
+
+    render(<RegisterForm />);
+
+    await user.type(screen.getByLabelText(/whats your name\?/i), "Pablo");
+    await user.click(screen.getByRole("button", { name: /lets go!/i }));
+
+    expect(await screen.findByText(/network error/i)).toBeInTheDocument();
+  });
+
 })
