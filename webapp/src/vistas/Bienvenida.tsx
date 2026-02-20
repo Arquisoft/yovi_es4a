@@ -29,7 +29,7 @@ export default function Bienvenida() {
         <Button
           type="text"
           size="large"
-          style={{ width: 180 }}
+          style={{ width: 200 }}
           onClick={() => navigate("/home")}
         >
           Continuar sin cuenta

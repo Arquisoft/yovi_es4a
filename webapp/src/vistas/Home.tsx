@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Button, Card, Divider, Flex, InputNumber, Modal, Select, Space, Typography } from "antd";
+import { Button, Card, Divider, Flex, InputNumber, Select, Space, Typography } from "antd";
 import { LogoutOutlined, PlayCircleOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { App } from "antd";
 
 const { Title, Text } = Typography;
 
 export default function Home() {
+  const { modal } = App.useApp();
+
   const navigate = useNavigate();
 
   const [size, setSize] = useState(7);
@@ -20,7 +23,7 @@ export default function Home() {
   }
 
   function handleLogout() {
-    Modal.confirm({
+    modal.confirm({
       title: "Cerrar sesión",
       content: "¿Seguro que quieres volver a la pantalla de bienvenida?",
       okText: "Sí, salir",

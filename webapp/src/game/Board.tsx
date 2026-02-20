@@ -20,7 +20,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
 
-  const cellSize = 45;
+  const cellSize = 50;
   const gap = 8;
 
   return (
@@ -47,7 +47,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             const color = cell.value === "." ? "#111827" : "white";
 
             return (
-              
+              /*
               <Button
                 shape="circle"
                 onClick={() => isClickable && onCellClick(cell.cellId)}
@@ -64,9 +64,9 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
               >
                 {cell.value === "." ? "" : cell.value}
               </Button>
-              
+              */
 
-              /*
+              
               <Button
                 className="hexBtn"
                 aria-label={`cell-${cell.cellId}`}
@@ -87,7 +87,7 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                   {cell.value === "." ? "" : cell.value}
                 </span>
               </Button>
-              */
+              
               
             );
           })}
