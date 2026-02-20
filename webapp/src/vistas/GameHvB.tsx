@@ -19,7 +19,7 @@ export default function GameHvB() {
   const size = Number.isFinite(sizeParam) && sizeParam >= 2 ? sizeParam : 7;
 
   const [yen, setYen] = useState<YEN | null>(null);
-  const [winner, setWinner] = useState<string | null>(null); // "human" | "bot" | etc.
+  const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -89,7 +89,6 @@ export default function GameHvB() {
     }
   }
 
-  // 🎨 Color del Card del tablero según ganador
   const boardCardStyle: React.CSSProperties = useMemo(() => {
     if (!gameOver) return {};
     if (winner === "human") {
