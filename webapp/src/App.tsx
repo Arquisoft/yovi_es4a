@@ -1,15 +1,13 @@
-import { ConfigProvider } from 'antd'; // Importamos el proveedor de configuración
-import illustrationTheme from './theme/illustrationTheme'; // Importamos el tema personalizado
+import { ConfigProvider } from 'antd';
+import illustrationTheme from './theme/illustrationTheme';
 
 import './App.css'
-// Nota: Asegúrate de que las rutas de importación sean correctas según tu estructura de carpetas actual
 import GameHvB from './GameHvB'; 
 import RegisterForm from './RegisterForm';
 import yoviLogo from './assets/yovi-logo.svg'
 
 function App() {
   return (
-    // Envolvemos tu aplicación original con el ConfigProvider
     <ConfigProvider theme={illustrationTheme}>
       <div className="App">
         <div>
