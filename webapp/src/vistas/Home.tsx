@@ -63,7 +63,7 @@ export default function Home() {
                 <Title level={3} style={{ margin: 0 }}>Juego Y</Title>
               </Flex>
 
-              <Divider>Human vs Bot</Divider>
+              <Divider>Human vs. Bot</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <div>
