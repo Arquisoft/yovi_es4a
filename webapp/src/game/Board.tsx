@@ -7,10 +7,10 @@ type Props = {
   onCellClick: (cellId: number) => void;
 };
 
-function cellLabel(v: string) {
-  if (v === ".") return "";
-  return v;
-}
+//function cellLabel(v: string) {
+//  if (v === ".") return "";
+//  return v;
+//}
 
 export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
   // Agrupar por fila

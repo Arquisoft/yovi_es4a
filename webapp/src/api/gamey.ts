@@ -16,7 +16,11 @@ export type HumanVsBotMoveResponse = {
         | { state: "finished"; winner: string };
 };
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+/**
+ * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
+ * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
+ */
+const API_URL = "/api/game";
 
 export async function newGame(size: number): Promise<NewGameResponse> {
     const res = await fetch(`${API_URL}/v1/game/new`, {
