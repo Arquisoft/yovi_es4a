@@ -1,21 +1,21 @@
-import './App.css'
-import GameHvB from './GameHvB';
-import RegisterForm from './RegisterForm';
-import yoviLogo from './assets/yovi-logo.svg'
+import "./App.css";
+import "./estilos/Cell.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import Bienvenida from "./vistas/Bienvenida";
+import Home from "./vistas/Home";
+import GameHvB from "./vistas/GameHvB";
 
 function App() {
   return (
-    <div className="App">
-      <div>
-        <a href="https://github.com/Arquisoft/yovi_es4a" target="_blank" rel="noreferrer">
-          <img src={yoviLogo} className="logo yovi" alt="Yovi logo" />
-        </a>
-      </div>
-
-      <h2>Welcome to YOVI</h2>
-      <RegisterForm />
-      <GameHvB />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Bienvenida />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/game" element={<GameHvB />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
