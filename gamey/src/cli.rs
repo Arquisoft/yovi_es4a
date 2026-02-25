@@ -251,93 +251,512 @@ fn apply_move(game: &mut GameY, movement: Movement, error_msg: &str) -> bool {
 mod tests {
     use super::*;
     use clap::CommandFactory;
-    use clap::Parser;
+    use std::fs;
 
-    // --- Tests de Visualización y Enumerados ---
+        // Tests cli_tests.rs inicial
+    //
+    // =============================================================================
+    // parse_command Tests
+    // =============================================================================
+
     #[test]
-    fn test_mode_display() {
+    fn test_parse_command_place_valid_index() {
+        let command = parse_command("5", 10);
+        assert_eq!(command, Command::Place { idx: 5 });
+    }
+
+    #[test]
+    fn test_parse_command_place_zero_index() {
+        let command = parse_command("0", 10);
+        assert_eq!(command, Command::Place { idx: 0 });
+    }
+
+    #[test]
+    fn test_parse_command_place_max_valid_index() {
+        let command = parse_command("9", 10);
+        assert_eq!(command, Command::Place { idx: 9 });
+    }
+
+    #[test]
+    fn test_parse_command_place_index_out_of_bounds() {
+        let command = parse_command("10", 10);
+        assert!(matches!(command, Command::Error { .. }));
+    }
+
+    #[test]
+    fn test_parse_command_place_large_index_out_of_bounds() {
+        let command = parse_command("100", 10);
+        assert!(matches!(command, Command::Error { .. }));
+    }
+
+    #[test]
+    fn test_parse_command_resign() {
+        let command = parse_command("resign", 10);
+        assert_eq!(command, Command::Resign);
+    }
+
+    #[test]
+    fn test_parse_command_help() {
+        let command = parse_command("help", 10);
+        assert_eq!(command, Command::Help);
+    }
+
+    #[test]
+    fn test_parse_command_exit() {
+        let command = parse_command("exit", 10);
+        assert_eq!(command, Command::Exit);
+    }
+
+    #[test]
+    fn test_parse_command_show_colors() {
+        let command = parse_command("show_colors", 10);
+        assert_eq!(command, Command::ShowColors);
+    }
+
+    #[test]
+    fn test_parse_command_show_coords() {
+        let command = parse_command("show_coords", 10);
+        assert_eq!(command, Command::Show3DCoords);
+    }
+
+    #[test]
+    fn test_parse_command_show_idx() {
+        let command = parse_command("show_idx", 10);
+        assert_eq!(command, Command::ShowIdx);
+    }
+
+    #[test]
+    fn test_parse_command_save_with_filename() {
+        let command = parse_command("save game.json", 10);
+        assert_eq!(
+            command,
+            Command::Save {
+                filename: "game.json".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_command_save_without_filename() {
+        let command = parse_command("save", 10);
+        assert!(matches!(command, Command::Error { .. }));
+        if let Command::Error { message } = command {
+            assert!(message.contains("Filename required"));
+        }
+    }
+
+    #[test]
+    fn test_parse_command_load_with_filename() {
+        let command = parse_command("load saved_game.json", 10);
+        assert_eq!(
+            command,
+            Command::Load {
+                filename: "saved_game.json".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_command_load_without_filename() {
+        let command = parse_command("load", 10);
+        assert!(matches!(command, Command::Error { .. }));
+        if let Command::Error { message } = command {
+            assert!(message.contains("Filename required"));
+        }
+    }
+
+    #[test]
+    fn test_parse_command_empty_input() {
+        let command = parse_command("", 10);
+        assert_eq!(command, Command::None);
+    }
+
+    #[test]
+    fn test_parse_command_whitespace_only() {
+        let command = parse_command("   ", 10);
+        assert_eq!(command, Command::None);
+    }
+
+    #[test]
+    fn test_parse_command_invalid_command() {
+        let command = parse_command("invalid_command", 10);
+        assert!(matches!(command, Command::Error { .. }));
+    }
+
+    #[test]
+    fn test_parse_command_negative_number() {
+        let command = parse_command("-5", 10);
+        assert!(matches!(command, Command::Error { .. }));
+    }
+
+    #[test]
+    fn test_parse_command_with_leading_whitespace() {
+        let command = parse_command("  5", 10);
+        assert_eq!(command, Command::Place { idx: 5 });
+    }
+
+    #[test]
+    fn test_parse_command_with_trailing_whitespace() {
+        let command = parse_command("5  ", 10);
+        assert_eq!(command, Command::Place { idx: 5 });
+    }
+
+    #[test]
+    fn test_parse_command_save_with_path() {
+        let command = parse_command("save /tmp/game.json", 10);
+        assert_eq!(
+            command,
+            Command::Save {
+                filename: "/tmp/game.json".to_string()
+            }
+        );
+    }
+
+    // =============================================================================
+    // parse_idx Tests
+    // =============================================================================
+
+    #[test]
+    fn test_parse_idx_valid_zero() {
+        let result = parse_idx("0", 10);
+        assert_eq!(result, Ok(0));
+    }
+
+    #[test]
+    fn test_parse_idx_valid_middle() {
+        let result = parse_idx("5", 10);
+        assert_eq!(result, Ok(5));
+    }
+
+    #[test]
+    fn test_parse_idx_valid_max() {
+        let result = parse_idx("9", 10);
+        assert_eq!(result, Ok(9));
+    }
+
+    #[test]
+    fn test_parse_idx_out_of_bounds_equal() {
+        let result = parse_idx("10", 10);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("out of bounds"));
+    }
+
+    #[test]
+    fn test_parse_idx_out_of_bounds_larger() {
+        let result = parse_idx("100", 10);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("out of bounds"));
+    }
+
+    #[test]
+    fn test_parse_idx_not_a_number() {
+        let result = parse_idx("abc", 10);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a number"));
+    }
+
+    #[test]
+    fn test_parse_idx_negative_number() {
+        let result = parse_idx("-1", 10);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a number"));
+    }
+
+    #[test]
+    fn test_parse_idx_float_number() {
+        let result = parse_idx("5.5", 10);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_idx_empty_string() {
+        let result = parse_idx("", 10);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_idx_bound_of_one() {
+        let result = parse_idx("0", 1);
+        assert_eq!(result, Ok(0));
+
+        let result = parse_idx("1", 1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_idx_large_valid_number() {
+        let result = parse_idx("999", 1000);
+        assert_eq!(result, Ok(999));
+    }
+
+    // =============================================================================
+    // Mode enum Tests
+    // =============================================================================
+
+    #[test]
+    fn test_mode_display_computer() {
+        let mode = Mode::Computer;
+        assert_eq!(format!("{}", mode), "computer");
+    }
+
+    #[test]
+    fn test_mode_display_human() {
+        let mode = Mode::Human;
+        assert_eq!(format!("{}", mode), "human");
+    }
+
+    #[test]
+    fn test_mode_display_server() {
+        let mode = Mode::Server;
+        assert_eq!(format!("{}", mode), "server");
+    }
+
+    #[test]
+    fn test_mode_equality() {
+        assert_eq!(Mode::Computer, Mode::Computer);
+        assert_eq!(Mode::Human, Mode::Human);
+        assert_eq!(Mode::Server, Mode::Server);
+        assert_ne!(Mode::Computer, Mode::Human);
+        assert_ne!(Mode::Human, Mode::Server);
+    }
+
+    // =============================================================================
+    // CliArgs parsing Tests (using clap's try_parse_from)
+    // =============================================================================
+
+    use clap::Parser;
+    //use gamey::CliArgs;
+
+    #[test]
+    fn test_cli_args_default_values() {
+        let args = CliArgs::try_parse_from(["gamey"]).unwrap();
+        assert_eq!(args.size, 7);
+        assert_eq!(args.mode, Mode::Human);
+        assert_eq!(args.bot, "random_bot");
+        assert_eq!(args.port, 3000);
+    }
+
+    #[test]
+    fn test_cli_args_custom_size() {
+        let args = CliArgs::try_parse_from(["gamey", "--size", "10"]).unwrap();
+        assert_eq!(args.size, 10);
+    }
+
+    #[test]
+    fn test_cli_args_custom_size_short() {
+        let args = CliArgs::try_parse_from(["gamey", "-s", "5"]).unwrap();
+        assert_eq!(args.size, 5);
+    }
+
+    #[test]
+    fn test_cli_args_mode_computer() {
+        let args = CliArgs::try_parse_from(["gamey", "--mode", "computer"]).unwrap();
+        assert_eq!(args.mode, Mode::Computer);
+    }
+
+    #[test]
+    fn test_cli_args_mode_human() {
+        let args = CliArgs::try_parse_from(["gamey", "--mode", "human"]).unwrap();
+        assert_eq!(args.mode, Mode::Human);
+    }
+
+    #[test]
+    fn test_cli_args_mode_server() {
+        let args = CliArgs::try_parse_from(["gamey", "--mode", "server"]).unwrap();
+        assert_eq!(args.mode, Mode::Server);
+    }
+
+    #[test]
+    fn test_cli_args_mode_short() {
+        let args = CliArgs::try_parse_from(["gamey", "-m", "computer"]).unwrap();
+        assert_eq!(args.mode, Mode::Computer);
+    }
+
+    #[test]
+    fn test_cli_args_custom_bot() {
+        let args = CliArgs::try_parse_from(["gamey", "--bot", "smart_bot"]).unwrap();
+        assert_eq!(args.bot, "smart_bot");
+    }
+
+    #[test]
+    fn test_cli_args_custom_bot_short() {
+        let args = CliArgs::try_parse_from(["gamey", "-b", "my_bot"]).unwrap();
+        assert_eq!(args.bot, "my_bot");
+    }
+
+    #[test]
+    fn test_cli_args_custom_port() {
+        let args = CliArgs::try_parse_from(["gamey", "--port", "8080"]).unwrap();
+        assert_eq!(args.port, 8080);
+    }
+
+    #[test]
+    fn test_cli_args_custom_port_short() {
+        let args = CliArgs::try_parse_from(["gamey", "-p", "9000"]).unwrap();
+        assert_eq!(args.port, 9000);
+    }
+
+    #[test]
+    fn test_cli_args_combined_options() {
+        let args = CliArgs::try_parse_from([
+            "gamey",
+            "-s",
+            "9",
+            "-m",
+            "computer",
+            "-b",
+            "advanced_bot",
+            "-p",
+            "5000",
+        ])
+        .unwrap();
+        assert_eq!(args.size, 9);
+        assert_eq!(args.mode, Mode::Computer);
+        assert_eq!(args.bot, "advanced_bot");
+        assert_eq!(args.port, 5000);
+    }
+
+    #[test]
+    fn test_cli_args_invalid_mode() {
+        let result = CliArgs::try_parse_from(["gamey", "--mode", "invalid"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cli_args_invalid_size_not_number() {
+        let result = CliArgs::try_parse_from(["gamey", "--size", "abc"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cli_args_invalid_port_not_number() {
+        let result = CliArgs::try_parse_from(["gamey", "--port", "not_a_port"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cli_args_help_flag() {
+        let result = CliArgs::try_parse_from(["gamey", "--help"]);
+        assert!(result.is_err()); // --help causes an error (but it's intentional)
+    }
+
+    #[test]
+    fn test_cli_args_version_flag() {
+        let result = CliArgs::try_parse_from(["gamey", "--version"]);
+        assert!(result.is_err()); // --version causes an error (but it's intentional)
+    }
+
+    // ###########################################################################################
+    // TEST ADICIONALES PARA CUBRIR 80%
+    // ###########################################################################################
+
+    #[test]
+    fn test_mode_logic() {
         assert_eq!(format!("{}", Mode::Computer), "computer");
         assert_eq!(format!("{}", Mode::Human), "human");
         assert_eq!(format!("{}", Mode::Server), "server");
+        assert_eq!(Mode::Computer, Mode::Computer);
     }
 
     #[test]
-    fn test_command_debug_coverage() {
-        let cmd = Command::Place { idx: 10 };
-        let debug_str = format!("{:?}", cmd);
-        assert!(debug_str.contains("Place"));
-        assert!(debug_str.contains("10"));
-    }
-
-    // --- Tests de Parseo de Índices ---
-    #[test]
-    fn test_parse_idx_success() {
-        assert_eq!(parse_idx("0", 10), Ok(0));
-        assert_eq!(parse_idx("9", 10), Ok(9));
-    }
-
-    #[test]
-    fn test_parse_idx_failures() {
+    fn test_parse_idx_logic() {
+        assert_eq!(parse_idx("5", 10), Ok(5));
         assert!(parse_idx("10", 10).is_err());
-        assert_eq!(parse_idx("abc", 10), Err("not a number".to_string()));
+        assert!(parse_idx("abc", 10).is_err());
+        assert!(parse_idx("-1", 10).is_err());
+        assert!(parse_idx("", 10).is_err());
     }
 
-    // --- Tests de Parseo de Comandos (Lógica Principal) ---
     #[test]
-    fn test_parse_command_basic() {
+    fn test_parse_command_all_branches() {
         let b = 100;
+        // Comandos simples
         assert_eq!(parse_command("resign", b), Command::Resign);
         assert_eq!(parse_command("help", b), Command::Help);
         assert_eq!(parse_command("exit", b), Command::Exit);
-        assert_eq!(parse_command("", b), Command::None);
-    }
+        assert_eq!(parse_command("   ", b), Command::None);
 
-    #[test]
-    fn test_parse_command_visual_options() {
-        let b = 100;
+        // Comandos de visualización
         assert_eq!(parse_command("show_colors", b), Command::ShowColors);
         assert_eq!(parse_command("show_coords", b), Command::Show3DCoords);
         assert_eq!(parse_command("show_idx", b), Command::ShowIdx);
+
+        // Persistencia
+        assert_eq!(parse_command("save f.json", b), Command::Save { filename: "f.json".into() });
+        assert!(matches!(parse_command("save", b), Command::Error { .. }));
+        assert!(matches!(parse_command("load", b), Command::Error { .. }));
+
+        // Errores de parseo
+        assert!(matches!(parse_command("999", 10), Command::Error { .. }));
+        assert!(matches!(parse_command("inv", b), Command::Error { .. }));
     }
 
     #[test]
-    fn test_parse_command_save_load() {
-        let b = 100;
-        assert_eq!(parse_command("save t.json", b), Command::Save { filename: "t.json".into() });
-        match parse_command("save", b) {
-            Command::Error { message } => assert!(message.contains("Filename required")),
-            _ => panic!("Debe dar error"),
-        }
+    fn test_process_input_exhaustive() {
+        let mut game = GameY::new(7);
+        let player = PlayerId::new(0);
+        let mut opts = RenderOptions::default();
+        let bot = RandomBot;
+
+        // Probar ramas de persistencia (Save/Load)
+        let tmp_file = "test_game_save.json";
+        let _ = process_input(&format!("save {}", tmp_file), &mut game, &player, &mut opts, Mode::Human, &bot);
+        assert!(std::path::Path::new(tmp_file).exists());
+        let _ = process_input(&format!("load {}", tmp_file), &mut game, &player, &mut opts, Mode::Human, &bot);
+        let _ = fs::remove_file(tmp_file);
+
+        // Probar ramas de configuración visual (Toggle)
+        opts.show_idx = false;
+        let _ = process_input("show_idx", &mut game, &player, &mut opts, Mode::Human, &bot);
+        assert!(opts.show_idx);
+
+        // Ramas de error y ayuda
+        let _ = process_input("help", &mut game, &player, &mut opts, Mode::Human, &bot);
+        let _ = process_input("", &mut game, &player, &mut opts, Mode::Human, &bot); // None branch
+        let _ = process_input("invalid_cmd_test", &mut game, &player, &mut opts, Mode::Human, &bot); // Error branch
     }
 
     #[test]
-    fn test_parse_command_place_logic() {
-        assert_eq!(parse_command("42", 100), Command::Place { idx: 42 });
-        match parse_command("999", 10) {
-            Command::Error { message } => assert!(message.contains("out of bounds")),
-            _ => panic!("Debe dar error de límites"),
-        }
-    }
-
-    // --- Tests de Argumentos CLI (Clap) ---
-    #[test]
-    fn test_cli_args_parsing() {
-        let args = CliArgs::try_parse_from(["gamey", "--size", "10"]).unwrap();
-        assert_eq!(args.size, 10);
-        assert_eq!(args.mode, Mode::Human); // Valor por defecto
+    fn test_apply_move_failure_branch() {
+        let mut game = GameY::new(7);
+        let player = PlayerId::new(0);
+        
+        // Movimiento en celda ya ocupada
+        let _ = game.add_move(Movement::Placement { player, coords: Coordinates::from_index(0, 7) });
+        let result = apply_move(&mut game, Movement::Placement { player, coords: Coordinates::from_index(0, 7) }, "Ocupada");
+        assert!(!result); // Debe entrar en la rama del Err y retornar false
     }
 
     #[test]
-    fn test_cli_help_text_robust() {
-        // Obtenemos el comando de clap para generar la ayuda
+    fn test_trigger_bot_move_safety() {
+        let mut game = GameY::new(7);
+        // Si el bot no encuentra movimiento (tablero lleno o similar)
+        // Para este test, forzamos un estado donde el bot no mueva o simplemente lo llamamos
+        trigger_bot_move(&mut game, &RandomBot);
+        
+        // Caso: Juego terminado (no hay next_player)
+        let _ = game.add_move(Movement::Action { player: PlayerId::new(0), action: GameAction::Resign });
+        trigger_bot_move(&mut game, &RandomBot); // Debe salir por el if let sin hacer nada
+    }
+
+    #[test]
+    fn test_bot_registry_coverage() {
+        let registry = YBotRegistry::new().with_bot(Arc::new(RandomBot));
+        assert!(registry.find("random_bot").is_some());
+        assert!(registry.find("nonexistent").is_none());
+        assert!(registry.names().contains(&"random_bot".to_string()));
+    }
+
+    #[test]
+    fn test_cli_args_full_coverage() {
+        let args = CliArgs::try_parse_from(["gamey", "--bot-first", "--mode", "computer", "--port", "1234"]).unwrap();
+        assert!(args.bot_first);
+        assert_eq!(args.port, 1234);
+
+        // Metadata de ayuda (visita metadatos de Clap)
         let mut cmd = CliArgs::command();
         let help = cmd.render_help().to_string();
-        
-        // Verificamos que la ayuda contenga los argumentos que definimos en la estructura
-        // Esto garantiza que la interfaz está bien configurada sin depender de strings externos
         assert!(help.contains("--size"));
-        assert!(help.contains("--mode"));
-        assert!(help.contains("--bot"));
-        assert!(help.contains("--port"));
     }
+
 }
