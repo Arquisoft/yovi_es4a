@@ -1,12 +1,18 @@
-FROM node:18-alpine
-RUN apk add nginx
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-# Copiamos la config de nginx
-COPY nginx.conf /etc/nginx/http.d/default.conf
-RUN mkdir -p /etc/nginx/certs
+# Usamos Alpine porque es muy ligero
+FROM nginx:alpine
+
+# Instalamos openssl para poder generar certificados autofirmados
+RUN apk add --no-cache openssl
+
+# Copiamos la configuración de Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copiamos y damos permisos al script de entrada
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Exponemos los puertos HTTP y HTTPS
 EXPOSE 80 443
-# Arrancamos Nginx y Node a la vez
-CMD nginx && node server.js
+
+# Ejecutamos el script de entrada en lugar de arrancar nginx directamente
+ENTRYPOINT ["/entrypoint.sh"]
