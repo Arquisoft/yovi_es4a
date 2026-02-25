@@ -40,13 +40,15 @@ vi.mock("../game/yen", () => ({
 }));
 
 vi.mock("../game/Board", () => ({
-    default: ({ onCellClick, disabled }: any) => (
-        <div>
-            <button aria-label="cell-0" disabled={disabled} onClick={() => onCellClick(0)}>
-                cell0
-            </button>
-        </div>
-    ),
+    default: ({ onCellClick, disabled }: any) => {
+        return (
+            <div>
+                <button aria-label="cell-0" disabled={disabled} onClick={() => onCellClick(0)}>
+                    cell0
+                </button>
+            </div>
+        );
+    },
 }));
 
 vi.mock("antd", () => ({
