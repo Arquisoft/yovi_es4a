@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const port = 3000;
-
 const swaggerUi = require('swagger-ui-express');
 const fs = require('node:fs');
 const YAML = require('js-yaml');
@@ -21,10 +20,8 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 
-if (process.env.NODE_ENV !== 'test') {
-  const metricsMiddleware = promBundle({ includeMethod: true });
-  app.use(metricsMiddleware);
-}
+const metricsMiddleware = promBundle({includeMethod: true});
+app.use(metricsMiddleware);
 
 try {
   const swaggerDocument = YAML.load(fs.readFileSync('./openapi.yaml', 'utf8'));
@@ -43,6 +40,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// REGISTRO
 app.post('/createuser', async (req, res) => {
   const { username, password, email, profilePicture } = req.body;
   try {
@@ -104,7 +102,6 @@ app.get('/verify', async (req, res) => {
 // LOGIN
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-
   try {
     const user = await User.findOne({ username: sanitize(username) });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
@@ -115,12 +112,9 @@ app.post('/login', async (req, res) => {
     }
 
     const match = await bcrypt.compare(password, user.password);
-
-    if (!match)
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
     res.json({ message: `Bienvenido ${username}` });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -128,8 +122,8 @@ app.post('/login', async (req, res) => {
 
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`User Service listening at http://localhost:${port}`);
-  });
+    console.log(`User Service listening at http://localhost:${port}`)
+  })
 }
 
-module.exports = app;
+module.exports = app
