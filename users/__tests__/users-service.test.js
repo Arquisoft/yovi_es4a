@@ -1,6 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import request from 'supertest'
-import app from '../users-service.js'
+
+vi.mock('mongoose', async () => {
+    const actual = await vi.importActual('mongoose');
+    return {
+        ...actual,
+        connect: vi.fn().mockResolvedValue(true),
+    };
+});
 
 vi.mock('../user-model.js', () => {
     const User = vi.fn().mockImplementation(() => ({
@@ -9,6 +16,8 @@ vi.mock('../user-model.js', () => {
     User.findOne = vi.fn();
     return { default: User };
 });
+
+import app from '../users-service.js'
 
 describe('POST /createuser', () => {
     afterEach(() => {
