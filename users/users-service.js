@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
 const port = 3000;
-
 const swaggerUi = require('swagger-ui-express');
 const fs = require('node:fs');
 const YAML = require('js-yaml');
@@ -10,20 +9,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const User = require('./users-model');
 
-
+// MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-
-if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(mongoUri)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch(err => console.error('Error conectando a MongoDB:', err));
-}
+mongoose.connect(mongoUri)
+  .then(() => console.log('Conectado a MongoDB'))
+  .catch(err => console.error('Error conectando a MongoDB:', err));
 
 
-if (process.env.NODE_ENV !== 'test') {
-  const metricsMiddleware = promBundle({ includeMethod: true });
-  app.use(metricsMiddleware);
-}
+const metricsMiddleware = promBundle({includeMethod: true});
+app.use(metricsMiddleware);
 
 try {
   const swaggerDocument = YAML.load(fs.readFileSync('./openapi.yaml', 'utf8'));
@@ -42,17 +36,14 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// REGISTRO
 app.post('/createuser', async (req, res) => {
   const { username, password } = req.body;
-
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
-
     await user.save();
-
     res.json({ message: `Bienvenido ${username}` });
-
   } catch (err) {
     if (err.code === 11000) {
       res.status(400).json({ error: 'El usuario ya existe' });
@@ -62,22 +53,17 @@ app.post('/createuser', async (req, res) => {
   }
 });
 
+// LOGIN
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-
   try {
     const user = await User.findOne({ username });
-
-    if (!user)
-      return res.status(401).json({ error: 'Usuario no encontrado' });
+    if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     const match = await bcrypt.compare(password, user.password);
-
-    if (!match)
-      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
     res.json({ message: `Bienvenido ${username}` });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -85,8 +71,8 @@ app.post('/login', async (req, res) => {
 
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`User Service listening at http://localhost:${port}`);
-  });
+    console.log(`User Service listening at http://localhost:${port}`)
+  })
 }
 
-module.exports = app;
+module.exports = app
