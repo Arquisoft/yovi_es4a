@@ -6,13 +6,11 @@ vi.mock('mongoose', async () => {
 });
 
 vi.mock('bcrypt', () => ({
-    default: {
-        hash: vi.fn().mockResolvedValue('hashedpassword'),
-        compare: vi.fn().mockResolvedValue(true),
-    }
+    hash: vi.fn().mockResolvedValue('hashedpassword'),
+    compare: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock('../user-model.js', () => {
+vi.mock('../users-model', () => {
     const User = vi.fn().mockImplementation(() => ({
         save: vi.fn().mockResolvedValue(true)
     }));
@@ -22,7 +20,8 @@ vi.mock('../user-model.js', () => {
 
 let app;
 beforeAll(async () => {
-    app = (await import('../users-service.js')).default;
+    const module = await import('../users-service.js');
+    app = module.default;
 });
 
 describe('POST /createuser', () => {
