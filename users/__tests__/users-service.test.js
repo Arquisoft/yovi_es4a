@@ -9,6 +9,13 @@ vi.mock('mongoose', async () => {
     };
 });
 
+vi.mock('bcrypt', () => ({
+    default: {
+        hash: vi.fn().mockResolvedValue('hashedpassword'),
+        compare: vi.fn().mockResolvedValue(true),
+    }
+}));
+
 vi.mock('../user-model.js', () => {
     const User = vi.fn().mockImplementation(() => ({
         save: vi.fn().mockResolvedValue(true)
