@@ -1,12 +1,8 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
-import request from 'supertest'
+import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest'
 
 vi.mock('mongoose', async () => {
     const actual = await vi.importActual('mongoose');
-    return {
-        ...actual,
-        connect: vi.fn().mockResolvedValue(true),
-    };
+    return { ...actual, connect: vi.fn().mockResolvedValue(true) };
 });
 
 vi.mock('bcrypt', () => ({
@@ -24,7 +20,10 @@ vi.mock('../user-model.js', () => {
     return { default: User };
 });
 
-import app from '../users-service.js'
+let app;
+beforeAll(async () => {
+    app = (await import('../users-service.js')).default;
+});
 
 describe('POST /createuser', () => {
     afterEach(() => {
@@ -32,6 +31,7 @@ describe('POST /createuser', () => {
     })
 
     it('returns a greeting message for the provided username', async () => {
+        const { default: request } = await import('supertest');
         const res = await request(app)
             .post('/createuser')
             .send({ username: 'Pablo', password: '1234' })
