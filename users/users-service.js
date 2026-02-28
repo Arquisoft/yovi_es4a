@@ -11,7 +11,7 @@ const sanitize = require('mongo-sanitize');
 const User = require('./users-model');
 const crypto = require('crypto'); // tokens aleatorios
 
-// MongoDB connection
+// MongoDB connection - solo conectar si no estamos en test
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
 if (process.env.NODE_ENV !== 'test') {
   mongoose.connect(mongoUri)
