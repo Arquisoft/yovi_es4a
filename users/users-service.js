@@ -7,6 +7,7 @@ const YAML = require('js-yaml');
 const promBundle = require('express-prom-bundle');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const sanitize = require('mongo-sanitize');
 const User = require('./users-model');
 
 // MongoDB connection
@@ -59,7 +60,7 @@ app.post('/createuser', async (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: sanitize(username) });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     const match = await bcrypt.compare(password, user.password);
