@@ -9,13 +9,26 @@ services:
       - monitor-net
     volumes:
       - mongo-data:/data/db
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "80:80"    # Tráfico HTTP (Local/Redirección)
+      - "443:443"  # Tráfico HTTPS (Azure)
+    volumes:
+      - ./gateway/certs:/etc/nginx/certs:ro # Para los certificados en Azure
+    depends_on:
+      - users
+      - webapp
+      - gamey
+    networks:
+      - monitor-net
 
   users:
     build: ./users
     container_name: users
     image: ghcr.io/arquisoft/yovi_es4a-users:latest
-    ports:
-      - "3000:3000"
+    # ports: - "3000:3000" <-- ELIMINADO: Ya no se accede directamente
     depends_on:
       - mongodb
     environment:
@@ -27,11 +40,11 @@ services:
     build:
       context: ./webapp
       args:
-        - VITE_API_URL=http://localhost:3000
+        # La API ahora se accede a través de la ruta relativa del Gateway
+        - VITE_API_URL=/api/users 
     container_name: webapp
     image: ghcr.io/arquisoft/yovi_es4a-webapp:latest
-    ports:
-      - "80:80"
+    # ports: - "80:80" <-- ELIMINADO: Nginx servirá la web
     depends_on:
       - users
     networks:
@@ -41,11 +54,10 @@ services:
     build: ./gamey
     container_name: gamey
     image: ghcr.io/arquisoft/yovi_es4a-gamey:latest
-    ports:
-      - "4000:4000"
+    # ports: - "4000:4000" <-- ELIMINADO
     networks:
       - monitor-net
-
+      
   prometheus:
     image: prom/prometheus
     container_name: prometheus

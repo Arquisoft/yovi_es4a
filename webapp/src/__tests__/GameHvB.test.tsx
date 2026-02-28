@@ -32,11 +32,8 @@ vi.mock("../game/yen", () => ({
     ],
 }));
 
-let lastOnCellClick: ((cellId: number) => void) | null = null;
-
 vi.mock("../game/Board", () => ({
     default: ({ onCellClick, disabled }: any) => {
-        lastOnCellClick = onCellClick;
         return (
             <div>
                 <button aria-label="cell-0" disabled={disabled} onClick={() => onCellClick(0)}>
