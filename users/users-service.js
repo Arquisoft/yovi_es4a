@@ -11,13 +11,11 @@ const sanitize = require('mongo-sanitize');
 const User = require('./users-model');
 const crypto = require('crypto'); // tokens aleatorios
 
-// MongoDB connection - solo conectar si no estamos en test
+// MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-if (process.env.NODE_ENV !== 'test') {
-  mongoose.connect(mongoUri)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch(err => console.error('Error conectando a MongoDB:', err));
-}
+mongoose.connect(mongoUri)
+  .then(() => console.log('Conectado a MongoDB'))
+  .catch(err => console.error('Error conectando a MongoDB:', err));
 
 
 const metricsMiddleware = promBundle({includeMethod: true});
