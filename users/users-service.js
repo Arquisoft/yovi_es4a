@@ -13,9 +13,11 @@ const crypto = require('crypto'); // tokens aleatorios
 
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-mongoose.connect(mongoUri)
-  .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.error('Error conectando a MongoDB:', err));
+if (process.env.NODE_ENV !== 'test') {
+  mongoose.connect(mongoUri)
+    .then(() => console.log('Conectado a MongoDB'))
+    .catch(err => console.error('Error conectando a MongoDB:', err));
+}
 
 
 const metricsMiddleware = promBundle({includeMethod: true});
