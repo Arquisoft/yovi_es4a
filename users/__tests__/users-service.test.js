@@ -33,4 +33,60 @@ describe('POST /createuser', () => {
         expect(res.body).toHaveProperty('message')
         expect(res.body.message).toMatch(/Bienvenido Pablo/i)
     })
+
+    it('returns an error if the user already exists', async () => {
+        await request(app)
+            .post('/createuser')
+            .send({ username: 'Pablo', password: '1234' })
+
+        const res = await request(app)
+            .post('/createuser')
+            .send({ username: 'Pablo', password: '1234' })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(400)
+        expect(res.body).toHaveProperty('error')
+        expect(res.body.error).toMatch(/El usuario ya existe/i)
+    })
+})
+
+describe('POST /login', () => {
+    beforeAll(async () => {
+        await request(app)
+            .post('/createuser')
+            .send({ username: 'Pablo', password: '1234' })
+    })
+
+    it('returns a welcome message for valid credentials', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({ username: 'Pablo', password: '1234' })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(200)
+        expect(res.body).toHaveProperty('message')
+        expect(res.body.message).toMatch(/Bienvenido Pablo/i)
+    })
+
+    it('returns an error for incorrect password', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({ username: 'Pablo', password: 'wrongpassword' })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(401)
+        expect(res.body).toHaveProperty('error')
+        expect(res.body.error).toMatch(/Contraseña incorrecta/i)
+    })
+
+    it('returns an error if the user does not exist', async () => {
+        const res = await request(app)
+            .post('/login')
+            .send({ username: 'NoExiste', password: '1234' })
+            .set('Accept', 'application/json')
+
+        expect(res.status).toBe(401)
+        expect(res.body).toHaveProperty('error')
+        expect(res.body.error).toMatch(/Usuario no encontrado/i)
+    })
 })
