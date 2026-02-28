@@ -12,12 +12,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+    await mongoose.connection.dropDatabase();
     await mongoose.disconnect();
     await mongod.stop();
-});
-
-afterEach(async () => {
-    await mongoose.connection.dropDatabase();
 });
 
 const app = (await import('../users-service.js')).default
