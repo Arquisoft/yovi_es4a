@@ -9,11 +9,13 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const User = require('./users-model');
 
-// MongoDB connection
+// MongoDB connection - solo conectar si no estamos en test
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-mongoose.connect(mongoUri)
-  .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.error('Error conectando a MongoDB:', err));
+if (process.env.NODE_ENV !== 'test') {
+  mongoose.connect(mongoUri)
+    .then(() => console.log('Conectado a MongoDB'))
+    .catch(err => console.error('Error conectando a MongoDB:', err));
+}
 
 
 const metricsMiddleware = promBundle({includeMethod: true});
