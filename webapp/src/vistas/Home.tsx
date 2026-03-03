@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Card, Divider, Flex, InputNumber, Select, Space, Typography } from "antd";
-import { LogoutOutlined, PlayCircleOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
+import { BuildOutlined, LogoutOutlined, PlayCircleOutlined, RobotOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
 import { getGameConfig, type GameConfig } from "../api/gamey";
@@ -17,10 +17,13 @@ export default function Home() {
 
   const [config, setConfig] = useState<GameConfig | null>(null);
 
+  const [starter, setStarter] = useState<"human" | "bot">("human");
+
   function handlePlay() {
     const params = new URLSearchParams({
       size: String(size),
       bot: botId,
+      starter,
     });
     navigate(`/game?${params.toString()}`);
   }
@@ -81,7 +84,7 @@ export default function Home() {
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <div>
-                  <Text type="secondary">Tamaño:</Text>
+                  <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
                   <div>
                     <InputNumber
                       min={config?.min_board_size ?? 2}
@@ -103,6 +106,21 @@ export default function Home() {
                       options={[
                         { value: "random_bot", label: "Random bot" },
                         { value: "mcts_bot", label: "MCTS bot" },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Text type="secondary"><TeamOutlined /> Starter:</Text>
+                  <div>
+                    <Select
+                      value={starter}
+                      onChange={setStarter}
+                      style={{ width: 200 }}
+                      options={[
+                        { value: "human", label: "Humano" },
+                        { value: "bot", label: "Bot" },
                       ]}
                     />
                   </div>
