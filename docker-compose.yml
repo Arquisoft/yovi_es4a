@@ -12,6 +12,8 @@ services:
   gateway:
     build: ./gateway
     container_name: gateway
+    image: ghcr.io/arquisoft/yovi_es4a-gateway:latest
+
     ports:
       - "80:80"    # Tráfico HTTP (Local/Redirección)
       - "443:443"  # Tráfico HTTPS (Azure)
