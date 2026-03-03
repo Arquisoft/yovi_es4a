@@ -10,6 +10,8 @@ use crate::{
     Coordinates, GameY, Movement, PlayerId, YEN,
 };
 
+use crate::game_server::{MAX_BOARD_SIZE, MIN_BOARD_SIZE};
+
 #[derive(Debug, Deserialize)]
 pub struct NewGameRequest {
     pub size: u32,
@@ -47,11 +49,122 @@ pub struct HumanVsBotMoveResponse {
     pub status: GameState,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Starter {
+    Human,
+    Bot,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewHvbGameRequest {
+    pub size: u32,
+    pub starter: Starter,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NewHvbGameResponse {
+    pub yen: YEN,
+    pub bot_move: Option<AppliedMove>,
+    pub status: GameState,
+}
+
+pub async fn new_hvb_game(
+    State(state): State<AppState>,
+    Path(bot_id): Path<String>,
+    Json(req): Json<NewHvbGameRequest>,
+) -> Result<Json<NewHvbGameResponse>, ErrorResponse> {
+    if req.size < MIN_BOARD_SIZE || req.size > MAX_BOARD_SIZE {
+        return Err(ErrorResponse::error(
+            &format!(
+                "Board size must be between {} and {}",
+                MIN_BOARD_SIZE, MAX_BOARD_SIZE
+            ),
+            Some("v1".to_string()),
+            Some(bot_id.clone()),
+        ));
+    }
+
+    let mut game = GameY::new(req.size);
+
+    match req.starter {
+        Starter::Human => {
+            let yen = YEN::from(&game);
+            return Ok(Json(NewHvbGameResponse {
+                yen,
+                bot_move: None,
+                status: GameState::Ongoing {
+                    next: "human".to_string(),
+                },
+            }));
+        }
+        Starter::Bot => {
+            // Buscar bot
+            let bot = state.bots().find(&bot_id).ok_or_else(|| {
+                ErrorResponse::error(
+                    &format!("Unknown bot_id: {}", bot_id),
+                    Some("v1".to_string()),
+                    Some(bot_id.clone()),
+                )
+            })?;
+
+            // Elegir y aplicar movimiento del bot como player 1
+            let bot_coords = bot.choose_move(&game).ok_or_else(|| {
+                ErrorResponse::error(
+                    "Bot could not choose a move",
+                    Some("v1".to_string()),
+                    Some(bot_id.clone()),
+                )
+            })?;
+
+            let bot_cell_id = bot_coords.to_index(req.size);
+
+            game.add_move(Movement::Placement {
+                player: PlayerId::new(1),
+                coords: bot_coords,
+            })
+            .map_err(|e| {
+                ErrorResponse::error(
+                    &format!("Bot move rejected: {}", e),
+                    Some("v1".to_string()),
+                    Some(bot_id.clone()),
+                )
+            })?;
+
+            let bot_applied = AppliedMove {
+                cell_id: bot_cell_id,
+                coords: bot_coords,
+            };
+
+            let yen_out = YEN::from(&game);
+
+            let status = if game.check_game_over() {
+                GameState::Finished {
+                    winner: "bot".to_string(),
+                }
+            } else {
+                GameState::Ongoing {
+                    next: "human".to_string(),
+                }
+            };
+
+            Ok(Json(NewHvbGameResponse {
+                yen: yen_out,
+                bot_move: Some(bot_applied),
+                status,
+            }))
+        }
+    }
+}
+
 /// POST /v1/game/new
 pub async fn new_game(Json(req): Json<NewGameRequest>) -> Result<Json<NewGameResponse>, ErrorResponse> {
-    if req.size < 2 {
+    if req.size < MIN_BOARD_SIZE || req.size > MAX_BOARD_SIZE {
         return Err(ErrorResponse::error(
-            "Board size must be >= 2",
+            &format!(
+                "Board size must be between {} and {}",
+                MIN_BOARD_SIZE, MAX_BOARD_SIZE
+            ),
             Some("v1".to_string()),
             None,
         ));
@@ -71,9 +184,12 @@ pub async fn human_vs_bot_move(
 ) -> Result<Json<HumanVsBotMoveResponse>, ErrorResponse> {
     // 1) Validar cell_id (sin tocar coords.rs)
     let size = req.yen.size();
-    if size < 2 {
+    if size < MIN_BOARD_SIZE || size > MAX_BOARD_SIZE {
         return Err(ErrorResponse::error(
-            "Invalid board size in YEN",
+            &format!(
+                "Invalid board size in YEN. Must be between {} and {}",
+                MIN_BOARD_SIZE, MAX_BOARD_SIZE
+            ),
             Some("v1".to_string()),
             Some(bot_id.clone()),
         ));

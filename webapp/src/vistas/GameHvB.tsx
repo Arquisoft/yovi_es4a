@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Empty, Flex, Space, Typography, App } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { humanVsBotMove, newGame, type YEN } from "../api/gamey";
+import { humanVsBotMove, newHvbGame, type YEN } from "../api/gamey";
 import Board from "../game/Board";
 import { parseYenToCells } from "../game/yen";
 
@@ -26,6 +26,9 @@ export default function GameHvB() {
 
   const cells = useMemo(() => (yen ? parseYenToCells(yen) : []), [yen]);
 
+  const starterParam = (searchParams.get("starter") ?? "human").toLowerCase();
+  const starter = starterParam === "bot" ? "bot" : "human";
+
   useEffect(() => {
     let cancelled = false;
 
@@ -37,8 +40,14 @@ export default function GameHvB() {
       setGameOver(false);
 
       try {
-        const r = await newGame(size);
-        if (!cancelled) setYen(r.yen);
+        const r = await newHvbGame(size, botId, starter);
+        if (!cancelled) {
+          setYen(r.yen);
+          if (r.status.state === "finished") {
+            setGameOver(true);
+            setWinner(r.status.winner);
+          }
+        }
       } catch (e: any) {
         if (!cancelled) setError(e.message ?? String(e));
       } finally {
@@ -117,7 +126,7 @@ export default function GameHvB() {
                   Juego Y — Human vs Bot
                 </Title>
                 <Text type="secondary">
-                  Tamaño: {size} · Bot: {botId}
+                  Tamaño: {size} · Bot: {botId} · Empieza: {starter}
                 </Text>
               </Space>
 
