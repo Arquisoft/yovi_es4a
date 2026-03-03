@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Divider, Flex, InputNumber, Select, Space, Typography } from "antd";
 import { LogoutOutlined, PlayCircleOutlined, RobotOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
+import { getGameConfig, type GameConfig } from "../api/gamey";
 
 const { Title, Text } = Typography;
 
@@ -14,6 +15,8 @@ export default function Home() {
   const [size, setSize] = useState(7);
   const [botId, setBotId] = useState("random_bot");
 
+  const [config, setConfig] = useState<GameConfig | null>(null);
+
   function handlePlay() {
     const params = new URLSearchParams({
       size: String(size),
@@ -21,6 +24,17 @@ export default function Home() {
     });
     navigate(`/game?${params.toString()}`);
   }
+
+  useEffect(() => {
+    getGameConfig()
+      .then((c) => {
+        setConfig(c);
+        setSize((prev) => Math.min(Math.max(prev, c.min_board_size), c.max_board_size));
+      })
+      .catch(() => {
+        setConfig({ min_board_size: 2, max_board_size: 15 });
+      });
+  }, []);
 
   function handleLogout() {
     modal.confirm({
@@ -70,9 +84,10 @@ export default function Home() {
                   <Text type="secondary">Tamaño:</Text>
                   <div>
                     <InputNumber
-                      min={2}
+                      min={config?.min_board_size ?? 2}
+                      max={config?.max_board_size ?? 15}
                       value={size}
-                      onChange={(v) => setSize(typeof v === "number" ? v : 7)}
+                      onChange={(v) => setSize(typeof v === "number" ? v : (config?.min_board_size ?? 2))}
                       style={{ width: 140 }}
                     />
                   </div>

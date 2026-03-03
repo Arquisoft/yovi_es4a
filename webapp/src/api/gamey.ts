@@ -7,6 +7,20 @@ export type YEN = {
 
 export type NewGameResponse = { yen: YEN };
 
+export type GameConfig = {
+    min_board_size: number;
+    max_board_size: number;
+};
+
+export async function getGameConfig(): Promise<GameConfig> {
+    const res = await fetch(`${API_URL}/v1/game/config`);
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
 export type HumanVsBotMoveResponse = {
     yen: YEN;
     human_move: { cell_id: number; coords: { x: number; y: number; z: number } };

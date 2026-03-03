@@ -8,6 +8,16 @@ use axum::{http, response::IntoResponse};
 use crate::{bot_server::state::AppState, GameYError, MctsBot, RandomBot, YBotRegistry};
 use std::sync::Arc;
 
+use serde::Serialize;
+
+pub const MIN_BOARD_SIZE: u32 = 2;
+pub const MAX_BOARD_SIZE: u32 = 12;
+
+#[derive(Serialize)]
+pub struct GameConfigResponse {
+    pub min_board_size: u32,
+    pub max_board_size: u32,
+}
 
 pub fn create_router(state: AppState) -> axum::Router {
     let cors = CorsLayer::new()
@@ -17,6 +27,7 @@ pub fn create_router(state: AppState) -> axum::Router {
 
     axum::Router::new()
         .route("/status", axum::routing::get(status))
+        .route("/v1/game/config", axum::routing::get(get_config))
         .route("/v1/game/new", axum::routing::post(hvb::new_game))
         .route("/v1/game/hvb/move/{bot_id}", axum::routing::post(hvb::human_vs_bot_move))
         .with_state(state)
@@ -53,4 +64,11 @@ pub async fn run_game_server(port: u16) -> Result<(), GameYError> {
 
 pub async fn status() -> impl IntoResponse {
     "OK"
+}
+
+pub async fn get_config() -> impl IntoResponse {
+    axum::Json(GameConfigResponse {
+        min_board_size: MIN_BOARD_SIZE,
+        max_board_size: MAX_BOARD_SIZE,
+    })
 }

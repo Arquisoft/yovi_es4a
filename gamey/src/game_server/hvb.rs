@@ -10,6 +10,8 @@ use crate::{
     Coordinates, GameY, Movement, PlayerId, YEN,
 };
 
+use crate::game_server::{MAX_BOARD_SIZE, MIN_BOARD_SIZE};
+
 #[derive(Debug, Deserialize)]
 pub struct NewGameRequest {
     pub size: u32,
@@ -49,9 +51,12 @@ pub struct HumanVsBotMoveResponse {
 
 /// POST /v1/game/new
 pub async fn new_game(Json(req): Json<NewGameRequest>) -> Result<Json<NewGameResponse>, ErrorResponse> {
-    if req.size < 2 {
+    if req.size < MIN_BOARD_SIZE || req.size > MAX_BOARD_SIZE {
         return Err(ErrorResponse::error(
-            "Board size must be >= 2",
+            &format!(
+                "Board size must be between {} and {}",
+                MIN_BOARD_SIZE, MAX_BOARD_SIZE
+            ),
             Some("v1".to_string()),
             None,
         ));
@@ -71,9 +76,12 @@ pub async fn human_vs_bot_move(
 ) -> Result<Json<HumanVsBotMoveResponse>, ErrorResponse> {
     // 1) Validar cell_id (sin tocar coords.rs)
     let size = req.yen.size();
-    if size < 2 {
+    if size < MIN_BOARD_SIZE || size > MAX_BOARD_SIZE {
         return Err(ErrorResponse::error(
-            "Invalid board size in YEN",
+            &format!(
+                "Invalid board size in YEN. Must be between {} and {}",
+                MIN_BOARD_SIZE, MAX_BOARD_SIZE
+            ),
             Some("v1".to_string()),
             Some(bot_id.clone()),
         ));
