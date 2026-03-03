@@ -1,4 +1,14 @@
 services:
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - monitor-net
+    volumes:
+      - mongo-data:/data/db
   gateway:
     build: ./gateway
     container_name: gateway
@@ -19,6 +29,10 @@ services:
     container_name: users
     image: ghcr.io/arquisoft/yovi_es4a-users:latest
     # ports: - "3000:3000" <-- ELIMINADO: Ya no se accede directamente
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/yovi
     networks:
       - monitor-net
 
@@ -67,3 +81,6 @@ services:
 networks:
   monitor-net:
     driver: bridge
+
+volumes:
+  mongo-data:
