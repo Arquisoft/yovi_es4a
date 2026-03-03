@@ -5,6 +5,34 @@ export type YEN = {
     layout: string;
 };
 
+export type Starter = "human" | "bot";
+
+export type NewHvbGameResponse = {
+    yen: YEN;
+    bot_move: { cell_id: number; coords: { x: number; y: number; z: number } } | null;
+    status:
+        | { state: "ongoing"; next: string }
+        | { state: "finished"; winner: string };
+};
+
+export async function newHvbGame(
+    size: number,
+    botId: string,
+    starter: Starter
+): Promise<NewHvbGameResponse> {
+    const res = await fetch(`${API_URL}/v1/game/hvb/new/${encodeURIComponent(botId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ size, starter }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
 export type NewGameResponse = { yen: YEN };
 
 export type GameConfig = {

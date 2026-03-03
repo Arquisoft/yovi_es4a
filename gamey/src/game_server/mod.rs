@@ -29,6 +29,7 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route("/status", axum::routing::get(status))
         .route("/v1/game/config", axum::routing::get(get_config))
         .route("/v1/game/new", axum::routing::post(hvb::new_game))
+        .route("/v1/game/hvb/new/{bot_id}", axum::routing::post(hvb::new_hvb_game))
         .route("/v1/game/hvb/move/{bot_id}", axum::routing::post(hvb::human_vs_bot_move))
         .with_state(state)
         .layer(cors)
