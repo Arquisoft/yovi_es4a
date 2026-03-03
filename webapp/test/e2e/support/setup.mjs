@@ -1,3 +1,5 @@
+
+/**
 import { setWorldConstructor, Before, After, setDefaultTimeout } from '@cucumber/cucumber'
 import { chromium } from 'playwright'
 
@@ -24,3 +26,11 @@ After(async function () {
   if (this.page) await this.page.close()
   if (this.browser) await this.browser.close()
 })
+ */
+import { setWorldConstructor, Before, After } from '@cucumber/cucumber';
+
+class CustomWorld {}
+setWorldConstructor(CustomWorld);
+
+Before(async function () {});
+After(async function () {});
