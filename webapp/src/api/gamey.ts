@@ -5,6 +5,8 @@ export type YEN = {
     layout: string;
 };
 
+// ------- API Human vs Bot ---------------------------------------------------------------
+
 export type Starter = "human" | "bot";
 
 export type NewHvbGameResponse = {
@@ -83,6 +85,63 @@ export async function humanVsBotMove(botId: string, yen: YEN, cellId: number): P
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ yen, cell_id: cellId }),
     });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+// ------- API Human vs Human -------------------------------------------------------------
+
+export type StarterHvH = "player0" | "player1";
+
+export type NewHvhGameResponse = {
+    yen: YEN;
+    status:
+        | { state: "ongoing"; next: string }
+        | { state: "finished"; winner: string };
+};
+
+export async function newHvhGame(
+    size: number,
+    starter: StarterHvH
+): Promise<NewHvhGameResponse> {
+    const res = await fetch(`${API_URL}/v1/game/hvh/new`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ size, starter }),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+export type HumanVsHumanMoveResponse = {
+    yen: YEN;
+    move_applied: {
+        cell_id: number;
+        coords: { x: number; y: number; z: number };
+        player: string; // "player0" | "player1"
+    };
+    status:
+        | { state: "ongoing"; next: string }
+        | { state: "finished"; winner: string };
+};
+
+export async function humanVsHumanMove(
+    yen: YEN,
+    cellId: number
+): Promise<HumanVsHumanMoveResponse> {
+    const res = await fetch(`${API_URL}/v1/game/hvh/move`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ yen, cell_id: cellId }),
+    });
+
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message ?? `HTTP ${res.status}`);

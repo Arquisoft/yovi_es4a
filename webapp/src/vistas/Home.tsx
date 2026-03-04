@@ -7,17 +7,21 @@ import { getGameConfig, type GameConfig } from "../api/gamey";
 
 const { Title, Text } = Typography;
 
-type Starter = "human" | "bot";
-type LastConfig = { size: number; botId: string; starter: Starter };
+type StarterHvB = "human" | "bot";
 
-const LAST_CONFIG_KEY = "yovi:lastGameConfig";
+type StarterHvH = "player0" | "player1";
+const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
-function loadLastConfig(): LastConfig | null {
+type LastConfigHvB = { size: number; botId: string; starter: StarterHvB };
+
+const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
+
+function loadLastConfigHvB(): LastConfigHvB | null {
   try {
-    const raw = localStorage.getItem(LAST_CONFIG_KEY);
+    const raw = localStorage.getItem(LAST_CONFIG_KEY_HVB);
     if (!raw)
       return null;
-    const parsed = JSON.parse(raw) as Partial<LastConfig>;
+    const parsed = JSON.parse(raw) as Partial<LastConfigHvB>;
 
     if (typeof parsed.size !== "number")
       return null;
@@ -32,9 +36,9 @@ function loadLastConfig(): LastConfig | null {
   }
 }
 
-function saveLastConfig(cfg: LastConfig) {
+function saveLastConfigHvB(cfg: LastConfigHvB) {
   try {
-    localStorage.setItem(LAST_CONFIG_KEY, JSON.stringify(cfg));
+    localStorage.setItem(LAST_CONFIG_KEY_HVB, JSON.stringify(cfg));
   }
   catch {
   }
@@ -52,7 +56,7 @@ export default function Home() {
   const [config, setConfig] = useState<GameConfig | null>(null);
 
   useEffect(() => {
-    const last = loadLastConfig();
+    const last = loadLastConfigHvB();
     if (!last) return;
 
     setSize(last.size);
@@ -60,8 +64,8 @@ export default function Home() {
     setStarter(last.starter);
   }, []);
 
-  function handlePlay() {
-    saveLastConfig({ size, botId, starter });
+  function handlePlayHvB() {
+    saveLastConfigHvB({ size, botId, starter });
     
     const params = new URLSearchParams({
       size: String(size),
@@ -71,6 +75,14 @@ export default function Home() {
     navigate(`/game?${params.toString()}`);
   }
 
+  function handlePlayHvH() {
+    const params = new URLSearchParams({
+      size: String(size),
+      starter: hvhStarter,
+    });
+    navigate(`/game-hvh?${params.toString()}`);
+  }
+
   useEffect(() => {
     getGameConfig()
       .then((c) => {
@@ -78,7 +90,7 @@ export default function Home() {
         setSize((prev) => {
           const clamped = Math.min(Math.max(prev, c.min_board_size), c.max_board_size);
           if (clamped !== prev)
-            saveLastConfig({ size: clamped, botId, starter });
+            saveLastConfigHvB({ size: clamped, botId, starter });
           return clamped;
         });
       })
@@ -141,7 +153,7 @@ export default function Home() {
                       onChange={(v) => {
                         const next = typeof v === "number" ? v : (config?.min_board_size ?? 2);
                         setSize(next);
-                        saveLastConfig({ size: next, botId, starter });
+                        saveLastConfigHvB({ size: next, botId, starter });
                       }}
                       style={{ width: 140 }}
                     />
@@ -155,7 +167,7 @@ export default function Home() {
                       value={botId}
                       onChange={(next) => {
                         setBotId(next);
-                        saveLastConfig({ size, botId: next, starter });
+                        saveLastConfigHvB({ size, botId: next, starter });
                       }}
                       style={{ width: 240 }}
                       options={[
@@ -167,13 +179,13 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <Text type="secondary"><TeamOutlined /> Starter:</Text>
+                  <Text type="secondary"><TeamOutlined /> Empieza:</Text>
                   <div>
                     <Select
                       value={starter}
                       onChange={(next) => {
                         setStarter(next);
-                        saveLastConfig({ size, botId, starter: next });
+                        saveLastConfigHvB({ size, botId, starter: next });
                       }}
                       style={{ width: 200 }}
                       options={[
@@ -184,7 +196,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlay}>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvB}>
                   Jugar
                 </Button>
               </Flex>
@@ -192,15 +204,12 @@ export default function Home() {
               <Divider>Human vs. Human</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Text type="secondary">Sin implementar todavía</Text>
-              </Flex>
-              {/* <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <div>
                   <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
                   <div>
                     <InputNumber
                       min={config?.min_board_size ?? 2}
-                      max={config?.max_board_size ?? 15}
+                      max={config?.max_board_size ?? 12}
                       value={size}
                       onChange={(v) => setSize(typeof v === "number" ? v : (config?.min_board_size ?? 2))}
                       style={{ width: 140 }}
@@ -209,24 +218,24 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <Text type="secondary"><TeamOutlined /> Starter:</Text>
+                  <Text type="secondary"><TeamOutlined /> Empieza:</Text>
                   <div>
                     <Select
-                      value={starter}
-                      onChange={setStarter}
+                      value={hvhStarter}
+                      onChange={setHvhStarter}
                       style={{ width: 200 }}
                       options={[
-                        { value: "human", label: "Usuario" },
-                        { value: "bot", label: "Player 2" },
+                        { value: "player0", label: "Player 0" },
+                        { value: "player1", label: "Player 1" },
                       ]}
                     />
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlay}>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
                   Jugar
                 </Button>
-              </Flex> */}
+              </Flex>
             </Space>
           </Card>
 
