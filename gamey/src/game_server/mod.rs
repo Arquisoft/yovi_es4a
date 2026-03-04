@@ -73,3 +73,83 @@ pub async fn get_config() -> impl IntoResponse {
         max_board_size: MAX_BOARD_SIZE,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use axum::body::Body;
+    use http::Request;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt; // for `oneshot`
+
+    #[test]
+    fn create_default_state_registers_expected_bots() {
+        // OJO: al registrar dos MctsBot con el mismo name() ("mcts_bot"),
+        // el segundo pisa al primero.
+        let state = create_default_state();
+        let names = state.bots().names();
+
+        assert!(names.contains(&"random_bot".to_string()));
+        assert!(names.contains(&"mcts_bot".to_string()));
+        assert_eq!(names.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn router_status_endpoint_returns_ok() {
+        let app = create_router(create_default_state());
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        assert_eq!(text, "OK");
+    }
+
+    #[tokio::test]
+    async fn router_get_config_returns_expected_min_max() {
+        use axum::body::Body;
+        use http::Request;
+        use http_body_util::BodyExt;
+        use tower::ServiceExt;
+
+        let app = create_router(create_default_state());
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/v1/game/config")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            json.get("min_board_size").and_then(|v| v.as_u64()).unwrap(),
+            MIN_BOARD_SIZE as u64
+        );
+        assert_eq!(
+            json.get("max_board_size").and_then(|v| v.as_u64()).unwrap(),
+            MAX_BOARD_SIZE as u64
+        );
+    }
+}
