@@ -1,4 +1,5 @@
 pub mod hvb;
+pub mod hvh;
 
 use tower_http::cors::{Any, CorsLayer};
 use http::Method;
@@ -11,7 +12,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 pub const MIN_BOARD_SIZE: u32 = 2;
-pub const MAX_BOARD_SIZE: u32 = 12;
+pub const MAX_BOARD_SIZE: u32 = 15;
 
 #[derive(Serialize)]
 pub struct GameConfigResponse {
@@ -31,6 +32,8 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route("/v1/game/new", axum::routing::post(hvb::new_game))
         .route("/v1/game/hvb/new/{bot_id}", axum::routing::post(hvb::new_hvb_game))
         .route("/v1/game/hvb/move/{bot_id}", axum::routing::post(hvb::human_vs_bot_move))
+        .route("/v1/game/hvh/new", axum::routing::post(hvh::new_hvh_game))
+        .route("/v1/game/hvh/move", axum::routing::post(hvh::human_vs_human_move))
         .with_state(state)
         .layer(cors)
 }
@@ -38,7 +41,6 @@ pub fn create_router(state: AppState) -> axum::Router {
 pub fn create_default_state() -> AppState {
     let bots = YBotRegistry::new()
         .with_bot(Arc::new(RandomBot))
-        // Dos bots con “dificultad” distinta
         .with_bot(Arc::new(MctsBot::new(5_000)))
         .with_bot(Arc::new(MctsBot::new(20_000)));
 
