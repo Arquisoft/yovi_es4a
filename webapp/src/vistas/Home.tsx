@@ -7,6 +7,39 @@ import { getGameConfig, type GameConfig } from "../api/gamey";
 
 const { Title, Text } = Typography;
 
+type Starter = "human" | "bot";
+type LastConfig = { size: number; botId: string; starter: Starter };
+
+const LAST_CONFIG_KEY = "yovi:lastGameConfig";
+
+function loadLastConfig(): LastConfig | null {
+  try {
+    const raw = localStorage.getItem(LAST_CONFIG_KEY);
+    if (!raw)
+      return null;
+    const parsed = JSON.parse(raw) as Partial<LastConfig>;
+
+    if (typeof parsed.size !== "number")
+      return null;
+    if (typeof parsed.botId !== "string")
+      return null;
+    if (parsed.starter !== "human" && parsed.starter !== "bot")
+      return null;
+
+    return { size: parsed.size, botId: parsed.botId, starter: parsed.starter };
+  } catch {
+    return null;
+  }
+}
+
+function saveLastConfig(cfg: LastConfig) {
+  try {
+    localStorage.setItem(LAST_CONFIG_KEY, JSON.stringify(cfg));
+  }
+  catch {
+  }
+}
+
 export default function Home() {
   const { modal } = App.useApp();
 
@@ -14,12 +47,22 @@ export default function Home() {
 
   const [size, setSize] = useState(7);
   const [botId, setBotId] = useState("random_bot");
+  const [starter, setStarter] = useState<"human" | "bot">("human");
 
   const [config, setConfig] = useState<GameConfig | null>(null);
 
-  const [starter, setStarter] = useState<"human" | "bot">("human");
+  useEffect(() => {
+    const last = loadLastConfig();
+    if (!last) return;
+
+    setSize(last.size);
+    setBotId(last.botId);
+    setStarter(last.starter);
+  }, []);
 
   function handlePlay() {
+    saveLastConfig({ size, botId, starter });
+    
     const params = new URLSearchParams({
       size: String(size),
       bot: botId,
@@ -32,7 +75,12 @@ export default function Home() {
     getGameConfig()
       .then((c) => {
         setConfig(c);
-        setSize((prev) => Math.min(Math.max(prev, c.min_board_size), c.max_board_size));
+        setSize((prev) => {
+          const clamped = Math.min(Math.max(prev, c.min_board_size), c.max_board_size);
+          if (clamped !== prev)
+            saveLastConfig({ size: clamped, botId, starter });
+          return clamped;
+        });
       })
       .catch(() => {
         setConfig({ min_board_size: 2, max_board_size: 15 });
@@ -90,7 +138,11 @@ export default function Home() {
                       min={config?.min_board_size ?? 2}
                       max={config?.max_board_size ?? 15}
                       value={size}
-                      onChange={(v) => setSize(typeof v === "number" ? v : (config?.min_board_size ?? 2))}
+                      onChange={(v) => {
+                        const next = typeof v === "number" ? v : (config?.min_board_size ?? 2);
+                        setSize(next);
+                        saveLastConfig({ size: next, botId, starter });
+                      }}
                       style={{ width: 140 }}
                     />
                   </div>
@@ -101,7 +153,10 @@ export default function Home() {
                   <div>
                     <Select
                       value={botId}
-                      onChange={setBotId}
+                      onChange={(next) => {
+                        setBotId(next);
+                        saveLastConfig({ size, botId: next, starter });
+                      }}
                       style={{ width: 240 }}
                       options={[
                         { value: "random_bot", label: "Random bot" },
@@ -116,10 +171,13 @@ export default function Home() {
                   <div>
                     <Select
                       value={starter}
-                      onChange={setStarter}
+                      onChange={(next) => {
+                        setStarter(next);
+                        saveLastConfig({ size, botId, starter: next });
+                      }}
                       style={{ width: 200 }}
                       options={[
-                        { value: "human", label: "Humano" },
+                        { value: "human", label: "Human" },
                         { value: "bot", label: "Bot" },
                       ]}
                     />
@@ -131,11 +189,44 @@ export default function Home() {
                 </Button>
               </Flex>
 
-              <Divider>Human vs Human</Divider>
+              <Divider>Human vs. Human</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Text type="secondary">Sin implementar todavía</Text>
               </Flex>
+              {/* <Flex justify="center" gap={16} wrap="wrap" align="end">
+                <div>
+                  <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
+                  <div>
+                    <InputNumber
+                      min={config?.min_board_size ?? 2}
+                      max={config?.max_board_size ?? 15}
+                      value={size}
+                      onChange={(v) => setSize(typeof v === "number" ? v : (config?.min_board_size ?? 2))}
+                      style={{ width: 140 }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Text type="secondary"><TeamOutlined /> Starter:</Text>
+                  <div>
+                    <Select
+                      value={starter}
+                      onChange={setStarter}
+                      style={{ width: 200 }}
+                      options={[
+                        { value: "human", label: "Usuario" },
+                        { value: "bot", label: "Player 2" },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlay}>
+                  Jugar
+                </Button>
+              </Flex> */}
             </Space>
           </Card>
 
