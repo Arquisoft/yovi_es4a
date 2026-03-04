@@ -41,6 +41,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // REGISTRO
+// REGISTRO
 app.post('/createuser', async (req, res) => {
   const { username, password, email, profilePicture } = req.body;
   try {
