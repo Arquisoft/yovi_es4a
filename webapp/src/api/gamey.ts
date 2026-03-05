@@ -65,6 +65,7 @@ export type HumanVsBotMoveResponse = {
  * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
  */
 const API_URL = "/api/game";
+//const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export async function newGame(size: number): Promise<NewGameResponse> {
     const res = await fetch(`${API_URL}/v1/game/new`, {

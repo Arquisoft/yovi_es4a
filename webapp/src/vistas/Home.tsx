@@ -10,7 +10,6 @@ const { Title, Text } = Typography;
 type StarterHvB = "human" | "bot";
 
 type StarterHvH = "player0" | "player1";
-const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
 type LastConfigHvB = { size: number; botId: string; starter: StarterHvB };
 
@@ -52,6 +51,7 @@ export default function Home() {
   const [size, setSize] = useState(7);
   const [botId, setBotId] = useState("random_bot");
   const [starter, setStarter] = useState<"human" | "bot">("human");
+  const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
   const [config, setConfig] = useState<GameConfig | null>(null);
 
