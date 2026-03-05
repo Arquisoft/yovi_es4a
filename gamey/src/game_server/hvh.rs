@@ -14,7 +14,8 @@ use crate::{GameY, Movement, PlayerId};
 use super::auth::resolve_principal;
 use super::dto::{AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus};
 use super::error::ApiErrorResponse;
-use super::sessions::{GameSession, SessionStore};
+// use super::sessions::{GameSession, SessionStore};
+use super::sessions::{GameSession};
 use super::state::GameServerState;
 
 fn parse_uuid(id: &str) -> Result<String, ApiErrorResponse> {
