@@ -1,9 +1,25 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Divider, Flex, InputNumber, Select, Space, Typography } from "antd";
-import { BuildOutlined, LogoutOutlined, PlayCircleOutlined, RobotOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Divider,
+  Flex,
+  InputNumber,
+  Select,
+  Space,
+  Typography
+} from "antd";
+import {
+  BuildOutlined,
+  LogoutOutlined,
+  PlayCircleOutlined,
+  RobotOutlined,
+  TeamOutlined,
+  UserOutlined
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
-import { getGameConfig, type GameConfig } from "../api/gamey";
+import { getMeta, type MetaResponse } from "../api/gamey";
 
 const { Title, Text } = Typography;
 
@@ -69,9 +85,9 @@ function saveLastConfigHvH(cfg: LastConfigHvH) {
   }
 }
 
-function clampSize(n: number, cfg: GameConfig | null) {
-  const min = cfg?.min_board_size ?? 2;
-  const max = cfg?.max_board_size ?? 15;
+function clampSize(n: number, meta: MetaResponse | null) {
+  const min = meta?.min_board_size ?? 2;
+  const max = meta?.max_board_size ?? 15;
   return Math.min(Math.max(n, min), max);
 }
 
@@ -79,7 +95,7 @@ export default function Home() {
   const { modal } = App.useApp();
   const navigate = useNavigate();
 
-  const [config, setConfig] = useState<GameConfig | null>(null);
+  const [meta, setMeta] = useState<MetaResponse | null>(null);
 
   const [size, setSize] = useState(7);
 
@@ -92,9 +108,14 @@ export default function Home() {
 
   // Cargar config del server (min/max)
   useEffect(() => {
-    getGameConfig()
-      .then((c) => setConfig(c))
-      .catch(() => setConfig({ min_board_size: 2, max_board_size: 15 }));
+    getMeta()
+      .then((c) => setMeta(c))
+      .catch(() => setMeta({
+        api_version: "v1",
+        min_board_size: 2,
+        max_board_size: 15,
+        bots: ["random_bot", "mcts_bot"],
+      }));
   }, []);
 
   // Cargar last configs (HVB + HVH)
@@ -116,40 +137,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!config) return;
+    if (!meta) return;
+    setSize((prev) => clampSize(prev, meta));
+  }, [meta]);
 
-    setSize((prev) => {
-      const clamped = clampSize(prev, config);
-      if (clamped !== prev) {
-        saveLastConfigHvB({ size: clamped, botId, hvbstarter });
-        saveLastConfigHvH({ size: clamped, hvhstarter: hvhStarter });
-      }
-      return clamped;
-    });
-  }, [config]);
-
-  function handlePlayHvB() {
-    const clamped = clampSize(size, config);
-    saveLastConfigHvB({ size: clamped, botId, hvbstarter });
-
-    const params = new URLSearchParams({
-      size: String(clamped),
-      bot: botId,
-      hvbstarter,
-    });
-    navigate(`/game?${params.toString()}`);
-  }
-
-  function handlePlayHvH() {
-    const clamped = clampSize(size, config);
-    saveLastConfigHvH({ size: clamped, hvhstarter: hvhStarter });
-
-    const params = new URLSearchParams({
-      size: String(clamped),
-      hvhstarter: hvhStarter,
-    });
-    navigate(`/game-hvh?${params.toString()}`);
-  }
+  const minSize = meta?.min_board_size ?? 2;
+  const maxSize = meta?.max_board_size ?? 15;
 
   function handleLogout() {
     modal.confirm({
@@ -161,8 +154,28 @@ export default function Home() {
     });
   }
 
-  const minSize = config?.min_board_size ?? 2;
-  const maxSize = config?.max_board_size ?? 15;
+  function handlePlayHvB() {
+    const s = clampSize(size, meta);
+    saveLastConfigHvB({ size: s, botId, hvbstarter });
+
+    const params = new URLSearchParams();
+    params.set("size", String(s));
+    params.set("bot", botId);
+    params.set("hvbstarter", hvbstarter);
+
+    navigate(`/game-hvb?${params.toString()}`);
+  }
+
+  function handlePlayHvH() {
+    const s = clampSize(size, meta);
+    saveLastConfigHvH({ size: s, hvhstarter: hvhStarter });
+
+    const params = new URLSearchParams();
+    params.set("size", String(s));
+    params.set("hvhstarter", hvhStarter);
+
+    navigate(`/game-hvh?${params.toString()}`);
+  }
 
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
@@ -199,19 +212,14 @@ export default function Home() {
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <div>
-                  <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
+                  <Text type="secondary"><BuildOutlined /> Tamaño [{minSize} - {maxSize}]:</Text>
                   <div>
                     <InputNumber
                       min={minSize}
                       max={maxSize}
                       value={size}
-                      onChange={(v) => {
-                        const next = clampSize(
-                          typeof v === "number" ? v : minSize,
-                          config
-                        );
-                        setSize(next);
-                        saveLastConfigHvB({ size: next, botId, hvbstarter });
+                      onChange={(next) => {
+                        setSize(clampSize(Number(next ?? 7), meta))
                       }}
                       style={{ width: 140 }}
                     />
@@ -228,10 +236,7 @@ export default function Home() {
                         saveLastConfigHvB({ size, botId: next, hvbstarter });
                       }}
                       style={{ width: 240 }}
-                      options={[
-                        { value: "random_bot", label: "Random bot" },
-                        { value: "mcts_bot", label: "MCTS bot" },
-                      ]}
+                      options={(meta?.bots ?? ["random_bot"]).map((b) => ({ value: b, label: b }))}
                     />
                   </div>
                 </div>
@@ -263,22 +268,16 @@ export default function Home() {
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <div>
-                  <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
+                  <Text type="secondary"><BuildOutlined /> Tamaño [{minSize} - {maxSize}]:</Text>
                   <div>
                     <InputNumber
                       min={minSize}
                       max={maxSize}
                       value={size}
-                      onChange={(v) => {
-                        const next = clampSize(
-                          typeof v === "number" ? v : minSize,
-                          config
-                        );
-                        setSize(next);
-                        saveLastConfigHvH({ size: next, hvhstarter: hvhStarter });
+                      onChange={(next) => {
+                        setSize(clampSize(Number(next ?? 7), meta))
                       }}
                       style={{ width: 140 }}
-                      disabled
                     />
                   </div>
                 </div>
@@ -297,12 +296,11 @@ export default function Home() {
                         { value: "player0", label: "Player 0" },
                         { value: "player1", label: "Player 1" },
                       ]}
-                      disabled
                     />
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH} disabled>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
                   Jugar
                 </Button>
               </Flex>

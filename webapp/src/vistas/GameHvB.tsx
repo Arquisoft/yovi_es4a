@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Empty, Flex, Space, Typography, App } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Space,
+  Typography,
+  App
+} from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { humanVsBotMove, newHvbGame, type YEN } from "../api/gamey";
+import { createHvbGame, hvbHumanMove, type YEN } from "../api/gamey";
 import Board from "../game/Board";
 import { parseYenToCells } from "../game/yen";
 
@@ -19,6 +28,7 @@ export default function GameHvB() {
   const size = Number.isFinite(sizeParam) && sizeParam >= 2 ? sizeParam : 7;
 
   const [yen, setYen] = useState<YEN | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -36,12 +46,14 @@ export default function GameHvB() {
       setError("");
       setLoading(true);
       setYen(null);
+      setGameId(null);
       setWinner(null);
       setGameOver(false);
 
       try {
-        const r = await newHvbGame(size, botId, starter);
+        const r = await createHvbGame({ size, bot_id: botId, starter });
         if (!cancelled) {
+          setGameId(r.game_id);
           setYen(r.yen);
           if (r.status.state === "finished") {
             setGameOver(true);
@@ -59,7 +71,7 @@ export default function GameHvB() {
     return () => {
       cancelled = true;
     };
-  }, [size]);
+  }, [size, botId, starter]);
 
   function handleAbandonGame() {
     modal.confirm({
@@ -76,12 +88,12 @@ export default function GameHvB() {
   }
 
   async function handleCellClick(cellId: number) {
-    if (!yen || gameOver) return;
+    if (!yen || !gameId || gameOver) return;
 
     setError("");
     setLoading(true);
     try {
-      const r = await humanVsBotMove(botId, yen, cellId);
+      const r = await hvbHumanMove(gameId, cellId);
       setYen(r.yen);
 
       if (r.status.state === "finished") {
@@ -169,7 +181,6 @@ export default function GameHvB() {
                       <Title level={5} style={{ margin: 0 }}>
                         {resultText}
                       </Title>
-                      {/*<Text>{resultText}</Text>*/}
                     </Flex>
                     <Flex justify="center" gap={16} wrap="wrap" align="end">
                       <Button type="primary" onClick={goHome}>
