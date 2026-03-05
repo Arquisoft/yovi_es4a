@@ -44,7 +44,7 @@ describe("Bienvenida", () => {
         expect(screen.getByText("Bienvenido a YOVI")).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Iniciar sesión" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Registrarse" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Registrarse" })).toBeEnabled();
 
         expect(screen.getByRole("button", { name: "Continuar sin cuenta" })).toBeEnabled();
     });

@@ -55,3 +55,25 @@ Generate and open the documentation:
 ```sh
 cargo doc --open
 ```
+
+## View html testing
+
+Para visualizar la covertura de los test realizados instalamos:
+
+```sh
+cargo install cargo-llvm-cov --locked
+````
+
+Desde la carpeta gamey:
+
+```sh
+# Informe rápido por consola para un módulo específico
+cargo llvm-cov --lib cli
+
+# Informe completo para todo el proyecto Rust
+cargo llvm-cov
+
+# Generar informe visual en HTML (abre una web detallada)
+cargo llvm-cov --html
+# Para abrirlo: target/llvm-cov/html/index.html
+```

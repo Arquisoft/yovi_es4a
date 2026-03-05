@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const sanitize = require('mongo-sanitize');
 const User = require('./users-model');
+const crypto = require('crypto'); // tokens aleatorios
 
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
@@ -40,19 +41,62 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // REGISTRO
+// REGISTRO
 app.post('/createuser', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, email, profilePicture } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashedPassword });
+    
+    // Generamos un token aleatorio para la verificación
+    const verificationToken = crypto.randomBytes(20).toString('hex');
+
+    const user = new User({ 
+      username, 
+      password: hashedPassword,
+      email,
+      profilePicture: profilePicture || 'default-avatar.png',
+      verificationToken
+    });
     await user.save();
-    res.json({ message: `Bienvenido ${username}` });
+
+    // AQUÍ IRÍA EL ENVÍO REAL DEL CORREO (ej: usando Nodemailer y Google SMTP)
+    // De momento lo simulamos en consola para poder probar:
+    console.log(`\n[SIMULADOR DE CORREO] 📧`);
+    console.log(`Para: ${email}`);
+    console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
+    console.log(`http://localhost:3000/verify?token=${verificationToken}\n`);
+
+    res.json({ message: `Bienvenido ${username}. Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
     if (err.code === 11000) {
-      res.status(400).json({ error: 'El usuario ya existe' });
+      // Diferenciar si el duplicado es del username o del email
+      if (err.message.includes('email')) {
+        res.status(400).json({ error: 'El correo electrónico ya está en uso' });
+      } else {
+        res.status(400).json({ error: 'El nombre de usuario ya existe' });
+      }
     } else {
       res.status(400).json({ error: err.message });
     }
+  }
+});
+
+// NUEVA RUTA: VERIFICACIÓN DE CORREO
+app.get('/verify', async (req, res) => {
+  const { token } = req.query;
+  try {
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) {
+      return res.status(400).json({ error: 'Token inválido o expirado' });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined; // Limpiamos el token, ya se usó
+    await user.save();
+
+    res.json({ message: 'Correo verificado con éxito. Ya puedes iniciar sesión.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -62,6 +106,11 @@ app.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ username: sanitize(username) });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
+
+    // VERIFICAMOS SI EL CORREO ESTÁ CONFIRMADO
+    if (!user.isVerified) {
+      return res.status(403).json({ error: 'Por favor, verifica tu correo electrónico antes de iniciar sesión.' });
+    }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
