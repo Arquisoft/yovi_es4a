@@ -1,5 +1,4 @@
 pub mod hvb;
-pub mod hvh;
 
 use tower_http::cors::{Any, CorsLayer};
 use http::Method;
@@ -32,8 +31,6 @@ pub fn create_router(state: AppState) -> axum::Router {
         .route("/v1/game/new", axum::routing::post(hvb::new_game))
         .route("/v1/game/hvb/new/{bot_id}", axum::routing::post(hvb::new_hvb_game))
         .route("/v1/game/hvb/move/{bot_id}", axum::routing::post(hvb::human_vs_bot_move))
-        .route("/v1/game/hvh/new", axum::routing::post(hvh::new_hvh_game))
-        .route("/v1/game/hvh/move", axum::routing::post(hvh::human_vs_human_move))
         .with_state(state)
         .layer(cors)
 }
@@ -87,8 +84,6 @@ mod tests {
 
     #[test]
     fn create_default_state_registers_expected_bots() {
-        // OJO: al registrar dos MctsBot con el mismo name() ("mcts_bot"),
-        // el segundo pisa al primero.
         let state = create_default_state();
         let names = state.bots().names();
 

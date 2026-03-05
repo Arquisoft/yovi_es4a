@@ -70,7 +70,11 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
               <Button
                 className="hexBtn"
                 aria-label={`cell-${cell.cellId}`}
-                onClick={() => isClickable && onCellClick(cell.cellId)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isClickable) onCellClick(cell.cellId);
+                }}
                 disabled={!isClickable}
                 style={{
                   width: cellSize,

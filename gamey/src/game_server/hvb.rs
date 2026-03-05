@@ -99,7 +99,6 @@ pub async fn new_hvb_game(
             }));
         }
         Starter::Bot => {
-            // Buscar bot
             let bot = state.bots().find(&bot_id).ok_or_else(|| {
                 ErrorResponse::error(
                     &format!("Unknown bot_id: {}", bot_id),
@@ -108,7 +107,6 @@ pub async fn new_hvb_game(
                 )
             })?;
 
-            // Elegir y aplicar movimiento del bot como player 1
             let bot_coords = bot.choose_move(&game).ok_or_else(|| {
                 ErrorResponse::error(
                     "Bot could not choose a move",
@@ -182,7 +180,6 @@ pub async fn human_vs_bot_move(
     Path(bot_id): Path<String>,
     Json(req): Json<HumanMoveRequest>,
 ) -> Result<Json<HumanVsBotMoveResponse>, ErrorResponse> {
-    // 1) Validar cell_id (sin tocar coords.rs)
     let size = req.yen.size();
     if size < MIN_BOARD_SIZE || size > MAX_BOARD_SIZE {
         return Err(ErrorResponse::error(
@@ -204,7 +201,6 @@ pub async fn human_vs_bot_move(
         ));
     }
 
-    // 2) reconstruir GameY desde YEN
     let mut game = GameY::try_from(req.yen.clone()).map_err(|e| {
         ErrorResponse::error(
             &format!("Invalid YEN: {}", e),
@@ -213,7 +209,6 @@ pub async fn human_vs_bot_move(
         )
     })?;
 
-    // 3) Aplicar movimiento humano (player 0)
     let human_coords = Coordinates::from_index(req.cell_id, size);
     let human_player = PlayerId::new(0);
 
@@ -234,7 +229,6 @@ pub async fn human_vs_bot_move(
         coords: human_coords,
     };
 
-    // Si el humano termina la partida, no mueve bot
     if game.check_game_over() {
         let yen_out = YEN::from(&game);
         return Ok(Json(HumanVsBotMoveResponse {
@@ -247,7 +241,6 @@ pub async fn human_vs_bot_move(
         }));
     }
 
-    // 4) Elegir bot y mover (player 1)
     let bot = state.bots().find(&bot_id).ok_or_else(|| {
         ErrorResponse::error(
             &format!("Unknown bot_id: {}", bot_id),
@@ -264,7 +257,6 @@ pub async fn human_vs_bot_move(
         )
     })?;
 
-    // Convertir coords del bot a cell_id sin Result
     let bot_cell_id = bot_coords.to_index(size);
 
     game.add_move(Movement::Placement {

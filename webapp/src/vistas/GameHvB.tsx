@@ -26,7 +26,7 @@ export default function GameHvB() {
 
   const cells = useMemo(() => (yen ? parseYenToCells(yen) : []), [yen]);
 
-  const starterParam = (searchParams.get("starter") ?? "human").toLowerCase();
+  const starterParam = (searchParams.get("hvbstarter") ?? "human").toLowerCase();
   const starter = starterParam === "bot" ? "bot" : "human";
 
   useEffect(() => {

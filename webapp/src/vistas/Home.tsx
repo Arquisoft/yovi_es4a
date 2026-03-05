@@ -8,12 +8,13 @@ import { getGameConfig, type GameConfig } from "../api/gamey";
 const { Title, Text } = Typography;
 
 type StarterHvB = "human" | "bot";
-
 type StarterHvH = "player0" | "player1";
 
-type LastConfigHvB = { size: number; botId: string; starter: StarterHvB };
+type LastConfigHvB = { size: number; botId: string; hvbstarter: StarterHvB };
+type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
 
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
+const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
 
 function loadLastConfigHvB(): LastConfigHvB | null {
   try {
@@ -26,10 +27,10 @@ function loadLastConfigHvB(): LastConfigHvB | null {
       return null;
     if (typeof parsed.botId !== "string")
       return null;
-    if (parsed.starter !== "human" && parsed.starter !== "bot")
+    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot")
       return null;
 
-    return { size: parsed.size, botId: parsed.botId, starter: parsed.starter };
+    return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
   }
@@ -43,71 +44,125 @@ function saveLastConfigHvB(cfg: LastConfigHvB) {
   }
 }
 
+function loadLastConfigHvH(): LastConfigHvH | null {
+  try {
+    const raw = localStorage.getItem(LAST_CONFIG_KEY_HVH);
+    if (!raw)
+      return null;
+    const parsed = JSON.parse(raw) as Partial<LastConfigHvH>;
+
+    if (typeof parsed.size !== "number")
+      return null;
+    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1")
+      return null;
+
+    return { size: parsed.size, hvhstarter: parsed.hvhstarter };
+  } catch {
+    return null;
+  }
+}
+
+function saveLastConfigHvH(cfg: LastConfigHvH) {
+  try {
+    localStorage.setItem(LAST_CONFIG_KEY_HVH, JSON.stringify(cfg));
+  } catch {
+  }
+}
+
+function clampSize(n: number, cfg: GameConfig | null) {
+  const min = cfg?.min_board_size ?? 2;
+  const max = cfg?.max_board_size ?? 15;
+  return Math.min(Math.max(n, min), max);
+}
+
 export default function Home() {
   const { modal } = App.useApp();
-
   const navigate = useNavigate();
-
-  const [size, setSize] = useState(7);
-  const [botId, setBotId] = useState("random_bot");
-  const [starter, setStarter] = useState<"human" | "bot">("human");
-  const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
   const [config, setConfig] = useState<GameConfig | null>(null);
 
-  useEffect(() => {
-    const last = loadLastConfigHvB();
-    if (!last) return;
+  const [size, setSize] = useState(7);
 
-    setSize(last.size);
-    setBotId(last.botId);
-    setStarter(last.starter);
+  // HvB config
+  const [botId, setBotId] = useState("random_bot");
+  const [hvbstarter, setHvbStarter] = useState<StarterHvB>("human");
+
+  // HvH config
+  const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
+
+  // Cargar config del server (min/max)
+  useEffect(() => {
+    getGameConfig()
+      .then((c) => setConfig(c))
+      .catch(() => setConfig({ min_board_size: 2, max_board_size: 15 }));
   }, []);
 
+  // Cargar last configs (HVB + HVH)
+  useEffect(() => {
+    const lastHvb = loadLastConfigHvB();
+    const lastHvh = loadLastConfigHvH();
+
+    if (lastHvb) {
+      setSize(lastHvb.size);
+      setBotId(lastHvb.botId);
+      setHvbStarter(lastHvb.hvbstarter);
+    }
+
+    if (lastHvh) {
+      if (!lastHvb)
+        setSize(lastHvh.size);
+      setHvhStarter(lastHvh.hvhstarter);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!config) return;
+
+    setSize((prev) => {
+      const clamped = clampSize(prev, config);
+      if (clamped !== prev) {
+        saveLastConfigHvB({ size: clamped, botId, hvbstarter });
+        saveLastConfigHvH({ size: clamped, hvhstarter: hvhStarter });
+      }
+      return clamped;
+    });
+  }, [config]);
+
   function handlePlayHvB() {
-    saveLastConfigHvB({ size, botId, starter });
-    
+    const clamped = clampSize(size, config);
+    saveLastConfigHvB({ size: clamped, botId, hvbstarter });
+
     const params = new URLSearchParams({
-      size: String(size),
+      size: String(clamped),
       bot: botId,
-      starter,
+      hvbstarter,
     });
     navigate(`/game?${params.toString()}`);
   }
 
   function handlePlayHvH() {
+    const clamped = clampSize(size, config);
+    saveLastConfigHvH({ size: clamped, hvhstarter: hvhStarter });
+
     const params = new URLSearchParams({
-      size: String(size),
-      starter: hvhStarter,
+      size: String(clamped),
+      hvhstarter: hvhStarter,
     });
     navigate(`/game-hvh?${params.toString()}`);
   }
 
-  useEffect(() => {
-    getGameConfig()
-      .then((c) => {
-        setConfig(c);
-        setSize((prev) => {
-          const clamped = Math.min(Math.max(prev, c.min_board_size), c.max_board_size);
-          if (clamped !== prev)
-            saveLastConfigHvB({ size: clamped, botId, starter });
-          return clamped;
-        });
-      })
-      .catch(() => {
-        setConfig({ min_board_size: 2, max_board_size: 15 });
-      });
-  }, []);
-
   function handleLogout() {
     modal.confirm({
       title: "Cerrar sesión",
-      content: "¿Seguro que quieres volver a la pantalla de bienvenida?",
+      content: "¿Seguro que quieres cerrar sesión y salir?",
       okText: "Sí, salir",
       cancelText: "Cancelar",
       onOk: () => navigate("/", { replace: true }),
     });
   }
+
+  const minSize = config?.min_board_size ?? 2;
+  const maxSize = config?.max_board_size ?? 15;
 
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
@@ -147,13 +202,16 @@ export default function Home() {
                   <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
                   <div>
                     <InputNumber
-                      min={config?.min_board_size ?? 2}
-                      max={config?.max_board_size ?? 15}
+                      min={minSize}
+                      max={maxSize}
                       value={size}
                       onChange={(v) => {
-                        const next = typeof v === "number" ? v : (config?.min_board_size ?? 2);
+                        const next = clampSize(
+                          typeof v === "number" ? v : minSize,
+                          config
+                        );
                         setSize(next);
-                        saveLastConfigHvB({ size: next, botId, starter });
+                        saveLastConfigHvB({ size: next, botId, hvbstarter });
                       }}
                       style={{ width: 140 }}
                     />
@@ -167,7 +225,7 @@ export default function Home() {
                       value={botId}
                       onChange={(next) => {
                         setBotId(next);
-                        saveLastConfigHvB({ size, botId: next, starter });
+                        saveLastConfigHvB({ size, botId: next, hvbstarter });
                       }}
                       style={{ width: 240 }}
                       options={[
@@ -182,10 +240,10 @@ export default function Home() {
                   <Text type="secondary"><TeamOutlined /> Empieza:</Text>
                   <div>
                     <Select
-                      value={starter}
+                      value={hvbstarter}
                       onChange={(next) => {
-                        setStarter(next);
-                        saveLastConfigHvB({ size, botId, starter: next });
+                        setHvbStarter(next);
+                        saveLastConfigHvB({ size, botId, hvbstarter: next });
                       }}
                       style={{ width: 200 }}
                       options={[
@@ -208,11 +266,19 @@ export default function Home() {
                   <Text type="secondary"><BuildOutlined /> Tamaño:</Text>
                   <div>
                     <InputNumber
-                      min={config?.min_board_size ?? 2}
-                      max={config?.max_board_size ?? 12}
+                      min={minSize}
+                      max={maxSize}
                       value={size}
-                      onChange={(v) => setSize(typeof v === "number" ? v : (config?.min_board_size ?? 2))}
+                      onChange={(v) => {
+                        const next = clampSize(
+                          typeof v === "number" ? v : minSize,
+                          config
+                        );
+                        setSize(next);
+                        saveLastConfigHvH({ size: next, hvhstarter: hvhStarter });
+                      }}
                       style={{ width: 140 }}
+                      disabled
                     />
                   </div>
                 </div>
@@ -222,17 +288,21 @@ export default function Home() {
                   <div>
                     <Select
                       value={hvhStarter}
-                      onChange={setHvhStarter}
+                      onChange={(next) => {
+                        setHvhStarter(next);
+                        saveLastConfigHvH({ size, hvhstarter: next });
+                      }}
                       style={{ width: 200 }}
                       options={[
                         { value: "player0", label: "Player 0" },
                         { value: "player1", label: "Player 1" },
                       ]}
+                      disabled
                     />
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH} disabled>
                   Jugar
                 </Button>
               </Flex>

@@ -5,9 +5,16 @@ export type YEN = {
     layout: string;
 };
 
+/**
+ * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
+ * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
+ */
+//const API_URL = "/api/game";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+
 // ------- API Human vs Bot ---------------------------------------------------------------
 
-export type Starter = "human" | "bot";
+export type StarterHvb = "human" | "bot";
 
 export type NewHvbGameResponse = {
     yen: YEN;
@@ -20,7 +27,7 @@ export type NewHvbGameResponse = {
 export async function newHvbGame(
     size: number,
     botId: string,
-    starter: Starter
+    starter: StarterHvb
 ): Promise<NewHvbGameResponse> {
     const res = await fetch(`${API_URL}/v1/game/hvb/new/${encodeURIComponent(botId)}`, {
         method: "POST",
@@ -60,13 +67,6 @@ export type HumanVsBotMoveResponse = {
         | { state: "finished"; winner: string };
 };
 
-/**
- * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
- * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
- */
-const API_URL = "/api/game";
-//const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-
 export async function newGame(size: number): Promise<NewGameResponse> {
     const res = await fetch(`${API_URL}/v1/game/new`, {
         method: "POST",
@@ -100,14 +100,11 @@ export type StarterHvH = "player0" | "player1";
 export type NewHvhGameResponse = {
     yen: YEN;
     status:
-        | { state: "ongoing"; next: string }
-        | { state: "finished"; winner: string };
+        | { state: "ongoing"; next: "player0" | "player1" }
+        | { state: "finished"; winner: "player0" | "player1" };
 };
 
-export async function newHvhGame(
-    size: number,
-    starter: StarterHvH
-): Promise<NewHvhGameResponse> {
+export async function newHvhGame(size: number, starter: StarterHvH): Promise<NewHvhGameResponse> {
     const res = await fetch(`${API_URL}/v1/game/hvh/new`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,17 +123,14 @@ export type HumanVsHumanMoveResponse = {
     move_applied: {
         cell_id: number;
         coords: { x: number; y: number; z: number };
-        player: string; // "player0" | "player1"
+        player: "player0" | "player1";
     };
     status:
-        | { state: "ongoing"; next: string }
-        | { state: "finished"; winner: string };
+        | { state: "ongoing"; next: "player0" | "player1" }
+        | { state: "finished"; winner: "player0" | "player1" };
 };
 
-export async function humanVsHumanMove(
-    yen: YEN,
-    cellId: number
-): Promise<HumanVsHumanMoveResponse> {
+export async function humanVsHumanMove(yen: YEN, cellId: number): Promise<HumanVsHumanMoveResponse> {
     const res = await fetch(`${API_URL}/v1/game/hvh/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

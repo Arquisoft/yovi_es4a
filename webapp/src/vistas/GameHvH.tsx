@@ -17,7 +17,7 @@ export default function GameHvH() {
   const sizeParam = Number(searchParams.get("size") ?? "7");
   const size = Number.isFinite(sizeParam) && sizeParam >= 2 ? sizeParam : 7;
 
-  const starterParam = (searchParams.get("starter") ?? "player0").toLowerCase();
+  const starterParam = (searchParams.get("hvhstarter") ?? "player0").toLowerCase();
   const starter: StarterHvH = starterParam === "player1" ? "player1" : "player0";
 
   const [yen, setYen] = useState<YEN | null>(null);
@@ -36,6 +36,7 @@ export default function GameHvH() {
     async function start() {
       setError("");
       setLoading(true);
+
       setYen(null);
       setWinner(null);
       setNext(null);
@@ -45,10 +46,14 @@ export default function GameHvH() {
         const r = await newHvhGame(size, starter);
         if (!cancelled) {
           setYen(r.yen);
+
           if (r.status.state === "finished") {
             setGameOver(true);
             setWinner(r.status.winner);
+            setNext(null);
           } else {
+            setGameOver(false);
+            setWinner(null);
             setNext(r.status.next);
           }
         }
@@ -134,12 +139,7 @@ export default function GameHvH() {
           ) : (
             <>
               <Card>
-                <Board
-                  size={yen.size}
-                  cells={cells}
-                  disabled={loading || gameOver}
-                  onCellClick={handleCellClick}
-                />
+                <Board size={yen.size} cells={cells} disabled={loading || gameOver} onCellClick={handleCellClick} />
               </Card>
 
               {gameOver && (
