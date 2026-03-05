@@ -1,145 +1,218 @@
+// gamey.ts
+// API client para hablar con el game_server (gamey) desde webapp.
+
 export type YEN = {
-    size: number;
-    turn: number;
-    players: string[];
-    layout: string;
+  size: number;
+  layout: string;
+  turn?: number;
+  players?: string[];
 };
 
-/**
- * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
- * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
- */
-//const API_URL = "/api/game";
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
-// ------- API Human vs Bot ---------------------------------------------------------------
+/**
+ * Devuelve un client_id estable. La idea es guardarlo en localStorage.
+ * - Si ya existe: lo devuelve
+ * - Si no: lo crea (UUID simple) y lo guarda
+ */
+export function getOrCreateClientId(): string {
+  const key = "yovi_client_id";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
 
-export type StarterHvb = "human" | "bot";
+  // UUID v4 “simple” (suficiente para client-side)
+  const newId =
+    (crypto as any)?.randomUUID?.() ??
+    `client_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 
-export type NewHvbGameResponse = {
-    yen: YEN;
-    bot_move: { cell_id: number; coords: { x: number; y: number; z: number } } | null;
-    status:
-        | { state: "ongoing"; next: string }
-        | { state: "finished"; winner: string };
-};
-
-export async function newHvbGame(
-    size: number,
-    botId: string,
-    starter: StarterHvb
-): Promise<NewHvbGameResponse> {
-    const res = await fetch(`${API_URL}/v1/game/hvb/new/${encodeURIComponent(botId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ size, starter }),
-    });
-
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
+  localStorage.setItem(key, newId);
+  return newId;
 }
 
-export type NewGameResponse = { yen: YEN };
+function buildHeaders(extra?: HeadersInit): HeadersInit {
+  const base: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Client-Id": getOrCreateClientId(),
+  };
+  return { ...base, ...(extra as any) };
+}
+
+async function parseError(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    return data?.message ?? `HTTP ${res.status}`;
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
+async function http<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, init);
+  if (!res.ok) {
+    throw new Error(await parseError(res));
+  }
+  return res.json() as Promise<T>;
+}
+
+// --------------------------------------------------------------------------------------
+// META
+// --------------------------------------------------------------------------------------
+
+export type MetaResponse = {
+  api_version: string;
+  min_board_size: number;
+  max_board_size: number;
+  bots: string[];
+};
+
+export async function getMeta(): Promise<MetaResponse> {
+  return http<MetaResponse>("/api/v1/meta", {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+}
+
+// --------------------------------------------------------------------------------------
+// CONFIG (recordada por client_id / user en el futuro)
+// --------------------------------------------------------------------------------------
+
+export type Starter = "human" | "bot";
 
 export type GameConfig = {
-    min_board_size: number;
-    max_board_size: number;
+  size: number;
+  starter: Starter;
+  bot_id: string | null;
 };
 
-export async function getGameConfig(): Promise<GameConfig> {
-    const res = await fetch(`${API_URL}/v1/game/config`);
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
+export async function getConfig(): Promise<GameConfig> {
+  return http<GameConfig>("/api/v1/config", {
+    method: "GET",
+    headers: buildHeaders(),
+  });
 }
 
-export type HumanVsBotMoveResponse = {
-    yen: YEN;
-    human_move: { cell_id: number; coords: { x: number; y: number; z: number } };
-    bot_move: { cell_id: number; coords: { x: number; y: number; z: number } } | null;
-    status:
-        | { state: "ongoing"; next: string }
-        | { state: "finished"; winner: string };
+export async function putConfig(cfg: GameConfig): Promise<GameConfig> {
+  return http<GameConfig>("/api/v1/config", {
+    method: "PUT",
+    headers: buildHeaders(),
+    body: JSON.stringify(cfg),
+  });
+}
+
+// --------------------------------------------------------------------------------------
+// RESPUESTAS COMUNES
+// --------------------------------------------------------------------------------------
+
+export type GameMode = "hvh" | "hvb";
+
+export type NextTurn = "human" | "bot" | "player0" | "player1";
+export type Winner = "human" | "bot" | "player0" | "player1";
+
+export type GameStatus =
+  | { state: "ongoing"; next: NextTurn }
+  | { state: "finished"; winner: Winner };
+
+export type GameStateResponse = {
+  game_id: string;
+  mode: GameMode;
+  yen: YEN;
+  status: GameStatus;
 };
 
-export async function newGame(size: number): Promise<NewGameResponse> {
-    const res = await fetch(`${API_URL}/v1/game/new`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ size }),
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
-}
-
-export async function humanVsBotMove(botId: string, yen: YEN, cellId: number): Promise<HumanVsBotMoveResponse> {
-    const res = await fetch(`${API_URL}/v1/game/hvb/move/${encodeURIComponent(botId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yen, cell_id: cellId }),
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
-}
-
-// ------- API Human vs Human -------------------------------------------------------------
-
-export type StarterHvH = "player0" | "player1";
-
-export type NewHvhGameResponse = {
-    yen: YEN;
-    status:
-        | { state: "ongoing"; next: "player0" | "player1" }
-        | { state: "finished"; winner: "player0" | "player1" };
+export type CellMoveRequest = {
+  cell_id: number;
 };
 
-export async function newHvhGame(size: number, starter: StarterHvH): Promise<NewHvhGameResponse> {
-    const res = await fetch(`${API_URL}/v1/game/hvh/new`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ size, starter }),
-    });
+export type MoveCoords = { x: number; y: number; z: number };
+export type AppliedMove = { cell_id: number; coords: MoveCoords };
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
-}
-
-export type HumanVsHumanMoveResponse = {
-    yen: YEN;
-    move_applied: {
-        cell_id: number;
-        coords: { x: number; y: number; z: number };
-        player: "player0" | "player1";
-    };
-    status:
-        | { state: "ongoing"; next: "player0" | "player1" }
-        | { state: "finished"; winner: "player0" | "player1" };
+export type HvbMoveResponse = {
+  game_id: string;
+  yen: YEN;
+  human_move: AppliedMove;
+  bot_move: AppliedMove | null;
+  status: GameStatus;
 };
 
-export async function humanVsHumanMove(yen: YEN, cellId: number): Promise<HumanVsHumanMoveResponse> {
-    const res = await fetch(`${API_URL}/v1/game/hvh/move`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ yen, cell_id: cellId }),
-    });
+export type HvhMoveResponse = {
+  game_id: string;
+  yen: YEN;
+  applied_move: AppliedMove;
+  status: GameStatus;
+};
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? `HTTP ${res.status}`);
-    }
-    return res.json();
+// --------------------------------------------------------------------------------------
+// HvB
+// --------------------------------------------------------------------------------------
+
+export type CreateHvbGameRequest = {
+  size?: number;
+  starter?: Starter;
+  bot_id?: string;
+};
+
+export async function createHvbGame(req: CreateHvbGameRequest): Promise<GameStateResponse> {
+  return http<GameStateResponse>("/api/v1/hvb/games", {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify(req),
+  });
+}
+
+export async function getHvbGame(gameId: string): Promise<GameStateResponse> {
+  return http<GameStateResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+}
+
+export async function hvbHumanMove(gameId: string, cellId: number): Promise<HvbMoveResponse> {
+  return http<HvbMoveResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/moves`, {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
+  });
+}
+
+export async function deleteHvbGame(gameId: string): Promise<{ deleted: boolean }> {
+  return http<{ deleted: boolean }>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}`, {
+    method: "DELETE",
+    headers: buildHeaders(),
+  });
+}
+
+// --------------------------------------------------------------------------------------
+// HvH
+// --------------------------------------------------------------------------------------
+
+export async function createHvhGame(): Promise<GameStateResponse> {
+  return http<GameStateResponse>("/api/v1/hvh/games", {
+    method: "POST",
+    headers: buildHeaders(),
+  });
+}
+
+export async function getHvhGame(gameId: string): Promise<GameStateResponse> {
+  return http<GameStateResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+}
+
+export async function hvhMove(gameId: string, cellId: number): Promise<HvhMoveResponse> {
+  return http<HvhMoveResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}/moves`, {
+    method: "POST",
+    headers: buildHeaders(),
+    body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
+  });
+}
+
+export async function deleteHvhGame(gameId: string): Promise<{ deleted: boolean }> {
+  return http<{ deleted: boolean }>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}`, {
+    method: "DELETE",
+    headers: buildHeaders(),
+  });
 }
