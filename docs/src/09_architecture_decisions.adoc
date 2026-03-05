@@ -39,27 +39,80 @@ endif::arc42help[]
 En esta sección se documentan las decisiones arquitectónicas fundamentales que rigen el diseño y desarrollo de **Yovi_es4a**, detallando su justificación y las alternativas consideradas.
 
 === ADR 1: Uso de MongoDB como Base de Datos
+
 * **Estado:** Aceptada.
-* **Contexto:** Se requiere un sistema de persistencia para almacenar los datos de los usuarios y del juego que sea flexible y compatible con el ecosistema tecnológico actual.
-* **Alternativas:** Bases de datos relacionales (como MySQL).
-* **Justificación:** ** **Compatibilidad:** MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en **React** y el uso de **TypeScript**.
-** **Integración con Rust:** La seguridad de tipos permite convertir documentos de la base de datos en `structs` de **Rust** con una sola línea de código, garantizando datos válidos en el motor `gamey`.
-** **Facilidad de despliegue:** Gracias a **Docker**, levantar una instancia de MongoDB es inmediato, facilitando la adición de requisitos sin necesidad de migraciones complejas.
-** **Idoneidad:** Es ideal para estructuras de datos no excesivamente complejas, como las de un juego web.
-* **Consecuencias:** Se espera una mayor flexibilidad y rapidez en el desarrollo al no depender de esquemas rígidos.
+* **Contexto:** Se requiere un sistema de persistencia para almacenar los datos de los usuarios, partidas y estadísticas del juego que sea flexible y compatible con el ecosistema tecnológico actual.
+* **Alternativas consideradas:**
+** Bases de datos relacionales como **MySQL** o **PostgreSQL**: ofrecen esquemas rígidos y transacciones ACID completas, pero requieren migraciones complejas ante cambios del modelo de datos.
+** **SQLite**: sencilla para desarrollo local, pero no adecuada para entornos distribuidos en contenedores.
+* **Justificación:**
+** **Compatibilidad con el stack:** MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en React y el uso de TypeScript.
+** **Integración con Rust:** La seguridad de tipos de Rust permite deserializar documentos de MongoDB en `structs` con una sola línea de código, garantizando datos válidos en el motor `gamey`.
+** **Facilidad de despliegue:** Gracias a Docker, levantar una instancia de MongoDB es inmediato y reproducible, sin pasos de instalación manual.
+** **Flexibilidad de esquema:** Ideal para estructuras de datos en evolución, como las de un juego web en desarrollo iterativo, donde los campos de una partida o usuario pueden cambiar entre versiones sin necesidad de migraciones destructivas.
+* **Consecuencias:** Se espera mayor velocidad de desarrollo al no depender de esquemas rígidos. Como contrapartida, se renuncia a la consistencia transaccional fuerte entre colecciones, lo que es aceptable dado el dominio del problema.
 
 === ADR 2: Uso inicial de PlantUML para diagramación
+
 * **Estado:** Reemplazada (por ADR 3).
 * **Contexto:** Necesidad de una herramienta para crear los diagramas técnicos de la documentación arc42.
-* **Alternativas:** Editores visuales como draw.io.
-* **Justificación:**  **Enfoque técnico:** Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico.
-** **Mantenibilidad:** El uso de código facilita la realización de cambios rápidos y el control de versiones.
-* **Consecuencias:** Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual.
+* **Alternativas consideradas:**
+** Editores visuales como **draw.io** o **Lucidchart**.
+* **Justificación:**
+** **Enfoque técnico:** Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico y con buen soporte en entornos de CI/CD.
+** **Mantenibilidad:** El uso de texto plano facilita la realización de cambios rápidos y el control de versiones con Git (se puede hacer `diff` entre versiones del diagrama).
+* **Consecuencias:** Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual, lo que provocó dificultades al representar arquitecturas complejas.
 
 === ADR 3: Adopción de draw.io para diagramas
+
 * **Estado:** Aceptada.
-* **Contexto:** Tras evaluar el uso de PlantUML, se identificó la necesidad de una representación más esquemática y visual de los componentes.
-* **Alternativas:** PlantUML (mantenida como opción de respaldo).
-* **Justificación:**  **Intuitividad:** Es una herramienta más visual que no requiere aprendizaje previo para su manejo.
-** **Control Visual:** Permite ubicar los componentes (`webapp`, `users`, `gamey`) libremente, facilitando la representación de relaciones y jerarquías de forma más clara y esquemática.
-* **Consecuencias:** Aunque requiere algo más de tiempo manual para la creación, resulta más cómoda y comunicativa para el equipo de desarrollo.
+* **Contexto:** Tras evaluar el uso de PlantUML en los primeros diagramas, se identificó la necesidad de una representación más libre, esquemática y visual de los componentes, especialmente para los diagramas de despliegue y contexto.
+* **Alternativas consideradas:**
+** **PlantUML** (mantenida como opción de respaldo para diagramas de secuencia).
+** **Mermaid:** Similar a PlantUML, basada en texto, con buen soporte en GitHub Markdown.
+* **Justificación:**
+** **Intuitividad:** Es una herramienta visual que no requiere aprendizaje previo para su manejo. Todos los miembros del equipo pueden contribuir a los diagramas independientemente de su perfil técnico.
+** **Control Visual:** Permite posicionar libremente los componentes (`webapp`, `users`, `gamey`), facilitando la representación de relaciones jerárquicas y flujos de comunicación de forma más clara y esquemática que el código de PlantUML.
+** **Integración con GitHub:** Los ficheros `.drawio` se pueden almacenar directamente en el repositorio y visualizarse en GitHub Pages.
+* **Consecuencias:** Aunque requiere algo más de tiempo manual para la creación y no permite generación automática, resulta más cómoda, comunicativa y accesible para todo el equipo. Se usa conjuntamente con PlantUML para los diagramas de secuencia (vista de ejecución), donde la generación desde código sigue siendo ventajosa.
+
+=== ADR 4: Implementación del motor del juego en Rust
+
+* **Estado:** Aceptada (impuesta por los requisitos del proyecto).
+* **Contexto:** La lógica del juego Y, incluyendo la validación de movimientos, la detección de victoria y la implementación de bots, requiere un alto rendimiento, especialmente para el algoritmo MCTS que simula miles de partidas.
+* **Alternativas consideradas:**
+** **Node.js:** Hubiera simplificado el stack tecnológico al unificar frontend y backend en JavaScript/TypeScript, pero ofrece menor rendimiento para tareas computacionalmente intensivas.
+** **Python:** Lenguaje más familiar para el equipo, con librerías de IA disponibles, pero con el overhead del intérprete y el GIL (Global Interpreter Lock) como limitantes.
+* **Justificación:**
+** **Rendimiento:** Rust compila a código nativo sin *garbage collector*, con rendimiento comparable a C/C++. Esto es crítico para el algoritmo MCTS, que requiere explorar miles de nodos del árbol de juego por segundo.
+** **Seguridad de memoria:** El sistema de *ownership* de Rust garantiza la ausencia de *data races* y errores de acceso a memoria en tiempo de compilación, reduciendo bugs difíciles de depurar.
+** **Versatilidad:** El servicio `gamey` puede ejecutarse tanto como servidor HTTP (modo producción) como desde la línea de comandos (modo desarrollo y pruebas), gracias a la arquitectura modular del proyecto Rust.
+** **Aprendizaje:** El proyecto sirve como oportunidad para el equipo de adquirir experiencia con un lenguaje de sistemas moderno y de alta demanda laboral.
+* **Consecuencias:** La curva de aprendizaje de Rust es significativa (gestión de *lifetimes*, *ownership*), lo que supuso un riesgo de retraso inicial. Se mitigó empezando con implementaciones simples y evolucionando gradualmente hacia algoritmos más complejos.
+
+=== ADR 5: Arquitectura de microservicios con tres componentes independientes
+
+* **Estado:** Aceptada.
+* **Contexto:** El sistema necesita integrar tecnologías heterogéneas (React, Node.js, Rust) y permitir el desarrollo en paralelo por parte de los distintos miembros del equipo.
+* **Alternativas consideradas:**
+** **Monolito:** Una única aplicación que integre frontend, lógica de usuario y motor del juego. Más sencillo de desplegar, pero impide el uso de Rust para el motor (requisito del proyecto) e introduce acoplamiento entre responsabilidades.
+** **Monorepo con microservicios:** La solución adoptada: un único repositorio Git (`yovi_es4a`) que contiene los tres servicios (`webapp`, `users`, `gamey`) con sus propios `Dockerfile` y scripts de build, orquestados por `docker-compose.yml`.
+* **Justificación:**
+** **Separación de responsabilidades:** Cada servicio tiene una única responsabilidad bien definida: UI (webapp), gestión de usuarios y partidas (users), lógica del juego (gamey).
+** **Desarrollo en paralelo:** Los miembros del equipo pueden trabajar en servicios distintos sin interferencias, reduciendo conflictos de merge.
+** **Tecnología apropiada por dominio:** Permite usar Rust donde el rendimiento es crítico, Node.js para el API REST y React para la UI, sin compromisos.
+** **Despliegue independiente:** Cada servicio se puede actualizar, escalar o reiniciar de forma independiente.
+* **Consecuencias:** Aumenta la complejidad operacional (hay que gestionar múltiples servicios, redes Docker, configuraciones de entorno). Se mitiga mediante `docker-compose.yml` que define toda la topología en un solo fichero y un pipeline de CI/CD completamente automatizado.
+
+=== ADR 6: Uso de MCTS como estrategia de bot de máxima dificultad
+
+* **Estado:** Aceptada.
+* **Contexto:** El bot del juego debe ofrecer al menos dos niveles de dificultad. Se necesita una estrategia de alto nivel que proporcione un oponente desafiante para usuarios avanzados.
+* **Alternativas consideradas:**
+** **Minimax con poda alfa-beta:** Algoritmo clásico para juegos de dos jugadores con suma cero. Garantiza el movimiento óptimo hasta una profundidad dada, pero el espacio de estados del Juego Y es muy grande, limitando la profundidad explorable.
+** **Heurísticas ad-hoc:** Reglas específicas del dominio (ej. priorizar el centro, bloquear al oponente). Más rápidas, pero menos efectivas para jugadores avanzados.
+* **Justificación:**
+** **Adaptabilidad:** MCTS no requiere una función heurística definida manualmente; aprende qué movimientos son buenos simulando partidas completas aleatoriamente (*rollouts*).
+** **Escalabilidad de calidad:** Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad.
+** **Idoneidad para el Juego Y:** MCTS ha demostrado ser efectivo en juegos de tablero de alto factor de ramificación como el Juego Y, donde minimax con poda se queda corto.
+* **Consecuencias:** El algoritmo MCTS es computacionalmente intensivo y puede causar tiempos de respuesta elevados si no se limita. Se implementa un límite de tiempo (timeout) para garantizar que el servicio `gamey` siempre responde dentro de un umbral aceptable, devolviendo el mejor movimiento encontrado hasta ese momento.

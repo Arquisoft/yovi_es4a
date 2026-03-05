@@ -22,7 +22,12 @@ export default function Bienvenida() {
           Iniciar sesión
         </Button>
 
-        <Button type="primary" size="large" style={{ width: 180 }} disabled>
+        <Button 
+          type="primary" 
+          size="large" 
+          style={{ width: 180 }}
+          onClick={() => navigate("/registro")}
+          >
           Registrarse
         </Button>
 

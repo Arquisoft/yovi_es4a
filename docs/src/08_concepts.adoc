@@ -56,22 +56,84 @@ See https://docs.arc42.org/section-8/[Concepts] in the arc42 documentation.
 ****
 endif::arc42help[]
 
-=== Monitorización y Observabilidad
-Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal:
+=== Modelo de Dominio
 
-* **Recolección de métricas:** Prometheus actúa como el recolector central, extrayendo datos de rendimiento de los diferentes contenedores.
-* **Visualización:** Grafana proporciona tableros de control para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos.
+El sistema gira en torno a la lógica del **Juego Y**, un juego de estrategia en tablero triangular cuyo objetivo es conectar dos lados del tablero con una cadena continua de piezas propias.
+
+Los conceptos clave del dominio son:
+
+* **Tablero (Board):** Estructura triangular de tamaño variable (N×N casillas). Las posiciones se representan mediante **coordenadas baricéntricas** (x, y, z) donde `x + y + z = N - 1`, lo que facilita el cálculo de distancias a los lados.
+* **Partida (Game):** Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores y el historial de movimientos.
+* **Movimiento (Move):** Acción de colocar una pieza en una casilla libre. Se serializa en notación **YEN** para el intercambio entre servicios.
+* **Notación YEN (Y Exchange Notation):** Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión entre `webapp`, `users` y `gamey`.
+* **Notación YGN (Y Game Notation):** Formato de registro de la secuencia de movimientos de una partida completa, análogo al PGN del ajedrez.
+* **Usuario:** Persona registrada en el sistema con credenciales, historial de partidas y estadísticas.
+* **Bot:** Agente automático que juega partidas consumiendo el API público. Puede usar distintas estrategias de decisión.
+
+=== Seguridad y Autenticación
+
+La seguridad es un concepto transversal que afecta principalmente al servicio `users` y a las comunicaciones cliente-servidor.
+
+* **Registro y autenticación:** Los usuarios se registran y autentican mediante correo electrónico y contraseña. El sistema implementa una verificación en dos pasos (2FA por email) para confirmar la identidad del usuario antes de dar acceso a su cuenta.
+* **Almacenamiento seguro de contraseñas:** Las contraseñas **nunca se almacenan en texto plano**. Se guardan en MongoDB como hashes criptográficos (usando algoritmos como bcrypt), de forma que incluso un acceso no autorizado a la base de datos no exponga las credenciales reales.
+* **Validación de entradas:** El servicio `users` valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.
+* **Control de acceso a la API:** El API público para bots expone únicamente las operaciones necesarias (consultar estado, enviar movimiento), con comprobaciones de permisos para impedir acceso a datos de otros usuarios.
+* **Red interna de Docker:** MongoDB no expone puertos públicos; solo es accesible desde la red interna de contenedores (`docker network`), reduciendo la superficie de ataque.
+
+=== Comunicación entre Servicios
+
+La comunicación entre todos los componentes del sistema sigue un patrón uniforme:
+
+* **Protocolo:** HTTP/REST en todos los intercambios.
+* **Formato de datos:** JSON en todos los mensajes, incluyendo la representación del estado del juego en notación **YEN**.
+* **Sincronía:** Las llamadas son síncronas (petición-respuesta). La `webapp` llama al servicio `users`, que a su vez llama a `gamey` cuando necesita delegar lógica de juego.
+* **Documentación del API:** El servicio `users` expone su API documentada con **Swagger/OpenAPI**, permitiendo que los desarrolladores de bots conozcan los endpoints disponibles, sus parámetros y los formatos de respuesta esperados.
+
+=== Estrategias de Bot
+
+El servicio `gamey` implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad:
+
+* **Bot aleatorio:** Elige una casilla válida aleatoria. Nivel de dificultad mínimo.
+* **Bot MCTS (Monte Carlo Tree Search):** Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento posible. Es el nivel de dificultad más alto. Se implementa con un límite de tiempo de respuesta para evitar bloqueos del contenedor.
+
+La arquitectura del módulo `gamey` separa claramente el registro de bots (`bot/registry`) de la implementación de cada estrategia (`bot/`), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.
+
+=== Monitorización y Observabilidad
+
+Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal que cubre todos los entornos:
+
+* **Recolección de métricas:** **Prometheus** actúa como el recolector central, haciendo *scraping* periódico del endpoint `/metrics` de los diferentes servicios instrumentados. Registra métricas de rendimiento como tiempos de respuesta, número de peticiones, errores HTTP y uso de recursos.
+* **Visualización:** **Grafana** proporciona tableros de control (*dashboards*) para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos o degradaciones de rendimiento. Los dashboards se aprovisionan automáticamente como código (como volúmenes de configuración).
+* **Trazabilidad de logs:** Los servicios generan logs estructurados que permiten correlacionar eventos entre `webapp`, `users` y `gamey` para diagnosticar problemas en flujos completos.
+
+=== Calidad de Código y Testing
+
+La calidad del código se garantiza de forma continua y transversal mediante:
+
+* **Tests unitarios:** Cada servicio tiene su suite de tests unitarios independiente (`npm test` para `webapp` y `users`, `cargo test` para `gamey`). Se verifica la lógica de negocio de forma aislada con mocks de dependencias.
+* **Tests de integración:** Se prueba la comunicación entre servicios para verificar que los contratos del API se cumplen correctamente.
+* **Tests end-to-end:** La `webapp` incluye tests E2E (`npm run test:e2e`) que simulan la interacción completa de un usuario con el sistema a través del navegador.
+* **Análisis estático (SonarCloud):** Integrado en el pipeline de CI/CD, analiza cada pull request en busca de *code smells*, duplicidades, vulnerabilidades de seguridad y cobertura de tests. Se publica un *Quality Gate* público con el estado del proyecto.
 
 === Proceso de Desarrollo y Gestión (GitHub Ecosystem)
+
 Para asegurar la calidad del software y la organización del equipo, se utiliza el ecosistema de GitHub de manera integral:
 
 * **Gestión de Tareas (Kanban):** Se utiliza **GitHub Projects** con una metodología Kanban para visualizar el flujo de trabajo (To Do, In Progress, Done...). Esto permite el seguimiento en tiempo real del estado de cada funcionalidad.
-* **Seguimiento de Tareas (Issues):** Cada nueva funcionalidad, error o mejora se documenta mediante **Issues**, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos.
-* **Flujo de Trabajo (Pull Requests):** El código no se integra directamente en la rama principal. Se utilizan **Pull Requests (PRs)** para la revisión, asegurando que el código cumpla con los estándares antes de ser fusionado.
+* **Seguimiento de Tareas (Issues):** Cada nueva funcionalidad, error o mejora se documenta mediante **Issues**, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos hasta el código.
+* **Flujo de Trabajo (Pull Requests):** El código no se integra directamente en la rama principal (`master`, que está protegida). Se utilizan **Pull Requests (PRs)** para la revisión por parte de otros miembros del equipo, asegurando que el código cumpla con los estándares antes de ser fusionado.
+* **Actas de reuniones (Wiki):** Las reuniones semanales de equipo y las reuniones extraordinarias quedan registradas en la **Wiki del repositorio de GitHub**, garantizando trazabilidad de las decisiones tomadas.
 
 === Tecnologías
-El sistema adopta un enfoque de varios lenguajes, seleccionando la herramienta más adecuada para cada dominio del problema:
 
-* **Backend de Gestión (Node.js/Express):** El servicio `users` utiliza un entorno basado en eventos y JavaScript para gestionar la lógica de usuario de forma ágil y escalable.
-* **Motor de Juego de Alto Rendimiento (Rust):** El servicio `gamey` está desarrollado en Rust para garantizar la seguridad de memoria y un alto rendimiento en la lógica del juego, ofreciendo además versatilidad al poder ejecutarse tanto en modo servidor como en modo CLI.
-* **Frontend Moderno (React + Vite):** La interfaz de usuario (`webapp`) utiliza React para una gestión eficiente del estado de la UI y Vite como herramienta de construcción rápida.
+El sistema adopta un enfoque *polyglot* (varios lenguajes y tecnologías), seleccionando la herramienta más adecuada para cada dominio del problema:
+
+* **Motor de Juego de Alto Rendimiento (Rust):** El servicio `gamey` está desarrollado en Rust para garantizar la **seguridad de memoria** (sin garbage collector, sin carreras de datos) y un **alto rendimiento** en la evaluación del árbol de juego. Rust también ofrece versatilidad al poder ejecutarse tanto en modo servidor HTTP como en modo CLI para pruebas. La documentación del motor se genera automáticamente con `cargo doc`.
+
+* **Backend de Gestión (Node.js/Express):** El servicio `users` utiliza un entorno basado en eventos y JavaScript/TypeScript para gestionar la lógica de usuario de forma **ágil y escalable**. Node.js es especialmente apropiado para APIs REST con operaciones de I/O intensivas (acceso a MongoDB, llamadas a `gamey`).
+
+* **Frontend Moderno (React + Vite + TypeScript):** La interfaz de usuario (`webapp`) utiliza React para una gestión eficiente del estado de la UI, TypeScript para la seguridad de tipos en tiempo de compilación, y Vite como herramienta de construcción ultrarrápida en desarrollo.
+
+* **Base de Datos Documental (MongoDB):** La flexibilidad del esquema JSON/BSON facilita la evolución del modelo de datos sin migraciones complejas, y su integración nativa con el ecosistema JavaScript/TypeScript simplifica el desarrollo del servicio `users`.
+
+* **Contenedorización (Docker + Docker Compose):** Todos los servicios se empaquetan en imágenes Docker, garantizando la portabilidad y reproducibilidad del entorno en desarrollo, pruebas y producción.
