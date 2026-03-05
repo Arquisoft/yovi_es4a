@@ -13,7 +13,7 @@ use crate::{GameY, Movement, PlayerId};
 
 use super::auth::resolve_principal;
 use super::dto::{
-    AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus, Starter, Winner,
+    AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus, HvBStarter, Winner,
 };
 use super::error::ApiErrorResponse;
 use super::sessions::{GameSession};
@@ -22,7 +22,7 @@ use super::state::GameServerState;
 #[derive(Debug, serde::Deserialize)]
 pub struct CreateHvbGameRequest {
     pub size: Option<u32>,
-    pub starter: Option<Starter>,
+    pub starter: Option<HvBStarter>,
     pub bot_id: Option<String>,
 }
 
@@ -43,7 +43,7 @@ pub async fn create_game(
     let mut cfg = state.config_store.get_or_default(&principal).await;
 
     if let Some(size) = req.size { cfg.size = size; }
-    if let Some(starter) = req.starter { cfg.starter = starter; }
+    if let Some(starter) = req.starter { cfg.hvb_starter = starter; }
     if let Some(bot_id) = req.bot_id { cfg.bot_id = Some(bot_id); }
 
     let bot_id = cfg.bot_id.clone().ok_or_else(|| {
@@ -57,7 +57,7 @@ pub async fn create_game(
     let mut game = GameY::new(cfg.size);
 
     // Si empieza el bot, aplica una jugada inicial.
-    if matches!(cfg.starter, Starter::Bot) {
+    if matches!(cfg.hvb_starter, HvBStarter::Bot) {
         let bot_coords = bot.choose_move(&game).ok_or_else(|| {
             ApiErrorResponse::conflict("Bot could not choose a move", "bot_no_move")
         })?;
@@ -78,6 +78,8 @@ pub async fn create_game(
         config: cfg.clone(),
         game,
         bot_id: Some(bot_id),
+        hvh_next_player: None,
+        hvh_winner: None,
     };
 
     state.sessions.insert(game_id.clone(), session.clone()).await;

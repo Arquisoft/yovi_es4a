@@ -6,7 +6,7 @@ use axum::{extract::{State}, http::HeaderMap, Json};
 
 use super::{MAX_BOARD_SIZE, MIN_BOARD_SIZE};
 use super::auth::resolve_principal;
-use super::dto::{GameConfig, Starter};
+use super::dto::{GameConfig, HvBStarter};
 use super::error::ApiErrorResponse;
 use super::state::GameServerState;
 
@@ -35,7 +35,7 @@ pub async fn put_config(
         ));
     }
 
-    if matches!(cfg.starter, Starter::Bot) && cfg.bot_id.is_none() {
+    if matches!(cfg.hvb_starter, HvBStarter::Bot) && cfg.bot_id.is_none() {
         return Err(ApiErrorResponse::bad_request(
             "starter=bot requires bot_id",
             "missing_bot_id",

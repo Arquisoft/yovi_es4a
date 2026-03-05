@@ -53,7 +53,7 @@ export default function GameHvH() {
       setGameOver(false);
 
       try {
-        await putConfig({ size, starter: "human", bot_id: null });
+        await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: starter });
 
         const r = await createHvhGame();
         if (!cancelled) {

@@ -51,7 +51,7 @@ export default function GameHvB() {
       setGameOver(false);
 
       try {
-        const r = await createHvbGame({ size, bot_id: botId, starter });
+        const r = await createHvbGame({ size, bot_id: botId, hvb_starter: starter });
         if (!cancelled) {
           setGameId(r.game_id);
           setYen(r.yen);

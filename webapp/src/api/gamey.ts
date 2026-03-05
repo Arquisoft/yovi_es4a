@@ -8,7 +8,12 @@ export type YEN = {
   players?: string[];
 };
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+/**
+ * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
+ * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
+ */
+const API_URL = "/api/game";
+// const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 /**
  * Devuelve un client_id estable. La idea es guardarlo en localStorage.
@@ -79,11 +84,14 @@ export async function getMeta(): Promise<MetaResponse> {
 // CONFIG (recordada por client_id / user en el futuro)
 // --------------------------------------------------------------------------------------
 
-export type Starter = "human" | "bot";
+export type HvBStarter = "human" | "bot";
+
+export type HvHStarter = "player0" | "player1";
 
 export type GameConfig = {
   size: number;
-  starter: Starter;
+  hvb_starter: HvBStarter;
+  hvh_starter?: HvHStarter | null;
   bot_id: string | null;
 };
 
@@ -150,7 +158,7 @@ export type HvhMoveResponse = {
 
 export type CreateHvbGameRequest = {
   size?: number;
-  starter?: Starter;
+  hvb_starter?: HvBStarter;
   bot_id?: string;
 };
 

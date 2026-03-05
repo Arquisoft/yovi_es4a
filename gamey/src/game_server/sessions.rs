@@ -18,6 +18,9 @@ pub struct GameSession {
     pub config: GameConfig,
     pub game: GameY,
     pub bot_id: Option<String>,
+
+    pub hvh_next_player: Option<u8>,
+    pub hvh_winner: Option<u8>,
 }
 
 #[derive(Debug, Clone)]

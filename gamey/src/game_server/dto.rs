@@ -6,7 +6,7 @@ use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
 // use crate::{Coordinates, GameY, PlayerId, YEN};
-use crate::{Coordinates, GameY, YEN};
+use crate::{Coordinates, YEN};
 use super::{API_V1, MAX_BOARD_SIZE, MIN_BOARD_SIZE};
 use super::state::GameServerState;
 
@@ -34,17 +34,23 @@ pub async fn get_meta(State(state): State<GameServerState>) -> Json<MetaResponse
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfig {
     pub size: u32,
-    /// "human" / "bot" en HvB. En HvH no aplica, pero lo guardamos para UX.
-    pub starter: Starter,
-    /// Solo relevante en HvB. En HvH puede ser None.
+    pub hvb_starter: HvBStarter,
+    pub hvh_starter: Option<HvHStarter>,
     pub bot_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Starter {
+pub enum HvBStarter {
     Human,
     Bot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HvHStarter {
+    Player0,
+    Player1,
 }
 
 /// Respuesta estándar de estado de juego (para HvH y HvB).
@@ -108,11 +114,23 @@ impl AppliedMove {
 }
 
 /// Helpers para traducir el estado del motor al DTO.
-pub fn status_hvh(game: &GameY) -> GameStatus {
-    if game.check_game_over() {
-        GameStatus::Finished { winner: Winner::Player0 }
+pub fn status_hvh_from_session(
+    finished: bool,
+    next_player: u8,
+    winner: Option<u8>,
+) -> GameStatus {
+    if finished {
+        let w = match winner.unwrap_or(0) {
+            1 => Winner::Player1,
+            _ => Winner::Player0,
+        };
+        GameStatus::Finished { winner: w }
     } else {
-        GameStatus::Ongoing { next: NextTurn::Player0 }
+        let next = match next_player {
+            1 => NextTurn::Player1,
+            _ => NextTurn::Player0,
+        };
+        GameStatus::Ongoing { next }
     }
 }
 

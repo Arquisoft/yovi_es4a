@@ -18,7 +18,7 @@ pub mod config_store {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
-    use crate::game_server::dto::{GameConfig, Starter};
+    use crate::game_server::dto::{GameConfig, HvBStarter, HvHStarter};
     use crate::game_server::{MAX_BOARD_SIZE, MIN_BOARD_SIZE};
     use crate::game_server::auth::Principal;
 
@@ -35,8 +35,9 @@ pub mod config_store {
         pub fn default_config() -> GameConfig {
             GameConfig {
                 size: 7,
-                starter: Starter::Human,
+                hvb_starter: HvBStarter::Human,
                 bot_id: Some("random_bot".to_string()),
+                hvh_starter: Some(HvHStarter::Player0),
             }
         }
 

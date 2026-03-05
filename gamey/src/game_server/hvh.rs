@@ -32,6 +32,11 @@ pub async fn create_game(
     let principal = resolve_principal(&headers);
     let cfg = state.config_store.get_or_default(&principal).await;
 
+    let next_player = match cfg.hvh_starter {
+        Some(super::dto::HvHStarter::Player1) => 1,
+        _ => 0,
+    };
+
     let game = GameY::new(cfg.size);
     let game_id = Uuid::new_v4().to_string();
 
@@ -41,15 +46,23 @@ pub async fn create_game(
         config: cfg.clone(),
         game,
         bot_id: None,
+        hvh_next_player: Some(next_player),
+        hvh_winner: None,
     };
 
-    state.sessions.insert(game_id.clone(), session).await;
+    state.sessions.insert(game_id.clone(), session.clone()).await;
 
-    Ok(Json(GameStateResponse {
+    let next = if next_player == 1 {
+        super::dto::NextTurn::Player1
+    } else {
+        super::dto::NextTurn::Player0
+    };
+
+   Ok(Json(GameStateResponse {
         game_id,
         mode: GameMode::Hvh,
-        yen: crate::YEN::from(&GameY::new(cfg.size)),
-        status: GameStatus::Ongoing { next: super::dto::NextTurn::Player0 },
+        yen: crate::YEN::from(&session.game),
+        status: GameStatus::Ongoing { next },
     }))
 }
 
@@ -62,14 +75,23 @@ pub async fn get_game(
     let principal = resolve_principal(&headers);
     let game_id = parse_uuid(&game_id)?;
 
-    let session = state.sessions.assert_owner(&principal, &game_id).await
+    let session = state
+        .sessions
+        .assert_owner(&principal, &game_id)
+        .await
         .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))?;
+
+    let finished = session.game.check_game_over();
 
     Ok(Json(GameStateResponse {
         game_id,
         mode: GameMode::Hvh,
         yen: crate::YEN::from(&session.game),
-        status: super::dto::status_hvh(&session.game),
+        status: super::dto::status_hvh_from_session(
+            finished,
+            session.hvh_next_player.unwrap_or(0),
+            session.hvh_winner,
+        ),
     }))
 }
 
@@ -100,24 +122,57 @@ pub async fn post_move(
     let principal = resolve_principal(&headers);
     let game_id = parse_uuid(&game_id)?;
 
-    let mut session = state.sessions.assert_owner(&principal, &game_id).await
+    let mut session = state
+        .sessions
+        .assert_owner(&principal, &game_id)
+        .await
         .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))?;
 
     let size = session.game.board_size();
     let total_cells = (size * (size + 1)) / 2;
     if req.cell_id >= total_cells {
-        return Err(ApiErrorResponse::bad_request("cell_id out of range", "cell_id_out_of_range"));
+        return Err(ApiErrorResponse::bad_request(
+            "cell_id out of range",
+            "cell_id_out_of_range",
+        ));
     }
+
+    if session.game.check_game_over() {
+        return Err(ApiErrorResponse::conflict(
+            "Game is already finished",
+            "game_finished",
+        ));
+    }
+
+    let played_by = session.hvh_next_player.unwrap_or(0);
+    let player = PlayerId::new(played_by as u32);
 
     let coords = crate::Coordinates::from_index(req.cell_id, size);
 
-    let player = PlayerId::new(0);
-
-    session.game.add_move(Movement::Placement { player, coords })
+    session
+        .game
+        .add_move(Movement::Placement { player, coords })
         .map_err(|e| ApiErrorResponse::conflict(format!("Move rejected: {e}"), "move_rejected"))?;
 
-    state.sessions.update(&game_id, session.clone()).await
+    let finished = session.game.check_game_over();
+
+    if finished {
+        session.hvh_winner = Some(played_by);
+    } else {
+        session.hvh_next_player = Some(1 - played_by);
+    }
+
+    state
+        .sessions
+        .update(&game_id, session.clone())
+        .await
         .map_err(|_| ApiErrorResponse::internal("Failed to update session", "session_update_failed"))?;
+
+    let status = super::dto::status_hvh_from_session(
+        finished,
+        session.hvh_next_player.unwrap_or(0),
+        session.hvh_winner,
+    );
 
     let applied = AppliedMove::new(req.cell_id, size);
 
@@ -125,6 +180,6 @@ pub async fn post_move(
         "game_id": game_id,
         "yen": crate::YEN::from(&session.game),
         "applied_move": { "cell_id": applied.cell_id, "coords": applied.coords },
-        "status": super::dto::status_hvh(&session.game),
+        "status": status,
     })))
 }
