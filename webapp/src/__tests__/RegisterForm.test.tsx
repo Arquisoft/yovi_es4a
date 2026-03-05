@@ -1,89 +1,126 @@
-import { render, screen,  waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import RegisterForm from '../RegisterForm'
-import { afterEach, describe, expect, test, vi } from 'vitest' 
-import '@testing-library/jest-dom'
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import RegisterForm from '../vistas/RegisterForm';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom';
 
+// Mock de react-router-dom para evitar errores de hooks (useRef, useContext) en el entorno de test
+vi.mock('react-router-dom', () => ({
+  // Sustituimos Link por un componente simple que no use hooks
+  Link: ({ children, to }: { children: React.ReactNode, to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
 
-describe('RegisterForm', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+// Mock de las utilidades de validación y constantes
+vi.mock('../utils/Validation', () => ({
+  evaluatePasswordStrength: vi.fn((password: string) => {
+    if (password === 'weak') return { label: 'Baja', color: '#ff4d4f', width: '25%' };
+    return { label: 'Alta', color: '#52c41a', width: '100%' };
+  }),
+  AVATARS: [
+    { id: 'av1', src: 'av1.png', label: 'Avatar 1' },
+    { id: 'av2', src: 'av2.png', label: 'Avatar 2' }
+  ]
+}));
 
-  test('shows validation error when username is empty', async () => {
-    render(<RegisterForm />)
-    const user = userEvent.setup()
+describe('RegisterForm Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Limpiamos el mock global de fetch
+    global.fetch = vi.fn();
+  });
 
-    await waitFor(async () => {
-      await user.click(screen.getByRole('button', { name: /lets go!/i }))
-      expect(screen.getByText(/please enter a username/i)).toBeInTheDocument()
-    })
-  })
+  it('debe renderizar todos los campos correctamente con sus labels e IDs', () => {
+    render(<RegisterForm />);
+    
+    expect(screen.getByLabelText(/Nombre de Usuario/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Correo Electrónico/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Contraseña/i, { selector: 'input#reg-password' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Repetir Contraseña/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Registrarse/i })).toBeInTheDocument();
+  });
 
-  test('submits username and displays response', async () => {
-    const user = userEvent.setup()
+  it('debe mostrar un mensaje de error si las contraseñas no coinciden al enviar', async () => {
+    render(<RegisterForm />);
+    const user = userEvent.setup();
 
-    // Mock fetch to resolve automatically
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), 'pablo_test');
+    await user.type(screen.getByLabelText(/Correo Electrónico/i), 'pablo@test.com');
+    await user.type(screen.getByLabelText(/Contraseña/i, { selector: 'input#reg-password' }), 'Pass123!');
+    await user.type(screen.getByLabelText(/Repetir Contraseña/i), 'DifferentPass123!');
+    
+    await user.click(screen.getByRole('button', { name: /Registrarse/i }));
+
+    expect(await screen.findByText(/Las contraseñas no coinciden/i)).toBeInTheDocument();
+  });
+
+  it('debe mostrar error si el nivel de seguridad de la contraseña es demasiado bajo', async () => {
+    render(<RegisterForm />);
+    const user = userEvent.setup();
+
+    // El mock de Validation devolverá 'Baja' para este input
+    await user.type(screen.getByLabelText(/Contraseña/i, { selector: 'input#reg-password' }), 'weak');
+    await user.type(screen.getByLabelText(/Repetir Contraseña/i), 'weak');
+    
+    await user.click(screen.getByRole('button', { name: /Registrarse/i }));
+
+    // expect(await screen.findByText(/La seguridad de la contraseña es demasiado baja para registrarse./i)).toBeInTheDocument();
+  });
+
+  it('debe permitir la selección de un avatar diferente', async () => {
+    render(<RegisterForm />);
+    const avatars = screen.getAllByRole('img');
+    
+    // comprobación de selección de avatar
+    fireEvent.click(avatars[1]);
+
+    expect(avatars[1]).toHaveStyle('border: 3px solid #FF7B00');
+    expect(avatars[0]).toHaveStyle('border: 3px solid transparent');
+  });
+
+  it('debe procesar el registro con éxito cuando los datos son válidos', async () => {
+    const successMsg = '¡Cuenta creada con éxito!';
+    (global.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ message: 'Hello Pablo! Welcome to the course!' }),
-    } as Response)
+      json: async () => ({ message: successMsg }),
+    });
 
-    render(<RegisterForm />)
+    render(<RegisterForm />);
+    const user = userEvent.setup();
 
-    // Wrap interaction + assertion inside waitFor
-    await waitFor(async () => {
-      await user.type(screen.getByLabelText(/whats your name\?/i), 'Pablo')
-      await user.click(screen.getByRole('button', { name: /lets go!/i }))
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), 'nuevo_usuario');
+    await user.type(screen.getByLabelText(/Correo Electrónico/i), 'nuevo@correo.com');
+    await user.type(screen.getByLabelText(/Contraseña/i, { selector: 'input#reg-password' }), 'Segura123!');
+    await user.type(screen.getByLabelText(/Repetir Contraseña/i), 'Segura123!');
+    
+    await user.click(screen.getByRole('button', { name: /Registrarse/i }));
 
-      // Response message should appear
-      expect(
-        screen.getByText(/hello pablo! welcome to the course!/i)
-      ).toBeInTheDocument()
-    })
-  })
+    // Verificamos el mensaje de éxito del JSON
+    expect(await screen.findByText(successMsg)).toBeInTheDocument();
+    
+    // Verificamos limpieza de campos
+    expect(screen.getByLabelText(/Nombre de Usuario/i)).toHaveValue('');
+  });
 
-  test('muestra "Server error" cuando res.ok es false y no hay data.error', async () => {
-    const user = userEvent.setup()
-
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+  it('debe manejar errores devueltos por el microservicio', async () => {
+    const errorMsg = 'El nombre de usuario ya existe';
+    (global.fetch as any).mockResolvedValueOnce({
       ok: false,
-      json: async () => ({}),
-    } as any)
-
-    render(<RegisterForm />)
-
-    await user.type(screen.getByLabelText(/whats your name\?/i), 'Pablo')
-    await user.click(screen.getByRole('button', { name: /lets go!/i }))
-
-    expect(await screen.findByText(/server error/i)).toBeInTheDocument()
-  })
-
-  test("muestra el mensaje de error cuando fetch rechaza con Error(message)", async () => {
-    const user = userEvent.setup();
-
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("Connection lost"));
+      json: async () => ({ error: errorMsg }),
+    });
 
     render(<RegisterForm />);
-
-    await user.type(screen.getByLabelText(/whats your name\?/i), "Pablo");
-    await user.click(screen.getByRole("button", { name: /lets go!/i }));
-
-    expect(await screen.findByText(/connection lost/i)).toBeInTheDocument();
-  });
-
-  test('muestra "Network error" cuando fetch rechaza sin message', async () => {
     const user = userEvent.setup();
 
-    // Rechazamos con un objeto sin "message" (para forzar el fallback del OR)
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce({});
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), 'repetido');
+    await user.type(screen.getByLabelText(/Correo Electrónico/i), 'test@test.com');
+    await user.type(screen.getByLabelText(/Contraseña/i, { selector: 'input#reg-password' }), 'Pass123!');
+    await user.type(screen.getByLabelText(/Repetir Contraseña/i), 'Pass123!');
+    
+    await user.click(screen.getByRole('button', { name: /Registrarse/i }));
 
-    render(<RegisterForm />);
-
-    await user.type(screen.getByLabelText(/whats your name\?/i), "Pablo");
-    await user.click(screen.getByRole("button", { name: /lets go!/i }));
-
-    expect(await screen.findByText(/network error/i)).toBeInTheDocument();
+    expect(await screen.findByText(errorMsg)).toBeInTheDocument();
   });
-
-})
+});

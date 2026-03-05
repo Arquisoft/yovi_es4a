@@ -23,7 +23,7 @@ describe('POST /createuser', () => {
     it('returns a greeting message for the provided username', async () => {
         const res = await request(app)
             .post('/createuser')
-            .send({ username: 'Pablo', password: '1234' })
+            .send({ username: 'Pablo', password: '1234', email: 'pablo@test.com'})
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(200)
@@ -34,11 +34,11 @@ describe('POST /createuser', () => {
     it('returns an error if the user already exists', async () => {
         await request(app)
             .post('/createuser')
-            .send({ username: 'Pablo', password: '1234' })
+            .send({ username: 'Pablo', password: '1234', email: 'pablo@test.com'})
 
         const res = await request(app)
             .post('/createuser')
-            .send({ username: 'Pablo', password: '1234' })
+            .send({ username: 'Pablo', password: '1234', email: 'pablo@test.com' })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(400)
@@ -51,13 +51,17 @@ describe('POST /login', () => {
     beforeAll(async () => {
         await request(app)
             .post('/createuser')
-            .send({ username: 'Pablo', password: '1234' })
+            .send({ username: 'Pablo', password: '1234', email: 'pablo@test.com' })
+        
+        // lo marcamos de momento como verificado
+        const User = (await import('../users-model.js')).default;
+        await User.updateOne({ username: 'Pablo' }, { isVerified: true });
     })
 
     it('returns a welcome message for valid credentials', async () => {
         const res = await request(app)
             .post('/login')
-            .send({ username: 'Pablo', password: '1234' })
+            .send({ username: 'Pablo', password: '1234', email: 'pablo@test.com' })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(200)
@@ -68,7 +72,7 @@ describe('POST /login', () => {
     it('returns an error for incorrect password', async () => {
         const res = await request(app)
             .post('/login')
-            .send({ username: 'Pablo', password: 'wrongpassword' })
+            .send({ username: 'Pablo', password: 'wrongpassword', email: 'pablo@test.com' })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(401)
@@ -79,7 +83,7 @@ describe('POST /login', () => {
     it('returns an error if the user does not exist', async () => {
         const res = await request(app)
             .post('/login')
-            .send({ username: 'NoExiste', password: '1234' })
+            .send({ username: 'NoExiste', password: '1234', email: 'pablo@test.com' })
             .set('Accept', 'application/json')
 
         expect(res.status).toBe(401)

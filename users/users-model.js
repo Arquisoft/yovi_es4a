@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   email: { type: String, required: true, unique: true},
-  picture: { type: String, required: true },
+  profilePicture: { type: String, default:'webapp/public/avatars/seniora.png' },
 
   isVerified: { type: Boolean, default: false },
   verificationToken: { type: String }

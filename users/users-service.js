@@ -66,7 +66,7 @@ app.post('/createuser', async (req, res) => {
     console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
     console.log(`http://localhost:3000/verify?token=${verificationToken}\n`);
 
-    res.json({ message: `Usuario registrado. Por favor, revisa tu correo para verificar tu cuenta.` });
+    res.json({ message: `Bienvenido ${username}. Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
     if (err.code === 11000) {
       // Diferenciar si el duplicado es del username o del email
