@@ -6,6 +6,7 @@ import Bienvenida from "./vistas/Bienvenida";
 import Home from "./vistas/Home";
 import GameHvB from "./vistas/GameHvB";
 import GameHvH from "./vistas/GameHvH";
+import RegisterForm from "./vistas/RegisterForm";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/game-hvb" element={<GameHvB />} />
         <Route path="/game-hvh" element={<GameHvH />} />
+        <Route path="/registro" element={<RegisterForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
