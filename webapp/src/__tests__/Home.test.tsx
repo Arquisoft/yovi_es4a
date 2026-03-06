@@ -1,11 +1,12 @@
 import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "../vistas/Home.tsx";
 
 const navigateMock = vi.fn();
 const confirmMock = vi.fn();
+const getMetaMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -15,10 +16,8 @@ vi.mock("react-router-dom", async () => {
     };
 });
 
-const getGameConfigMock = vi.fn();
-
 vi.mock("../api/gamey", () => ({
-    getGameConfig: () => getGameConfigMock(),
+    getMeta: () => getMetaMock(),
 }));
 
 vi.mock("antd", () => ({
@@ -27,8 +26,8 @@ vi.mock("antd", () => ({
             modal: { confirm: confirmMock },
         }),
     },
-    Button: ({ children, onClick, ...props }: any) => (
-        <button onClick={onClick} {...props}>
+    Button: ({ children, onClick, disabled, ...props }: any) => (
+        <button onClick={onClick} disabled={disabled} {...props}>
             {children}
         </button>
     ),
@@ -50,15 +49,26 @@ vi.mock("antd", () => ({
                 value={value}
                 onChange={(e) => onChange(Number(e.target.value))}
             />
-            <button type="button" onClick={() => onChange(null)} aria-label="size-non-number">
+            <button
+                type="button"
+                aria-label="size-non-number"
+                onClick={() => onChange(null)}
+            >
                 non-number
             </button>
         </div>
     ),
-
     Select: ({ value, onChange, options }: any) => {
-        const isBotSelect = Array.isArray(options) && options.some((o: any) => o?.value === "random_bot");
-        const aria = isBotSelect ? "bot-select" : "starter-select";
+        const values = (options ?? []).map((o: any) => o.value);
+
+        const aria =
+            values.includes("random_bot") || values.includes("mcts_bot")
+                ? "bot-select"
+                : values.includes("human") || values.includes("bot")
+                ? "hvb-starter-select"
+                : values.includes("player0") || values.includes("player1")
+                    ? "hvh-starter-select"
+                    : "select";
 
         return (
             <select aria-label={aria} value={value} onChange={(e) => onChange(e.target.value)}>
@@ -81,183 +91,327 @@ vi.mock("@ant-design/icons", () => ({
     UserOutlined: () => null,
 }));
 
-const LAST_CONFIG_KEY = "yovi:lastGameConfig";
+const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
+const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
+
+function metaOk() {
+    getMetaMock.mockResolvedValue({
+        api_version: "v1",
+        min_board_size: 2,
+        max_board_size: 15,
+        bots: ["random_bot", "mcts_bot"],
+    });
+}
 
 describe("Home", () => {
     beforeEach(() => {
         navigateMock.mockReset();
         confirmMock.mockReset();
-        getGameConfigMock.mockReset();
-
-        localStorage.clear();
+        getMetaMock.mockReset();
         vi.restoreAllMocks();
+        localStorage.clear();
     });
 
-    it("carga la configuración previa desde localStorage y la muestra en la UI", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
-
-        localStorage.setItem(
-            LAST_CONFIG_KEY,
-            JSON.stringify({ size: 9, botId: "mcts_bot", starter: "bot" })
-        );
+    it("renderiza valores por defecto", async () => {
+        metaOk();
 
         render(<Home />);
 
-        const sizeInput = await screen.findByLabelText("size-input");
+        const sizeInputs = await screen.findAllByLabelText("size-input");
         const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
-        const starterSelect = screen.getByLabelText("starter-select") as HTMLSelectElement;
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
+        const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
 
-        expect((sizeInput as HTMLInputElement).value).toBe("9");
-        expect(botSelect.value).toBe("mcts_bot");
-        expect(starterSelect.value).toBe("bot");
-    });
-
-    it("clampa el size al rango devuelto por getGameConfig (cubre rama clamped !== prev)", async () => {
-        localStorage.setItem(
-            LAST_CONFIG_KEY,
-            JSON.stringify({ size: 12, botId: "random_bot", starter: "human" })
-        );
-
-        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
-
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 8 });
-
-        render(<Home />);
-
-        const sizeInput = await screen.findByLabelText("size-input");
-        expect((sizeInput as HTMLInputElement).value).toBe("8");
-
-        expect(setItemSpy).toHaveBeenCalled();
-    });
-
-    it("renderiza por defecto, permite cambiar size/bot/starter y navega a /game con query completa al pulsar Jugar (y guarda en localStorage)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
-
-        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
-
-        const user = userEvent.setup();
-        render(<Home />);
-
-        const sizeInput = await screen.findByLabelText("size-input") as HTMLInputElement;
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
-        const starterSelect = screen.getByLabelText("starter-select") as HTMLSelectElement;
-
-        expect(sizeInput.value).toBe("7");
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
+        expect((sizeInputs[1] as HTMLInputElement).value).toBe("7");
         expect(botSelect.value).toBe("random_bot");
-        expect(starterSelect.value).toBe("human");
+        expect(hvbStarterSelect.value).toBe("human");
+        expect(hvhStarterSelect.value).toBe("player0");
+    });
 
-        await user.clear(sizeInput);
-        await user.type(sizeInput, "5");
+    it("carga la configuración previa de HvB desde localStorage y la refleja en la UI", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: 9, botId: "mcts_bot", hvbstarter: "bot" }),
+        );
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
+
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("9");
+        expect((sizeInputs[1] as HTMLInputElement).value).toBe("9");
+        expect(botSelect.value).toBe("mcts_bot");
+        expect(hvbStarterSelect.value).toBe("bot");
+    });
+
+    it("carga la configuración previa de HvH desde localStorage", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVH,
+            JSON.stringify({ size: 8, hvhstarter: "player1" }),
+        );
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
+
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("8");
+        expect((sizeInputs[1] as HTMLInputElement).value).toBe("8");
+        expect(hvhStarterSelect.value).toBe("player1");
+    });
+
+    it("si existen HvB y HvH previos, prevalece el size de HvB y el starter de HvH", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: 11, botId: "mcts_bot", hvbstarter: "bot" }),
+        );
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVH,
+            JSON.stringify({ size: 5, hvhstarter: "player1" }),
+        );
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
+
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("11");
+        expect((sizeInputs[1] as HTMLInputElement).value).toBe("11");
+        expect(hvhStarterSelect.value).toBe("player1");
+    });
+
+    it("guarda al cambiar bot y hvbstarter", async () => {
+        metaOk();
+
+        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+        const user = userEvent.setup();
+
+        render(<Home />);
+
+        const botSelect = await screen.findByLabelText("bot-select");
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select");
+
         await user.selectOptions(botSelect, "mcts_bot");
-        await user.selectOptions(starterSelect, "bot");
-
-        await user.click(screen.getByRole("button", { name: "Jugar" }));
-
-        expect(navigateMock).toHaveBeenCalledTimes(1);
-        expect(String(navigateMock.mock.calls[0][0])).toBe("/game?size=5&bot=mcts_bot&starter=bot");
+        await user.selectOptions(hvbStarterSelect, "bot");
 
         expect(setItemSpy).toHaveBeenCalledWith(
-            LAST_CONFIG_KEY,
-            expect.stringContaining('"size":5')
+            LAST_CONFIG_KEY_HVB,
+            expect.stringContaining('"botId":"mcts_bot"'),
+        );
+        expect(setItemSpy).toHaveBeenCalledWith(
+            LAST_CONFIG_KEY_HVB,
+            expect.stringContaining('"hvbstarter":"bot"'),
         );
     });
 
-    it("al pulsar 'Cerrar sesión' abre modal.confirm y al confirmar navega a '/' con replace", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
+    it("guarda al cambiar hvhstarter", async () => {
+        metaOk();
 
+        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
         const user = userEvent.setup();
-        render(<Home />);
-
-        await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-
-        expect(confirmMock).toHaveBeenCalledTimes(1);
-        const args = confirmMock.mock.calls[0][0];
-
-        expect(args.title).toBe("Cerrar sesión");
-        expect(args.okText).toBe("Sí, salir");
-        expect(args.cancelText).toBe("Cancelar");
-
-        args.onOk();
-        expect(navigateMock).toHaveBeenCalledWith("/", { replace: true });
-    });
-
-    it("si InputNumber onChange recibe null, usa min_board_size como fallback (y navega con ese size)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 3, max_board_size: 15 });
-
-        const user = userEvent.setup();
-        render(<Home />);
-
-        await screen.findByLabelText("size-input");
-
-        await user.click(screen.getByLabelText("size-non-number"));
-
-        await user.click(screen.getByRole("button", { name: "Jugar" }));
-
-        expect(String(navigateMock.mock.calls[0][0])).toContain("size=3");
-    });
-    
-    it("si getGameConfig falla, usa valores por defecto (cubre catch)", async () => {
-        getGameConfigMock.mockRejectedValue(new Error("boom"));
 
         render(<Home />);
 
-        const sizeInput = await screen.findByLabelText("size-input");
-        expect((sizeInput as HTMLInputElement).getAttribute("min")).toBe("2");
+        const hvhStarterSelect = await screen.findByLabelText("hvh-starter-select");
+        await user.selectOptions(hvhStarterSelect, "player1");
+
+        expect(setItemSpy).toHaveBeenCalledWith(
+            LAST_CONFIG_KEY_HVH,
+            expect.stringContaining('"hvhstarter":"player1"'),
+        );
     });
 
-    it("si localStorage tiene JSON inválido, ignora y mantiene defaults (cubre catch de loadLastConfig)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
-
-        localStorage.setItem("yovi:lastGameConfig", "{NOT_JSON");
-
-        render(<Home />);
-
-        const sizeInput = await screen.findByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
-        const starterSelect = screen.getByLabelText("starter-select") as HTMLSelectElement;
-
-        expect((sizeInput as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
-        expect(starterSelect.value).toBe("human");
-    });
-
-    it("si localStorage tiene campos inválidos, ignora y mantiene defaults (cubre returns null por validación)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
-
-        localStorage.setItem("yovi:lastGameConfig", JSON.stringify({ size: "7", botId: "mcts_bot", starter: "bot" }));
-
-        render(<Home />);
-
-        const sizeInput = await screen.findByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
-        const starterSelect = screen.getByLabelText("starter-select") as HTMLSelectElement;
-
-        expect((sizeInput as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
-        expect(starterSelect.value).toBe("human");
-    });
-
-    it("si localStorage tiene starter inválido, ignora y mantiene defaults (cubre rama starter !== human/bot)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
+    it("permite cambiar bot/hvbstarter y navega a /game-hvb con query completa", async () => {
+        metaOk();
 
         localStorage.setItem(
-            "yovi:lastGameConfig",
-            JSON.stringify({ size: 9, botId: "mcts_bot", starter: "alien" })
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: 5, botId: "random_bot", hvbstarter: "human" }),
+        );
+
+        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+        const user = userEvent.setup();
+
+        render(<Home />);
+
+        const botSelect = await screen.findByLabelText("bot-select");
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select");
+
+        await user.selectOptions(botSelect, "mcts_bot");
+        await user.selectOptions(hvbStarterSelect, "bot");
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
+
+        expect(navigateMock).toHaveBeenCalledWith(
+            "/game-hvb?size=5&bot=mcts_bot&hvbstarter=bot",
+        );
+
+        expect(setItemSpy).toHaveBeenCalledWith(
+            LAST_CONFIG_KEY_HVB,
+            expect.stringContaining('"size":5'),
+        );
+    });
+
+    it("permite cambiar hvhstarter y navega a /game-hvh con query completa", async () => {
+        metaOk();
+
+        const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+        const user = userEvent.setup();
+
+        render(<Home />);
+
+        const hvhStarterSelect = await screen.findByLabelText("hvh-starter-select");
+        await user.selectOptions(hvhStarterSelect, "player1");
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[1]);
+
+        expect(navigateMock).toHaveBeenCalledWith("/game-hvh?size=7&hvhstarter=player1");
+        expect(setItemSpy).toHaveBeenCalledWith(
+            LAST_CONFIG_KEY_HVH,
+            expect.stringContaining('"hvhstarter":"player1"'),
+        );
+    });
+
+    it("si InputNumber onChange recibe null, usa 7", async () => {
+        getMetaMock.mockResolvedValue({
+            api_version: "v1",
+            min_board_size: 3,
+            max_board_size: 15,
+            bots: ["random_bot", "mcts_bot"],
+        });
+
+        const user = userEvent.setup();
+        render(<Home />);
+
+        const nonNumberButtons = await screen.findAllByLabelText("size-non-number");
+        await user.click(nonNumberButtons[0]);
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
+
+        expect(String(navigateMock.mock.calls[0][0])).toContain("size=7");
+    });
+
+    it("si el size queda por debajo del mínimo, al jugar hace clamp", async () => {
+        getMetaMock.mockResolvedValue({
+            api_version: "v1",
+            min_board_size: 4,
+            max_board_size: 15,
+            bots: ["random_bot", "mcts_bot"],
+        });
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: 1, botId: "random_bot", hvbstarter: "human" }),
+        );
+
+        const user = userEvent.setup();
+        render(<Home />);
+
+        await screen.findByLabelText("bot-select");
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
+
+        expect(navigateMock).toHaveBeenCalledWith(
+            "/game-hvb?size=4&bot=random_bot&hvbstarter=human",
+        );
+    });
+
+    it("si getMeta falla, usa valores por defecto", async () => {
+        getMetaMock.mockRejectedValue(new Error("boom"));
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        expect((sizeInputs[0] as HTMLInputElement).getAttribute("min")).toBe("2");
+        expect((sizeInputs[0] as HTMLInputElement).getAttribute("max")).toBe("15");
+    });
+
+    it("si localStorage tiene JSON inválido, ignora y mantiene defaults", async () => {
+        metaOk();
+
+        localStorage.setItem(LAST_CONFIG_KEY_HVB, "{NOT_JSON");
+        localStorage.setItem(LAST_CONFIG_KEY_HVH, "{NOT_JSON");
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
+        const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
+
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
+        expect(botSelect.value).toBe("random_bot");
+        expect(hvbStarterSelect.value).toBe("human");
+        expect(hvhStarterSelect.value).toBe("player0");
+    });
+
+    it("si localStorage tiene campos inválidos en HvB, ignora y mantiene defaults", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: "7", botId: "mcts_bot", hvbstarter: "bot" }),
         );
 
         render(<Home />);
 
-        const sizeInput = await screen.findByLabelText("size-input");
+        const sizeInputs = await screen.findAllByLabelText("size-input");
         const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
-        const starterSelect = screen.getByLabelText("starter-select") as HTMLSelectElement;
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
 
-        expect((sizeInput as HTMLInputElement).value).toBe("7");
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
         expect(botSelect.value).toBe("random_bot");
-        expect(starterSelect.value).toBe("human");
+        expect(hvbStarterSelect.value).toBe("human");
     });
 
-    it("si saveLastConfig falla (localStorage.setItem lanza), Home no revienta al pulsar Jugar (cubre catch de saveLastConfig)", async () => {
-        getGameConfigMock.mockResolvedValue({ min_board_size: 2, max_board_size: 15 });
+    it("si localStorage tiene hvbstarter inválido, ignora y mantiene defaults", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVB,
+            JSON.stringify({ size: 9, botId: "mcts_bot", hvbstarter: "alien" }),
+        );
+
+        render(<Home />);
+
+        const sizeInputs = await screen.findAllByLabelText("size-input");
+        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
+        const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
+
+        expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
+        expect(botSelect.value).toBe("random_bot");
+        expect(hvbStarterSelect.value).toBe("human");
+    });
+
+    it("si localStorage tiene hvhstarter inválido, ignora y mantiene defaults de HvH", async () => {
+        metaOk();
+
+        localStorage.setItem(
+            LAST_CONFIG_KEY_HVH,
+            JSON.stringify({ size: 9, hvhstarter: "alien" }),
+        );
+
+        render(<Home />);
+
+        const hvhStarterSelect = await screen.findByLabelText("hvh-starter-select");
+        expect((hvhStarterSelect as HTMLSelectElement).value).toBe("player0");
+    });
+
+    it("si saveLastConfig falla, Home no revienta al pulsar Jugar", async () => {
+        metaOk();
 
         vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
             throw new Error("quota exceeded");
@@ -266,10 +420,41 @@ describe("Home", () => {
         const user = userEvent.setup();
         render(<Home />);
 
-        await screen.findByLabelText("size-input");
+        await screen.findByLabelText("bot-select");
 
-        await user.click(screen.getByRole("button", { name: "Jugar" }));
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
 
         expect(navigateMock).toHaveBeenCalled();
+    });
+
+    it("al pulsar 'Cerrar sesión' abre modal.confirm y al confirmar navega a '/' con replace", async () => {
+        metaOk();
+
+        const user = userEvent.setup();
+        render(<Home />);
+
+        await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+        expect(confirmMock).toHaveBeenCalledTimes(1);
+        const args = confirmMock.mock.calls[0][0];
+        expect(args.title).toBe("Cerrar sesión");
+        expect(args.okText).toBe("Sí, salir");
+        expect(args.cancelText).toBe("Cancelar");
+
+        args.onOk();
+        expect(navigateMock).toHaveBeenCalledWith("/", { replace: true });
+    });
+
+    it("renderiza el bloque de estadísticas y el botón 'Ver perfil'", async () => {
+        metaOk();
+
+        render(<Home />);
+
+        await waitFor(() => {
+        expect(screen.getByText("Estadísticas")).toBeInTheDocument();
+        expect(screen.getByText("Sin implementar todavía")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Ver perfil" })).toBeInTheDocument();
+        });
     });
 });
