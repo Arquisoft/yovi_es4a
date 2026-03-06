@@ -1,26 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import {
-  getOrCreateClientId,
-  getMeta,
-  getConfig,
-  putConfig,
-  createHvbGame,
-  getHvbGame,
-  hvbHumanMove,
-  deleteHvbGame,
-  createHvhGame,
-  getHvhGame,
-  hvhMove,
-  deleteHvhGame,
-  type GameConfig,
+    getOrCreateClientId,
+    getMeta,
+    getConfig,
+    putConfig,
+    createHvbGame,
+    getHvbGame,
+    hvbHumanMove,
+    deleteHvbGame,
+    createHvhGame,
+    getHvhGame,
+    hvhMove,
+    deleteHvhGame,
+    type GameConfig,
 } from "../api/gamey";
 
 function jsonResponse(body: any, init?: ResponseInit) {
-  return new Response(JSON.stringify(body), {
-    status: init?.status ?? 200,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
+    return new Response(JSON.stringify(body), {
+        status: init?.status ?? 200,
+        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
 }
 
 describe("api/gamey", () => {
@@ -245,7 +245,7 @@ describe("api/gamey", () => {
             }),
         );
 
-        const res = await createHvhGame();
+        const res = await createHvhGame({ size: 7, hvh_starter: "player1" });
 
         expect(res.mode).toBe("hvh");
         expect(res.status.state).toBe("ongoing");
@@ -253,7 +253,7 @@ describe("api/gamey", () => {
         const [url, init] = spy.mock.calls[0];
         expect(String(url)).toContain("/api/v1/hvh/games");
         expect(init?.method).toBe("POST");
-        expect(init?.body).toBeUndefined();
+        expect(init?.body).toBe(JSON.stringify({ size: 7, hvh_starter: "player1" }));
     });
 
     it("getHvhGame hace GET y encodea el gameId", async () => {

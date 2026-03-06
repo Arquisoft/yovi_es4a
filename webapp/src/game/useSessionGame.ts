@@ -16,7 +16,7 @@ export type SessionGameMoveResponse<YEN> = {
 };
 
 type UseSessionGameArgs<YEN> = {
-    deps: any[]; // dependencias para reiniciar (size/bot/starter...)
+    deps: readonly unknown[];
     start: () => Promise<SessionGameStartResponse<YEN>>;
     move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<YEN>>;
 };

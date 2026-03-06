@@ -201,10 +201,16 @@ export async function deleteHvbGame(gameId: string): Promise<{ deleted: boolean 
 // HvH
 // --------------------------------------------------------------------------------------
 
-export async function createHvhGame(): Promise<GameStateResponse> {
+export type CreateHvhGameRequest = {
+  size?: number;
+  hvh_starter?: HvHStarter;
+};
+
+export async function createHvhGame(req: CreateHvhGameRequest): Promise<GameStateResponse> {
   return http<GameStateResponse>("/api/v1/hvh/games", {
     method: "POST",
     headers: buildHeaders(),
+    body: JSON.stringify(req),
   });
 }
 
