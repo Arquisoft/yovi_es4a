@@ -142,3 +142,106 @@ pub fn status_hvb(next_is_human: bool, finished: Option<Winner>) -> GameStatus {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::extract::State;
+
+    use crate::game_server::state::GameServerState;
+
+    #[tokio::test]
+    async fn get_meta_returns_expected_limits_and_bots() {
+        let state = GameServerState::new_default();
+
+        let Json(meta) = get_meta(State(state)).await;
+
+        assert_eq!(meta.api_version, API_V1);
+        assert_eq!(meta.min_board_size, MIN_BOARD_SIZE);
+        assert_eq!(meta.max_board_size, MAX_BOARD_SIZE);
+        assert!(!meta.bots.is_empty());
+        assert!(meta.bots.iter().any(|b| b == "random_bot"));
+    }
+
+    #[test]
+    fn applied_move_new_builds_cell_and_coords() {
+        let applied = AppliedMove::new(0, 2);
+
+        assert_eq!(applied.cell_id, 0);
+        assert_eq!(applied.coords, Coordinates::from_index(0, 2));
+    }
+
+    #[test]
+    fn status_hvh_finished_defaults_to_player0_when_winner_is_none() {
+        let status = status_hvh_from_session(true, 1, None);
+
+        match status {
+            GameStatus::Finished { winner } => {
+                assert!(matches!(winner, Winner::Player0));
+            }
+            _ => panic!("expected finished"),
+        }
+    }
+
+    #[test]
+    fn status_hvh_finished_with_player1_winner() {
+        let status = status_hvh_from_session(true, 0, Some(1));
+
+        match status {
+            GameStatus::Finished { winner } => {
+                assert!(matches!(winner, Winner::Player1));
+            }
+            _ => panic!("expected finished"),
+        }
+    }
+
+    #[test]
+    fn status_hvh_ongoing_with_player0() {
+        let status = status_hvh_from_session(false, 0, None);
+
+        match status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Player0)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[test]
+    fn status_hvh_ongoing_with_player1() {
+        let status = status_hvh_from_session(false, 1, None);
+
+        match status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Player1)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[test]
+    fn status_hvb_returns_finished_when_winner_exists() {
+        let status = status_hvb(true, Some(Winner::Bot));
+
+        match status {
+            GameStatus::Finished { winner } => assert!(matches!(winner, Winner::Bot)),
+            _ => panic!("expected finished"),
+        }
+    }
+
+    #[test]
+    fn status_hvb_returns_human_turn_when_not_finished() {
+        let status = status_hvb(true, None);
+
+        match status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Human)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[test]
+    fn status_hvb_returns_bot_turn_when_not_finished_and_human_is_false() {
+        let status = status_hvb(false, None);
+
+        match status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Bot)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+}

@@ -211,3 +211,505 @@ pub async fn post_human_move(
         "status": status,
     })))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        extract::{Path, State},
+        http::{HeaderMap, HeaderValue},
+        Json,
+    };
+    use tokio::time::{sleep, Duration};
+
+    use crate::game_server::auth::Principal;
+    use crate::game_server::dto::{CellMoveRequest, GameConfig, GameMode, HvBStarter, HvHStarter, NextTurn};
+    use crate::game_server::state::GameServerState;
+
+    fn headers_with_client(client_id: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-client-id", HeaderValue::from_str(client_id).unwrap());
+        headers
+    }
+
+    async fn store_hvb_config(
+        state: &GameServerState,
+        principal: &Principal,
+        size: u32,
+        starter: HvBStarter,
+        bot_id: Option<&str>,
+    ) {
+        state.config_store.set(
+            principal,
+            GameConfig {
+                size,
+                hvb_starter: starter,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: bot_id.map(|s| s.to_string()),
+            },
+        );
+        sleep(Duration::from_millis(50)).await;
+    }
+
+    #[tokio::test]
+    async fn create_game_rejects_missing_bot_id() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-missing-bot");
+        let principal = Principal::Guest {
+            client_id: "hvb-missing-bot".to_string(),
+        };
+
+        store_hvb_config(&state, &principal, 3, HvBStarter::Human, None).await;
+
+        let err = create_game(
+            State(state),
+            headers,
+            Json(CreateHvbGameRequest {
+                size: None,
+                starter: None,
+                bot_id: None,
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(err.1.code, "missing_bot_id");
+    }
+
+    #[tokio::test]
+    async fn create_game_rejects_unknown_bot_id() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-unknown-bot");
+
+        let err = create_game(
+            State(state),
+            headers,
+            Json(CreateHvbGameRequest {
+                size: Some(3),
+                starter: Some(HvBStarter::Human),
+                bot_id: Some("does_not_exist".to_string()),
+            }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(err.1.code, "unknown_bot_id");
+    }
+
+    #[tokio::test]
+    async fn create_game_happy_path_human_starts() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-create-human");
+
+        let res = create_game(
+            State(state),
+            headers,
+            Json(CreateHvbGameRequest {
+                size: Some(3),
+                starter: Some(HvBStarter::Human),
+                bot_id: Some("random_bot".to_string()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(matches!(res.0.mode, GameMode::Hvb));
+        match res.0.status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Human)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_game_happy_path_bot_starts() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-create-bot");
+
+        let res = create_game(
+            State(state),
+            headers,
+            Json(CreateHvbGameRequest {
+                size: Some(3),
+                starter: Some(HvBStarter::Bot),
+                bot_id: Some("random_bot".to_string()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(matches!(res.0.mode, GameMode::Hvb));
+        match res.0.status {
+            GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Human)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_game_rejects_invalid_uuid() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-invalid");
+
+        let err = get_game(State(state), headers, Path("not-a-uuid".to_string()))
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(err.1.code, "invalid_game_id");
+    }
+
+    #[tokio::test]
+    async fn create_get_and_delete_game_happy_path() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-full");
+
+        let created = create_game(
+            State(state.clone()),
+            headers.clone(),
+            Json(CreateHvbGameRequest {
+                size: Some(3),
+                starter: Some(HvBStarter::Human),
+                bot_id: Some("random_bot".to_string()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        let game_id = created.0.game_id.clone();
+
+        let fetched = get_game(State(state.clone()), headers.clone(), Path(game_id.clone()))
+            .await
+            .unwrap();
+        assert_eq!(fetched.0.game_id, game_id);
+
+        let deleted = delete_game(State(state.clone()), headers.clone(), Path(game_id.clone()))
+            .await
+            .unwrap();
+        assert_eq!(deleted.0["deleted"], true);
+
+        let err = get_game(State(state), headers, Path(game_id)).await.unwrap_err();
+        assert_eq!(err.1.code, "game_not_found");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_out_of_range_cell() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-out-of-range");
+        let principal = Principal::Guest {
+            client_id: "hvb-out-of-range".to_string(),
+        };
+
+        let session = GameSession {
+            owner_key: principal.key(),
+            mode: GameMode::Hvb,
+            config: GameConfig {
+                size: 2,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: Some("random_bot".to_string()),
+            },
+            game: GameY::new(2),
+            bot_id: Some("random_bot".to_string()),
+            hvh_next_player: None,
+            hvh_winner: None,
+        };
+
+        let game_id = uuid::Uuid::new_v4().to_string();
+        state.sessions.insert(game_id.clone(), session).await;
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path(game_id),
+            Json(CellMoveRequest { cell_id: 99 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(err.1.code, "cell_id_out_of_range");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_missing_bot_id_in_session() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-session-invalid");
+        let principal = Principal::Guest {
+            client_id: "hvb-session-invalid".to_string(),
+        };
+
+        let session = GameSession {
+            owner_key: principal.key(),
+            mode: GameMode::Hvb,
+            config: GameConfig {
+                size: 2,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: None,
+            },
+            game: GameY::new(2),
+            bot_id: None,
+            hvh_next_player: None,
+            hvh_winner: None,
+        };
+
+        let game_id = uuid::Uuid::new_v4().to_string();
+        state.sessions.insert(game_id.clone(), session).await;
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path(game_id),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(err.1.code, "session_invalid");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_unknown_bot_id_in_session() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-session-unknown-bot");
+        let principal = Principal::Guest {
+            client_id: "hvb-session-unknown-bot".to_string(),
+        };
+
+        let session = GameSession {
+            owner_key: principal.key(),
+            mode: GameMode::Hvb,
+            config: GameConfig {
+                size: 2,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: Some("fake_bot".to_string()),
+            },
+            game: GameY::new(2),
+            bot_id: Some("fake_bot".to_string()),
+            hvh_next_player: None,
+            hvh_winner: None,
+        };
+
+        let game_id = uuid::Uuid::new_v4().to_string();
+        state.sessions.insert(game_id.clone(), session).await;
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path(game_id),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(err.1.code, "unknown_bot_id");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_happy_path() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-post-ok");
+        let principal = Principal::Guest {
+            client_id: "hvb-post-ok".to_string(),
+        };
+
+        let session = GameSession {
+            owner_key: principal.key(),
+            mode: GameMode::Hvb,
+            config: GameConfig {
+                size: 3,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: Some("random_bot".to_string()),
+            },
+            game: GameY::new(3),
+            bot_id: Some("random_bot".to_string()),
+            hvh_next_player: None,
+            hvh_winner: None,
+        };
+
+        let game_id = uuid::Uuid::new_v4().to_string();
+        state.sessions.insert(game_id.clone(), session).await;
+
+        let res = post_human_move(
+            State(state.clone()),
+            headers,
+            Path(game_id.clone()),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(res.0["game_id"], game_id);
+    }
+
+    #[tokio::test]
+    async fn get_game_returns_not_found_for_existing_game_of_another_owner() {
+        let state = GameServerState::new_default();
+
+        let owner_headers = headers_with_client("owner-hvb");
+        let other_headers = headers_with_client("other-hvb");
+
+        let created = create_game(
+            State(state.clone()),
+            owner_headers,
+            Json(CreateHvbGameRequest {
+                size: Some(3),
+                starter: Some(HvBStarter::Human),
+                bot_id: Some("random_bot".to_string()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        let err = get_game(State(state), other_headers, Path(created.0.game_id))
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(err.1.code, "game_not_found");
+    }
+
+    #[tokio::test]
+    async fn delete_game_rejects_invalid_uuid() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-delete-invalid");
+
+        let err = delete_game(State(state), headers, Path("bad-uuid".to_string()))
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(err.1.code, "invalid_game_id");
+    }
+
+    #[tokio::test]
+    async fn delete_game_returns_not_found_for_missing_game() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-delete-missing");
+
+        let err = delete_game(
+            State(state),
+            headers,
+            Path(uuid::Uuid::new_v4().to_string()),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(err.1.code, "game_not_found");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_invalid_uuid() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-post-invalid");
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path("not-a-uuid".to_string()),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(err.1.code, "invalid_game_id");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_missing_game() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-post-missing");
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path(uuid::Uuid::new_v4().to_string()),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::NOT_FOUND);
+        assert_eq!(err.1.code, "game_not_found");
+    }
+
+    #[tokio::test]
+    async fn post_human_move_rejects_occupied_cell() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-occupied");
+        let principal = Principal::Guest {
+            client_id: "hvb-occupied".to_string(),
+        };
+
+        let mut game = GameY::new(2);
+        game.add_move(Movement::Placement {
+            player: PlayerId::new(0),
+            coords: crate::Coordinates::from_index(0, 2),
+        }).unwrap();
+
+        let session = GameSession {
+            owner_key: principal.key(),
+            mode: GameMode::Hvb,
+            config: GameConfig {
+                size: 2,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: Some("random_bot".to_string()),
+            },
+            game,
+            bot_id: Some("random_bot".to_string()),
+            hvh_next_player: None,
+            hvh_winner: None,
+        };
+
+        let game_id = uuid::Uuid::new_v4().to_string();
+        state.sessions.insert(game_id.clone(), session).await;
+
+        let err = post_human_move(
+            State(state),
+            headers,
+            Path(game_id),
+            Json(CellMoveRequest { cell_id: 0 }),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(err.0, axum::http::StatusCode::CONFLICT);
+        assert_eq!(err.1.code, "move_rejected");
+    }
+
+    #[tokio::test]
+    async fn create_game_persists_request_overrides_in_config_store() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvb-config-store");
+        let principal = Principal::Guest {
+            client_id: "hvb-config-store".to_string(),
+        };
+
+        let _ = create_game(
+            State(state.clone()),
+            headers,
+            Json(CreateHvbGameRequest {
+                size: Some(5),
+                starter: Some(HvBStarter::Bot),
+                bot_id: Some("random_bot".to_string()),
+            }),
+        )
+        .await
+        .unwrap();
+
+        sleep(Duration::from_millis(50)).await;
+
+        let stored = state.config_store.get_or_default(&principal).await;
+        assert_eq!(stored.size, 5);
+        assert!(matches!(stored.hvb_starter, HvBStarter::Bot));
+        assert_eq!(stored.bot_id.as_deref(), Some("random_bot"));
+    }
+}

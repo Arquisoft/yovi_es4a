@@ -93,3 +93,109 @@ impl GameServerState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::time::{sleep, Duration};
+
+    use crate::game_server::auth::Principal;
+    use crate::game_server::dto::{GameConfig, HvBStarter, HvHStarter};
+    use crate::game_server::{MAX_BOARD_SIZE, MIN_BOARD_SIZE};
+
+    #[test]
+    fn default_config_has_expected_values() {
+        let cfg = config_store::ConfigStore::default_config();
+
+        assert_eq!(cfg.size, 7);
+        assert!(matches!(cfg.hvb_starter, HvBStarter::Human));
+        assert!(matches!(cfg.hvh_starter, Some(HvHStarter::Player0)));
+        assert_eq!(cfg.bot_id.as_deref(), Some("random_bot"));
+    }
+
+    #[test]
+    fn clamp_size_respects_min() {
+        assert_eq!(
+            config_store::ConfigStore::clamp_size(MIN_BOARD_SIZE - 1),
+            MIN_BOARD_SIZE
+        );
+    }
+
+    #[test]
+    fn clamp_size_respects_max() {
+        assert_eq!(
+            config_store::ConfigStore::clamp_size(MAX_BOARD_SIZE + 1),
+            MAX_BOARD_SIZE
+        );
+    }
+
+    #[test]
+    fn clamp_size_keeps_valid_value() {
+        assert_eq!(config_store::ConfigStore::clamp_size(7), 7);
+    }
+
+    #[test]
+    fn normalize_clamps_size() {
+        let cfg = GameConfig {
+            size: MAX_BOARD_SIZE + 5,
+            hvb_starter: HvBStarter::Human,
+            hvh_starter: Some(HvHStarter::Player0),
+            bot_id: Some("random_bot".to_string()),
+        };
+
+        let normalized = config_store::ConfigStore::normalize(cfg);
+        assert_eq!(normalized.size, MAX_BOARD_SIZE);
+    }
+
+    #[test]
+    fn key_delegates_to_principal() {
+        let p = Principal::Guest {
+            client_id: "abc".to_string(),
+        };
+
+        assert_eq!(config_store::ConfigStore::key(&p), "guest:abc");
+    }
+
+    #[test]
+    fn get_or_default_blocking_returns_default_for_missing_key() {
+        let map = std::collections::HashMap::new();
+
+        let cfg = config_store::ConfigStore::get_or_default_blocking(&map, "missing");
+        assert_eq!(cfg.size, 7);
+        assert_eq!(cfg.bot_id.as_deref(), Some("random_bot"));
+    }
+
+    #[tokio::test]
+    async fn get_or_default_returns_stored_config() {
+        let store = config_store::ConfigStore::new();
+        let principal = Principal::Guest {
+            client_id: "stored".to_string(),
+        };
+
+        store.set(
+            &principal,
+            GameConfig {
+                size: 9,
+                hvb_starter: HvBStarter::Bot,
+                hvh_starter: Some(HvHStarter::Player1),
+                bot_id: Some("random_bot".to_string()),
+            },
+        );
+
+        sleep(Duration::from_millis(50)).await;
+
+        let cfg = store.get_or_default(&principal).await;
+        assert_eq!(cfg.size, 9);
+        assert!(matches!(cfg.hvb_starter, HvBStarter::Bot));
+        assert!(matches!(cfg.hvh_starter, Some(HvHStarter::Player1)));
+    }
+
+    #[test]
+    fn new_default_creates_state_with_bots() {
+        let state = GameServerState::new_default();
+        let names = state.bots.names();
+
+        assert!(!names.is_empty());
+        assert!(names.iter().any(|b| b == "random_bot"));
+    }
+}

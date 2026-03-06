@@ -64,3 +64,123 @@ impl SessionStore {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::game_server::auth::Principal;
+    use crate::game_server::dto::{GameConfig, GameMode, HvBStarter, HvHStarter};
+
+    fn sample_session(owner_key: String) -> GameSession {
+        GameSession {
+            owner_key,
+            mode: GameMode::Hvh,
+            config: GameConfig {
+                size: 7,
+                hvb_starter: HvBStarter::Human,
+                hvh_starter: Some(HvHStarter::Player0),
+                bot_id: Some("random_bot".to_string()),
+            },
+            game: GameY::new(2),
+            bot_id: None,
+            hvh_next_player: Some(0),
+            hvh_winner: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn insert_and_get_session() {
+        let store = SessionStore::new();
+        let session = sample_session("guest:abc".to_string());
+
+        store.insert("game-1".to_string(), session.clone()).await;
+
+        let found = store.get("game-1").await;
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().owner_key, "guest:abc");
+    }
+
+    #[tokio::test]
+    async fn get_missing_session_returns_none() {
+        let store = SessionStore::new();
+        assert!(store.get("missing").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn remove_session_returns_removed_value() {
+        let store = SessionStore::new();
+        let session = sample_session("guest:abc".to_string());
+
+        store.insert("game-2".to_string(), session).await;
+        let removed = store.remove("game-2").await;
+
+        assert!(removed.is_some());
+        assert!(store.get("game-2").await.is_none());
+    }
+
+    #[tokio::test]
+    async fn assert_owner_returns_session_for_owner() {
+        let store = SessionStore::new();
+        let principal = Principal::Guest {
+            client_id: "abc".to_string(),
+        };
+        let session = sample_session(principal.key());
+
+        store.insert("game-3".to_string(), session.clone()).await;
+
+        let found = store.assert_owner(&principal, "game-3").await.unwrap();
+        assert_eq!(found.owner_key, principal.key());
+    }
+
+    #[tokio::test]
+    async fn assert_owner_fails_when_game_does_not_exist() {
+        let store = SessionStore::new();
+        let principal = Principal::Guest {
+            client_id: "abc".to_string(),
+        };
+
+        assert!(store.assert_owner(&principal, "missing").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn assert_owner_fails_for_different_owner() {
+        let store = SessionStore::new();
+        let owner = Principal::Guest {
+            client_id: "owner".to_string(),
+        };
+        let other = Principal::Guest {
+            client_id: "other".to_string(),
+        };
+
+        store
+            .insert("game-4".to_string(), sample_session(owner.key()))
+            .await;
+
+        assert!(store.assert_owner(&other, "game-4").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn update_existing_session_succeeds() {
+        let store = SessionStore::new();
+        let mut session = sample_session("guest:abc".to_string());
+
+        store.insert("game-5".to_string(), session.clone()).await;
+
+        session.hvh_next_player = Some(1);
+        let res = store.update("game-5", session.clone()).await;
+        assert!(res.is_ok());
+
+        let found = store.get("game-5").await.unwrap();
+        assert_eq!(found.hvh_next_player, Some(1));
+    }
+
+    #[tokio::test]
+    async fn update_missing_session_fails() {
+        let store = SessionStore::new();
+        let session = sample_session("guest:abc".to_string());
+
+        let res = store.update("missing", session).await;
+        assert!(res.is_err());
+    }
+}
