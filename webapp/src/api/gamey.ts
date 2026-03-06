@@ -25,13 +25,18 @@ export function getOrCreateClientId(): string {
   const existing = localStorage.getItem(key);
   if (existing) return existing;
 
-  // UUID v4 “simple” (suficiente para client-side)
   const newId =
-    (crypto as any)?.randomUUID?.() ??
-    `client_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+    crypto.randomUUID?.() ??
+    `client_${randomHex(16)}_${Date.now()}`;
 
   localStorage.setItem(key, newId);
   return newId;
+}
+
+function randomHex(bytes: number): string {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function buildHeaders(extra?: HeadersInit): HeadersInit {
