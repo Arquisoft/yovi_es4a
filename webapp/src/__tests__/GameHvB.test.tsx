@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import GameHvB from "../vistas/GameHvB.tsx";
 
@@ -8,6 +8,9 @@ const navigateMock = vi.fn();
 const confirmMock = vi.fn();
 
 let mockSearchParams = new URLSearchParams("size=7&bot=random_bot");
+
+const useSessionGameMock = vi.fn();
+const parseYenToCellsMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -18,412 +21,308 @@ vi.mock("react-router-dom", async () => {
     };
 });
 
-const createHvbGameMock = vi.fn();
-const hvbHumanMoveMock = vi.fn();
+vi.mock("antd", () => ({
+    App: {
+        useApp: () => ({
+            modal: { confirm: confirmMock },
+        }),
+    },
+    Button: ({ children, onClick, disabled, type }: any) => (
+        <button onClick={onClick} disabled={disabled} data-type={type}>
+            {children}
+        </button>
+    ),
+    Card: ({ children, style }: any) => (
+        <div data-testid="card" data-style={JSON.stringify(style ?? {})}>
+            {children}
+        </div>
+    ),
+    Flex: ({ children }: any) => <div>{children}</div>,
+    Space: ({ children }: any) => <div>{children}</div>,
+    Typography: {
+        Title: ({ children }: any) => <div>{children}</div>,
+    },
+}));
 
-vi.mock("../api/gamey", () => ({
-    createHvbGame: (...args: any[]) => createHvbGameMock(...args),
-    hvbHumanMove: (...args: any[]) => hvbHumanMoveMock(...args),
+vi.mock("../game/useSessionGame", () => ({
+    useSessionGame: (...args: any[]) => useSessionGameMock(...args),
 }));
 
 vi.mock("../game/yen", () => ({
-    parseYenToCells: () => [
-        {
-            cellId: 0,
-            row: 0,
-            col: 0,
-            value: ".",
-            coords: { x: 0, y: 0, z: 0 },
-            touches: { a: false, b: false, c: false },
-        },
-    ],
+    parseYenToCells: (...args: any[]) => parseYenToCellsMock(...args),
 }));
 
 vi.mock("../game/Board", () => ({
-    default: ({ onCellClick, disabled }: any) => (
+    default: ({ size, cells, disabled, onCellClick }: any) => (
         <div>
-            <button aria-label="cell-0" disabled={disabled} onClick={() => onCellClick(0)}>
+            <div>BOARD size={size}</div>
+            <div>BOARD disabled={String(disabled)}</div>
+            <div>BOARD cells={JSON.stringify(cells)}</div>
+            <button aria-label="board-cell-0" onClick={() => onCellClick(0)} disabled={disabled}>
                 cell0
             </button>
         </div>
     ),
 }));
 
-vi.mock("antd", () => {
-    const EmptyComp = ({ description }: any) => <div>{description}</div>;
-    (EmptyComp as any).PRESENTED_IMAGE_DEFAULT = "default-empty";
-    return {
-        App: {
-            useApp: () => ({
-                modal: { confirm: confirmMock },
-            }),
-        },
-        Alert: ({ message }: any) => <div role="alert">{message}</div>,
-        Button: ({ children, onClick, disabled, danger, type }: any) => (
-            <button data-danger={!!danger} data-type={type} onClick={onClick} disabled={disabled}>
-                {children}
+vi.mock("../game/GameShell", () => ({
+    default: ({ title, subtitle, onAbandon, board, result, abandonDisabled }: any) => (
+        <div>
+            <div>{title}</div>
+            <div>{subtitle}</div>
+            <button onClick={onAbandon} disabled={!!abandonDisabled}>
+                Abandonar
             </button>
-        ),
-        Card: ({ children, style }: any) => (
-            <div data-testid="card" style={style}>
-                {children}
-            </div>
-        ),
-        Empty: EmptyComp,
-        Flex: ({ children }: any) => <div>{children}</div>,
-        Space: ({ children }: any) => <div>{children}</div>,
-        Typography: {
-            Title: ({ children }: any) => <div>{children}</div>,
-            Text: ({ children }: any) => <div>{children}</div>,
-        },
-    };
-});
+            <div data-testid="shell-board">{board}</div>
+            <div data-testid="shell-result">{result}</div>
+        </div>
+    ),
+}));
 
 describe("GameHvB", () => {
     beforeEach(() => {
         navigateMock.mockReset();
         confirmMock.mockReset();
-        createHvbGameMock.mockReset();
-        hvbHumanMoveMock.mockReset();
+        useSessionGameMock.mockReset();
+        parseYenToCellsMock.mockReset();
+
         mockSearchParams = new URLSearchParams("size=7&bot=random_bot");
-    });
 
-    it("crea partida y renderiza Board", async () => {
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-1",
+        parseYenToCellsMock.mockReturnValue([
+            {
+                cellId: 0,
+                row: 0,
+                col: 0,
+                value: ".",
+                coords: { x: 0, y: 0, z: 0 },
+                touches: { a: false, b: false, c: false },
+            },
+        ]);
+
+        useSessionGameMock.mockReturnValue({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: null,
+            error: "",
+            loading: false,
+            gameOver: false,
+            onCellClick: vi.fn(),
         });
+    });
+
+    it("normaliza starter=bot y respeta bot/size de la query", () => {
+        mockSearchParams = new URLSearchParams("size=9&bot=mcts_bot&hvbstarter=BoT");
 
         render(<GameHvB />);
 
-        expect(await screen.findByLabelText("cell-0")).toBeInTheDocument();
-        expect(createHvbGameMock).toHaveBeenCalledWith({
-            size: 7,
-            bot_id: "random_bot",
-            hvb_starter: "human",
-        });
-
-        expect(screen.getByText(/Tamaño: 7/i)).toBeInTheDocument();
-        expect(screen.getByText(/Bot: random_bot/i)).toBeInTheDocument();
-        expect(screen.getByText(/Empieza: human/i)).toBeInTheDocument();
+        const args = useSessionGameMock.mock.calls[0][0];
+        expect(args.deps).toEqual([9, "mcts_bot", "bot"]);
+        expect(screen.getByText("Tamaño: 9 · Bot: mcts_bot · Empieza: bot")).toBeInTheDocument();
     });
 
-    it("usa starter=bot si viene en query (case-insensitive)", async () => {
-        mockSearchParams = new URLSearchParams("size=7&bot=mcts_bot&hvbstarter=BoT");
+    it("hace fallback a size=7 y starter=human si la query es inválida", () => {
+        mockSearchParams = new URLSearchParams("size=1&bot=smart_bot&hvbstarter=alien");
 
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-2",
+        render(<GameHvB />);
+
+        const args = useSessionGameMock.mock.calls[0][0];
+        expect(args.deps).toEqual([7, "smart_bot", "human"]);
+        expect(screen.getByText("Tamaño: 7 · Bot: smart_bot · Empieza: human")).toBeInTheDocument();
+    });
+
+    it("parsea yen a cells y monta el Board con size del yen", () => {
+        render(<GameHvB />);
+
+        expect(parseYenToCellsMock).toHaveBeenCalledWith({ size: 7, layout: "." });
+        expect(screen.getByText("BOARD size=7")).toBeInTheDocument();
+        expect(screen.getByText(/BOARD cells=/)).toBeInTheDocument();
+    });
+
+    it("si no hay yen usa el size de la query para el Board", () => {
+        useSessionGameMock.mockReturnValueOnce({
+            yen: null,
+            winner: null,
+            error: "",
+            loading: false,
+            gameOver: false,
+            onCellClick: vi.fn(),
+        });
+
+        mockSearchParams = new URLSearchParams("size=11&bot=random_bot&hvbstarter=human");
+
+        render(<GameHvB />);
+
+        expect(screen.getByText("BOARD size=11")).toBeInTheDocument();
+        expect(parseYenToCellsMock).not.toHaveBeenCalled();
+    });
+
+    it("deshabilita el Board cuando loading=true", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: null,
+            error: "",
+            loading: true,
+            gameOver: false,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        await screen.findByLabelText("cell-0");
-
-        expect(createHvbGameMock).toHaveBeenCalledWith({
-            size: 7,
-            bot_id: "mcts_bot",
-            hvb_starter: "bot",
-        });
-        expect(screen.getByText(/Empieza: bot/i)).toBeInTheDocument();
+        expect(screen.getByText("BOARD disabled=true")).toBeInTheDocument();
     });
 
-    it("fallback a size=7 si size es inválido", async () => {
-        mockSearchParams = new URLSearchParams("size=1&bot=mcts_bot&hvbstarter=human");
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-3",
+    it("deshabilita el Board cuando gameOver=true", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: "human",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        await screen.findByLabelText("cell-0");
-
-        expect(createHvbGameMock).toHaveBeenCalledWith({
-            size: 7,
-            bot_id: "mcts_bot",
-            hvb_starter: "human",
-        });
+        expect(screen.getByText("BOARD disabled=true")).toBeInTheDocument();
     });
 
-    it("muestra loading antes de crear la partida", () => {
-        createHvbGameMock.mockReturnValue(new Promise(() => {}));
-
-        render(<GameHvB />);
-
-        expect(screen.getByText("Creando partida...")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Abandonar" })).toBeDisabled();
-    });
-
-    it("muestra error si createHvbGame falla con Error.message", async () => {
-        createHvbGameMock.mockRejectedValueOnce(new Error("boom"));
-
-        render(<GameHvB />);
-
-        expect(await screen.findByRole("alert")).toHaveTextContent("boom");
-        expect(screen.getByText("No se pudo crear la partida.")).toBeInTheDocument();
-    });
-
-    it("si createHvbGame rechaza sin .message, usa String(e)", async () => {
-        createHvbGameMock.mockRejectedValueOnce("NEWGAME_FAIL");
-
-        render(<GameHvB />);
-
-        expect(await screen.findByRole("alert")).toHaveTextContent("NEWGAME_FAIL");
-    });
-
-    it("si createHvbGame devuelve finished con winner=bot, muestra resultado del bot", async () => {
-        mockSearchParams = new URLSearchParams("size=7&bot=random_bot&hvbstarter=bot");
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-4",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished", winner: "bot" },
-        });
-
-        render(<GameHvB />);
-
-        expect(await screen.findByText("Game Over")).toBeInTheDocument();
-        expect(screen.getByText("Ha ganado el bot. ¡Inténtalo de nuevo!")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Abandonar" })).toBeDisabled();
-    });
-
-    it("si createHvbGame devuelve finished con winner=human, muestra resultado del humano", async () => {
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-5",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished", winner: "human" },
-        });
-
-        render(<GameHvB />);
-
-        expect(await screen.findByText("¡Felicidades!")).toBeInTheDocument();
-        expect(screen.getByText("Has ganado la partida.")).toBeInTheDocument();
-    });
-
-    it("al click en celda ejecuta hvbHumanMove y si termina winner=human muestra resultado", async () => {
+    it("muestra resultado ganador del humano", async () => {
         const user = userEvent.setup();
 
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-6",
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        hvbHumanMoveMock.mockResolvedValueOnce({
-            game_id: "game-6",
-            yen: { size: 7, layout: "." },
-            human_move: { cell_id: 0, coords: { x: 0, y: 0, z: 0 } },
-            bot_move: null,
-            status: { state: "finished", winner: "human" },
+            winner: "human",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
-
-        expect(hvbHumanMoveMock).toHaveBeenCalledWith("game-6", 0);
-        expect(await screen.findByText("¡Felicidades!")).toBeInTheDocument();
+        expect(screen.getByText("¡Felicidades!")).toBeInTheDocument();
         expect(screen.getByText("Has ganado la partida.")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Volver a Home" }));
         expect(navigateMock).toHaveBeenCalledWith("/home", { replace: true });
     });
 
-    it("si hvbHumanMove devuelve ongoing, no muestra resultado final", async () => {
-        const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-7",
+    it("muestra resultado ganador del bot", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        hvbHumanMoveMock.mockResolvedValueOnce({
-            game_id: "game-7",
-            yen: { size: 7, layout: "." },
-            human_move: { cell_id: 0, coords: { x: 0, y: 0, z: 0 } },
-            bot_move: { cell_id: 1, coords: { x: 0, y: 1, z: 0 } },
-            status: { state: "ongoing", next: "human" },
+            winner: "bot",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
+        expect(screen.getByText("Game Over")).toBeInTheDocument();
+        expect(screen.getByText("Ha ganado el bot. ¡Inténtalo de nuevo!")).toBeInTheDocument();
+    });
 
-        expect(screen.queryByText("Volver a Home")).not.toBeInTheDocument();
+    it("no muestra resultado si gameOver=false", () => {
+        render(<GameHvB />);
+
         expect(screen.queryByText("¡Felicidades!")).not.toBeInTheDocument();
         expect(screen.queryByText("Game Over")).not.toBeInTheDocument();
     });
 
-    it("si hvbHumanMove falla, muestra Alert con el error", async () => {
-        const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-8",
+    it("colorea la card azul cuando gana human", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: "human",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
-
-        hvbHumanMoveMock.mockRejectedValueOnce(new Error("move failed"));
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
-
-        expect(await screen.findByRole("alert")).toHaveTextContent("move failed");
+        const cards = screen.getAllByTestId("card");
+        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({ background: "#28bbf532" }));
     });
 
-    it("si hvbHumanMove rechaza con string, usa String(e)", async () => {
-        const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-9",
+    it("colorea la card naranja cuando gana bot", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: "bot",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
-
-        hvbHumanMoveMock.mockRejectedValueOnce("BAD_MOVE");
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
-
-        expect(await screen.findByRole("alert")).toHaveTextContent("BAD_MOVE");
+        const cards = screen.getAllByTestId("card");
+        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({ background: "#ff7b0033" }));
     });
 
-    it("si falta gameId, handleCellClick retorna sin llamar a hvbHumanMove", async () => {
-        const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
+    it("no aplica color si gameOver=true pero no hay winner", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: null,
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
-
-        expect(hvbHumanMoveMock).not.toHaveBeenCalled();
+        const cards = screen.getAllByTestId("card");
+        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({}));
     });
 
-    it("al pulsar Abandonar abre modal.confirm y onOk navega a /home replace", async () => {
+    it("abre modal de abandono y navega al confirmar", async () => {
         const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-10",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
 
         render(<GameHvB />);
 
-        await screen.findByLabelText("cell-0");
         await user.click(screen.getByRole("button", { name: "Abandonar" }));
 
         expect(confirmMock).toHaveBeenCalledTimes(1);
-        const args = confirmMock.mock.calls[0][0];
-        expect(args.title).toBe("Abandonar");
 
-        args.onOk();
+        const modalArgs = confirmMock.mock.calls[0][0];
+        expect(modalArgs.title).toBe("Abandonar");
+        expect(modalArgs.content).toBe("¿Seguro que quieres abandonar la partida?");
+        expect(modalArgs.okText).toBe("Sí, abandonar");
+        expect(modalArgs.cancelText).toBe("Cancelar");
+
+        modalArgs.onOk();
         expect(navigateMock).toHaveBeenCalledWith("/home", { replace: true });
     });
 
-    it("si el componente se desmonta antes de que createHvbGame resuelva, no rompe", async () => {
-        let resolveNewGame: (value: any) => void = () => {};
-        const pending = new Promise((res) => {
-            resolveNewGame = res;
-        });
-        createHvbGameMock.mockReturnValueOnce(pending);
-
-        const { unmount } = render(<GameHvB />);
-        unmount();
-
-        resolveNewGame({
-            game_id: "late-game",
+    it("deshabilita Abandonar si loading=true", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        await Promise.resolve();
-        await Promise.resolve();
-
-        expect(true).toBe(true);
-    });
-
-    it("si la partida ya terminó, no vuelve a llamar a hvbHumanMove", async () => {
-        const user = userEvent.setup();
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-11",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        hvbHumanMoveMock.mockResolvedValueOnce({
-            game_id: "game-11",
-            yen: { size: 7, layout: "." },
-            human_move: { cell_id: 0, coords: { x: 0, y: 0, z: 0 } },
-            bot_move: null,
-            status: { state: "finished", winner: "human" },
+            winner: null,
+            error: "",
+            loading: true,
+            gameOver: false,
+            onCellClick: vi.fn(),
         });
 
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        await user.click(cell0);
-
-        expect(await screen.findByText("Volver a Home")).toBeInTheDocument();
-        expect(hvbHumanMoveMock).toHaveBeenCalledTimes(1);
-
-        await user.click(cell0);
-        expect(hvbHumanMoveMock).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("button", { name: "Abandonar" })).toBeDisabled();
     });
 
-    it("deshabilita Abandonar mientras loading=true y lo habilita después", async () => {
-        let resolveMove: (value: any) => void = () => {};
-        const pendingMove = new Promise((res) => {
-            resolveMove = res;
-        });
-
-        createHvbGameMock.mockResolvedValueOnce({
-            game_id: "game-12",
+    it("deshabilita Abandonar si gameOver=true", () => {
+        useSessionGameMock.mockReturnValueOnce({
             yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            winner: "human",
+            error: "",
+            loading: false,
+            gameOver: true,
+            onCellClick: vi.fn(),
         });
 
-        hvbHumanMoveMock.mockReturnValueOnce(pendingMove);
-
-        const user = userEvent.setup();
         render(<GameHvB />);
 
-        const cell0 = await screen.findByLabelText("cell-0");
-        const abandonButton = screen.getByRole("button", { name: "Abandonar" });
-
-        expect(abandonButton).toBeEnabled();
-
-        await user.click(cell0);
-        expect(abandonButton).toBeDisabled();
-
-        resolveMove({
-            game_id: "game-12",
-            yen: { size: 7, layout: "." },
-            human_move: { cell_id: 0, coords: { x: 0, y: 0, z: 0 } },
-            bot_move: null,
-            status: { state: "ongoing", next: "human" },
-        });
-
-        await waitFor(() => {
-            expect(abandonButton).toBeEnabled();
-        });
+        expect(screen.getByRole("button", { name: "Abandonar" })).toBeDisabled();
     });
 });
