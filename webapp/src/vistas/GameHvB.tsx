@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
-  Alert,
+  App,
   Button,
   Card,
-  Empty,
   Flex,
   Space,
   Typography,
-  App
 } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { createHvbGame, hvbHumanMove, type YEN } from "../api/gamey";
+import { createHvbGame, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
 import Board from "../game/Board";
 import { parseYenToCells } from "../game/yen";
+import GameShell from "../game/GameShell";
+import { useSessionGame } from "../game/useSessionGame";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function GameHvB() {
   const { modal } = App.useApp();
@@ -27,51 +27,19 @@ export default function GameHvB() {
   const botId = searchParams.get("bot") ?? "random_bot";
   const size = Number.isFinite(sizeParam) && sizeParam >= 2 ? sizeParam : 7;
 
-  const [yen, setYen] = useState<YEN | null>(null);
-  const [gameId, setGameId] = useState<string | null>(null);
-  const [winner, setWinner] = useState<string | null>(null);
-  const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [gameOver, setGameOver] = useState(false);
-
-  const cells = useMemo(() => (yen ? parseYenToCells(yen) : []), [yen]);
-
   const starterParam = (searchParams.get("hvbstarter") ?? "human").toLowerCase();
   const starter = starterParam === "bot" ? "bot" : "human";
 
-  useEffect(() => {
-    let cancelled = false;
+  const { yen, winner, error, loading, gameOver, onCellClick } = useSessionGame<YEN>({
+    deps: [size, botId, starter],
+    start: async () => {
+        await putConfig({ size, hvb_starter: starter, bot_id: botId, hvh_starter: "player0" });
+        return createHvbGame({ size, bot_id: botId, hvb_starter: starter });
+      },
+    move: (gameId, cellId) => hvbHumanMove(gameId, cellId),
+  });
 
-    async function start() {
-      setError("");
-      setLoading(true);
-      setYen(null);
-      setGameId(null);
-      setWinner(null);
-      setGameOver(false);
-
-      try {
-        const r = await createHvbGame({ size, bot_id: botId, hvb_starter: starter });
-        if (!cancelled) {
-          setGameId(r.game_id);
-          setYen(r.yen);
-          if (r.status.state === "finished") {
-            setGameOver(true);
-            setWinner(r.status.winner);
-          }
-        }
-      } catch (e: any) {
-        if (!cancelled) setError(e.message ?? String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    start();
-    return () => {
-      cancelled = true;
-    };
-  }, [size, botId, starter]);
+  const cells = useMemo(() => (yen ? parseYenToCells(yen) : []), [yen]);
 
   function handleAbandonGame() {
     modal.confirm({
@@ -85,29 +53,6 @@ export default function GameHvB() {
 
   function goHome() {
     navigate("/home", { replace: true });
-  }
-
-  async function handleCellClick(cellId: number) {
-    if (!yen || !gameId || gameOver) return;
-
-    setError("");
-    setLoading(true);
-    try {
-      const r = await hvbHumanMove(gameId, cellId);
-      setYen(r.yen);
-
-      if (r.status.state === "finished") {
-        setGameOver(true);
-        setWinner(r.status.winner);
-      } else {
-        setGameOver(false);
-        setWinner(null);
-      }
-    } catch (e: any) {
-      setError(e.message ?? String(e));
-    } finally {
-      setLoading(false);
-    }
   }
 
   const boardCardStyle: React.CSSProperties = useMemo(() => {
@@ -128,72 +73,43 @@ export default function GameHvB() {
       : "Ha ganado el bot. ¡Inténtalo de nuevo!";
 
   return (
-    <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
-      <div style={{ width: "min(1000px, 100%)" }}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <GameShell
+      title="Juego Y — Human vs Bot"
+      subtitle={`Tamaño: ${size} · Bot: ${botId} · Empieza: ${starter}`}
+      loading={loading}
+      error={error}
+      hasBoard={!!yen}
+      emptyText="No se pudo crear la partida."
+      onAbandon={handleAbandonGame}
+      abandonDisabled={loading || gameOver}
+      board={
+        <Card style={boardCardStyle}>
+          <Board size={yen?.size ?? size} cells={cells} disabled={loading || gameOver} onCellClick={onCellClick} />
+        </Card>
+      }
+      result={
+        gameOver ? (
           <Card>
-            <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-              <Space direction="vertical" size={0}>
-                <Title level={3} style={{ margin: 0 }}>
-                  Juego Y — Human vs Bot
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              <Flex justify="center" gap={16} wrap="wrap" align="end">
+                <Title level={4} style={{ margin: 0 }}>
+                  {resultTitle}
                 </Title>
-                <Text type="secondary">
-                  Tamaño: {size} · Bot: {botId} · Empieza: {starter}
-                </Text>
-              </Space>
-
-              <Button danger onClick={handleAbandonGame} disabled={loading || gameOver}>
-                Abandonar
-              </Button>
-            </Flex>
+              </Flex>
+              <Flex justify="center" gap={16} wrap="wrap" align="end">
+                <Title level={5} style={{ margin: 0 }}>
+                  {resultText}
+                </Title>
+              </Flex>
+              <Flex justify="center" gap={16} wrap="wrap" align="end">
+                <Button type="primary" onClick={goHome}>
+                  Volver a Home
+                </Button>
+              </Flex>
+            </Space>
           </Card>
-
-          {error && <Alert type="error" showIcon message={error} />}
-
-          {!yen ? (
-            <Card>
-              <Empty
-                description={loading ? "Creando partida..." : "No se pudo crear la partida."}
-                image={Empty.PRESENTED_IMAGE_DEFAULT}
-                imageStyle={{ height: 120 }}
-              />
-            </Card>
-          ) : (
-            <>
-              <Card style={boardCardStyle}>
-                <Board
-                  size={yen.size}
-                  cells={cells}
-                  disabled={loading || gameOver}
-                  onCellClick={handleCellClick}
-                />
-              </Card>
-
-              {gameOver && (
-                <Card>
-                  <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                    <Flex justify="center" gap={16} wrap="wrap" align="end">
-                      <Title level={4} style={{ margin: 0 }}>
-                        {resultTitle}
-                      </Title>
-                    </Flex>
-                    <Flex justify="center" gap={16} wrap="wrap" align="end">
-                      <Title level={5} style={{ margin: 0 }}>
-                        {resultText}
-                      </Title>
-                    </Flex>
-                    <Flex justify="center" gap={16} wrap="wrap" align="end">
-                      <Button type="primary" onClick={goHome}>
-                        Volver a Home
-                      </Button>
-                    </Flex>
-                  </Space>
-                </Card>
-              )}
-            </>
-          )}
-        </Space>
-      </div>
-    </Flex>
+        ) : null
+      }
+    />
   );
 }
