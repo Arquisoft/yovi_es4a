@@ -4,20 +4,23 @@ ifndef::imagesdir[:imagesdir: ../images]
 == Contexto y Alcance
 
 === Contexto de negocio
-image::03_1-ContextoNegocio.png["Diagrama correspondiente al Contexto de Negocio", width=75%]
+image::03_1-ContextoNegocio.png["Diagrama correspondiente al Contexto de Negocio", width=90%]
 
-* *Jugador*: Usa el sistema para registrarse/iniciar sesión, jugar (elegir estrategia, contrincante y tamaño de tablero) y consultar resultados.
-* *Bot*: Consume el API para automatizar partidas y realizar jugadas.
-* *Administrador*: Supervisa el sistema y su disponibilidad (logs, despliegue, etc.).
-* *Repositorios de datos (MongoDB)*: Almacena todos los datos necesarios relacionados con los usuarios y las partidas de estos.
+* *Jugador*: Usa el sistema para registrarse o iniciar sesión, configurar partidas, jugar al juego Y desde la interfaz web y consultar resultados/estadísticas.
+* *Bot*: Sistema externo que interactúa con YOVI mediante una API, permitiendo automatizar partidas o realizar jugadas.
+* *Administrador*: Responsable de desplegar, supervisar y mantener el sistema.
+* *YOVI*: Sistema principal que ofrece la funcionalidad de juego y expone las capacidades necesarias tanto para usuarios finales como para integraciones externas.
 
 === Contexto técnico
-image::03_2-ContextoTecnico.png["Diagrama correspondiente al Contexto Técnico", width=90%]
+image::03_2-ContextoTecnico.png["Diagrama correspondiente al Contexto Técnico", width=100%]
 
-* *Web Browser (Jugador)*: Cliente que actua con la interfaz web. Se comunica con el frontend y realiza peticiones al backend para registro/autenticación y gestión de partidas.
+* *Web Browser (Jugador)*: Cliente desde el que el usuario accede a la aplicación web.
+* *Bot Externo*: Cliente software que consume la API del sistema para interactuar con las partidas.
 * *Servidor (Docker)*: Aloja los servicios backend y el motor del juego. Contiene:
-** *webapp (React/Vite)*: Contenedor que sirve la aplicación frontend (SPA) como contenido estático al navegador.
-** *users (Node/Express)*: Servicio backend que expone el API REST público. Gestiona usuarios y partidas y actúa como punto de entrada tanto para el navegador como para el bot.
-** *gamey (Rust)*: Servicio interno que encapsula la lógica del juego. Se invoca desde el backend para verificar victoria, calcular sugerencias de movimientos de bot y gestiona el estado del tablero, intercambiando este último usando notación JSON (YEN).
-** *MongoDB*: Servicio de persistencia donde se almacenan los datos correspondientes de usuarios, partidas y estadísticas.
-* *Bot Client*: Cliente externo que consume el API público enviando posiciones en YEN para obtener el siguiente movimiento.
+** *gateway (Nginx)*: Punto de entrada único al sistema. Redirige las peticiones al frontend o a los servicios backend según la ruta solicitada.
+** *webapp (React/Vite)*: Aplicación frontend tipo SPA que implementa la interfaz de usuario.
+** *users (Node/Express)*: Servicio backend encargado de la gestión de usuarios.
+** *gamey (Rust)*: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.
+** *MongoDB*: Servicio de persistencia utilizado por el módulo de usuarios.
+
+La comunicación técnica principal del sistema se realiza a través del gateway. El navegador carga la aplicación frontend a través de este componente, y tanto la interfaz web como los clientes externos acceden a los servicios backend mediante rutas HTTP diferenciadas.
