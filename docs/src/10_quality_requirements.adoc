@@ -34,7 +34,7 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Adecuación funcional*
 
-* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otros usuarios.
+* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otro usuario en local. **SC8**[[SC8]]
 * Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. **SC1**[[SC1]]
 
 *Eficiencia de desempeño*
@@ -72,7 +72,7 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Mantenibilidad*
 
-* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. **SC6**[[SC6]]
+* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]]
 
 *Portabilidad*
 
@@ -135,6 +135,10 @@ A continuación se exponen distintos escenarios de uso identificados por un cód
 |<<SC7, SC7>>
 |Accesibilidad
 |Tratamos de compartir la aplicación con alguien y en vez de proporcionar una IP difícil de recordar le facilitamos su DNS, yovies4a.duckdns.org, lo que facilita su acceso.
+
+|<<SC8, SC8>>
+|Adecuación funcional
+|Un usuario quiere jugar contra otro usuario en local. El sistema establece turnos de juego para cada jugador en la misma máquina.
 
 |===
 
