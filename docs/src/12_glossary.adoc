@@ -54,4 +54,16 @@ endif::arc42help[]
 | **YEN (Y Exchange Notation)**
 | Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.
 
+| **Hashing**
+| Proceso de transformar una contraseña en una cadena de caracteres irreversible mediante algoritmos (como bcrypt) para almacenarla de forma segura en la base de datos.
+
+| **2FA (Autenticación de Dos Factores)**
+| Capa de seguridad adicional que requiere que el usuario confirme su identidad a través de un segundo método (en nuestro caso, un enlace de verificación enviado por correo electrónico).
+
+| **Token**
+| Código único y temporal generado por el backend que se envía al usuario para validar una acción específica, como la activación de una cuenta.
+
+| **SMTP (Simple Mail Transfer Protocol)**
+| Protocolo estándar de red utilizado para el envío de correos electrónicos desde el microservicio de usuarios hacia los clientes.
+
 |===
