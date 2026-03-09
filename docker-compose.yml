@@ -19,6 +19,8 @@ services:
       - "443:443"  # Tráfico HTTPS (Azure)
     volumes:
       - ./gateway/certs:/etc/nginx/certs:ro # Para los certificados en Azure
+      - ./gateway/letsencrypt:/etc/letsencrypt #Guarda certificados permanentemente
+
     depends_on:
       - users
       - webapp
