@@ -480,6 +480,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#_registrar_un_usuario">6.1. Registrar un usuario</a></li>
 <li><a href="#_jugar_una_casilla">6.2. Jugar una casilla</a></li>
+<li><a href="#_jugar_una_casilla_vs_bot">6.3. Jugar una casilla vs bot</a></li>
 </ul>
 </li>
 <li><a href="#section-deployment-view">7. Vista de Despliegue</a>
@@ -490,9 +491,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#section-concepts">8. Conceptos Transversales (Cross-cutting Concepts)</a>
 <ul class="sectlevel2">
-<li><a href="#_monitorización_y_observabilidad">8.1. Monitorización y Observabilidad</a></li>
-<li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.2. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
-<li><a href="#_tecnologías">8.3. Tecnologías</a></li>
+<li><a href="#_modelo_de_dominio">8.1. Modelo de Dominio</a></li>
+<li><a href="#_seguridad_y_autenticación">8.2. Seguridad y Autenticación</a></li>
+<li><a href="#_comunicación_entre_servicios">8.3. Comunicación entre Servicios</a></li>
+<li><a href="#_estrategias_de_bot">8.4. Estrategias de Bot</a></li>
+<li><a href="#_monitorización_y_observabilidad">8.5. Monitorización y Observabilidad</a></li>
+<li><a href="#_calidad_de_código_y_testing">8.6. Calidad de Código y Testing</a></li>
+<li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.7. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
+<li><a href="#_tecnologías">8.8. Tecnologías</a></li>
 </ul>
 </li>
 <li><a href="#section-design-decisions">9. Decisiones de Arquitectura (ADR)</a>
@@ -500,6 +506,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_adr_1_uso_de_mongodb_como_base_de_datos">9.1. ADR 1: Uso de MongoDB como Base de Datos</a></li>
 <li><a href="#_adr_2_uso_inicial_de_plantuml_para_diagramación">9.2. ADR 2: Uso inicial de PlantUML para diagramación</a></li>
 <li><a href="#_adr_3_adopción_de_draw_io_para_diagramas">9.3. ADR 3: Adopción de draw.io para diagramas</a></li>
+<li><a href="#_adr_4_implementación_del_motor_del_juego_en_rust">9.4. ADR 4: Implementación del motor del juego en Rust</a></li>
+<li><a href="#_adr_5_arquitectura_de_microservicios_con_tres_componentes_independientes">9.5. ADR 5: Arquitectura de microservicios con tres componentes independientes</a></li>
+<li><a href="#_adr_6_uso_de_mcts_como_estrategia_de_bot_de_máxima_dificultad">9.6. ADR 6: Uso de MCTS como estrategia de bot de máxima dificultad</a></li>
 </ul>
 </li>
 <li><a href="#section-quality-scenarios">10. Requisitos de Calidad</a>
@@ -567,24 +576,30 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_descripción_de_los_requisitos">1.1. Descripción de los requisitos</h3>
+<div class="paragraph">
+<p>El sistema desarrollado permite jugar al juego Y a través de una interfaz web, apoyándose en una arquitectura modular compuesta por varios servicios.</p>
+</div>
+<div class="paragraph">
+<p>Actualmente, la aplicación ofrece las siguientes funcionalidades principales:</p>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p>La app tendrá una interfaz web para jugar al juego Y.</p>
+<p>La app dispone de una interfaz web para jugar al juego Y.</p>
 </li>
 <li>
-<p>Se ofrecerán dos funcionalidades de juego:</p>
+<p>Se ofrecen dos modos de juego:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>El usuario podrá enfrentarse a otro usuario.</p>
+<p>Partida jugador contra jugador.</p>
 </li>
 <li>
-<p>El usuario podrá enfrentarse a un bot implementado.</p>
+<p>Partida jugador contra bot.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>El bot tendrá diferentes estrategias, y el usuario podrá elegir cuál de ellas usar (nivel de dificultad).</p>
+<p>El bot tiene diferentes estrategias implementadas, y el usuario puede elegir cuál de ellas usar (nivel de dificultad).</p>
 </li>
 </ul>
 </div>
@@ -593,7 +608,10 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </div>
 </li>
 <li>
-<p>El tablero tendrá tamaño variable (a elección del usuario, sino el tamaño será el establecido como automático).</p>
+<p>El tablero tiene tamaño variable, configurable por el usuario dentro de unos límites establecidos.</p>
+</li>
+<li>
+<p>El usuario puede elegir quién empieza la partida, según el modo de juego.</p>
 </li>
 <li>
 <p>El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.</p>
@@ -650,39 +668,51 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-02</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida con tamaño de tablero</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Configurar una partida</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario crea una partida eligiendo el tamaño y el modo (vs. otro usuario o vs. bot).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona el modo de juego, el tamaño del tablero, el bot en caso necesario y quién comienza la partida.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-03</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Jugar un turno desde la web</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs jugador</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario hace un movimiento y el sistema actualiza el estado de la partida.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-04</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Jugar contra bot (pedir movimiento)</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sistema / Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Si es el turno del bot, se llama al servicio (módulo `gamey') para que sugiera el siguiente movimiento según la estrategia/dificultad escogida.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs bot</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvB, aplicando la configuración elegida y, si corresponde, realizando el primer movimiento del bot.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-05</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Comprobar si alguien ha ganado</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Después de cada movimiento, se comprueba si la partida está ganada.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Jugar un turno desde la web</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona una celda válida y el sistema actualiza el estado de la partida.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-06</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Obtener la respuesta del bot</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Comprobar si la partida ha finalizado</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-08</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ver historial y estadísticas</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-07</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar/gestionar datos vía API</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El bot puede acceder/gestionar información de usuarios y partidas (según los permisos establecidos).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar el estado de una partida</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.</p></td>
 </tr>
 </tbody>
 </table>
@@ -782,26 +812,30 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Frontend desarrollado con Vite y React</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La interfaz gráfica debe implementarse con Vite y/o React.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La interfaz gráfica del sistema debe implementarse como una aplicación web usando React y Vite.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Servicio de usuarios desarrollado con Node.js y Express</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El servicio dedicado a la gestión de usaurios debe ser un REST API implementado con Node.js y/o Express.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El servicio dedicado a la gestión de usaurios debe implementarse con una API REST con Node.js y Express, utilizando persistencia en MongoDB.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Juego desarrollado con Rust</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y expuesta como servicio web.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y exponerse mediante un servicio HTTP.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Comunicación por JSON usando notación YEN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Los mensajes entre los módulos de interfaz (<code>webapp</code>) y el servicio Rust (<code>gamey</code>) deben usar JSON y representar posiciones con la notación YEN.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comunicación entre servicios mediante HTTP y JSON</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La integración entre los distintos módulos del sistema debe realizarse mediante peticiones HTTP e intercambio de datos en formato JSON.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uso de notación YEN para representar el estado de la partida</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El estado del tablero se representa mediante la notación YEN. Además, el sistema puede intercambiar jugadas mediante identificadores de celda dentro de las sesiones de juego.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Soporte de tablero de tamaño variable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe soportar un tablero cuyo tamaño sea variable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe soportar un tablero cuyo tamaño sea configurable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente, dentro de los límites definidos).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Diverentes estrategias de bot (dificultad)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Diferentes estrategias de bot (dificultad)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El bot debe tener más de una estrategia y el usuario debe poder elegirla (relacionado con niveles de dificultad).</p></td>
 </tr>
 <tr>
@@ -866,22 +900,22 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <h3 id="_contexto_de_negocio">3.1. Contexto de negocio</h3>
 <div class="imageblock">
 <div class="content">
-<img src="./images/03_1-ContextoNegocio.png" alt="Diagrama correspondiente al Contexto de Negocio" width="75%">
+<img src="./images/03_1-ContextoNegocio.png" alt="Diagrama correspondiente al Contexto de Negocio" width="90%">
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Jugador</strong>: Usa el sistema para registrarse/iniciar sesión, jugar (elegir estrategia, contrincante y tamaño de tablero) y consultar resultados.</p>
+<p><strong>Jugador</strong>: Usa el sistema para registrarse o iniciar sesión, configurar partidas, jugar al juego Y desde la interfaz web y consultar resultados/estadísticas.</p>
 </li>
 <li>
-<p><strong>Bot</strong>: Consume el API para automatizar partidas y realizar jugadas.</p>
+<p><strong>Bot</strong>: Sistema externo que interactúa con YOVI mediante una API, permitiendo automatizar partidas o realizar jugadas.</p>
 </li>
 <li>
-<p><strong>Administrador</strong>: Supervisa el sistema y su disponibilidad (logs, despliegue, etc.).</p>
+<p><strong>Administrador</strong>: Responsable de desplegar, supervisar y mantener el sistema.</p>
 </li>
 <li>
-<p><strong>Repositorios de datos (MongoDB)</strong>: Almacena todos los datos necesarios relacionados con los usuarios y las partidas de estos.</p>
+<p><strong>YOVI</strong>: Sistema principal que ofrece la funcionalidad de juego y expone las capacidades necesarias tanto para usuarios finales como para integraciones externas.</p>
 </li>
 </ul>
 </div>
@@ -890,37 +924,43 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <h3 id="_contexto_técnico">3.2. Contexto técnico</h3>
 <div class="imageblock">
 <div class="content">
-<img src="./images/03_2-ContextoTecnico.png" alt="Diagrama correspondiente al Contexto Técnico" width="90%">
+<img src="./images/03_2-ContextoTecnico.png" alt="Diagrama correspondiente al Contexto Técnico" width="100%">
 </div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Web Browser (Jugador)</strong>: Cliente que actua con la interfaz web. Se comunica con el frontend y realiza peticiones al backend para registro/autenticación y gestión de partidas.</p>
+<p><strong>Web Browser (Jugador)</strong>: Cliente desde el que el usuario accede a la aplicación web.</p>
+</li>
+<li>
+<p><strong>Bot Externo</strong>: Cliente software que consume la API del sistema para interactuar con las partidas.</p>
 </li>
 <li>
 <p><strong>Servidor (Docker)</strong>: Aloja los servicios backend y el motor del juego. Contiene:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>webapp (React/Vite)</strong>: Contenedor que sirve la aplicación frontend (SPA) como contenido estático al navegador.</p>
+<p><strong>gateway (Nginx)</strong>: Punto de entrada único al sistema. Redirige las peticiones al frontend o a los servicios backend según la ruta solicitada.</p>
 </li>
 <li>
-<p><strong>users (Node/Express)</strong>: Servicio backend que expone el API REST público. Gestiona usuarios y partidas y actúa como punto de entrada tanto para el navegador como para el bot.</p>
+<p><strong>webapp (React/Vite)</strong>: Aplicación frontend tipo SPA que implementa la interfaz de usuario.</p>
 </li>
 <li>
-<p><strong>gamey (Rust)</strong>: Servicio interno que encapsula la lógica del juego. Se invoca desde el backend para verificar victoria, calcular sugerencias de movimientos de bot y gestiona el estado del tablero, intercambiando este último usando notación JSON (YEN).</p>
+<p><strong>users (Node/Express)</strong>: Servicio backend encargado de la gestión de usuarios.</p>
 </li>
 <li>
-<p><strong>MongoDB</strong>: Servicio de persistencia donde se almacenan los datos correspondientes de usuarios, partidas y estadísticas.</p>
+<p><strong>gamey (Rust)</strong>: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.</p>
+</li>
+<li>
+<p><strong>MongoDB</strong>: Servicio de persistencia utilizado por el módulo de usuarios.</p>
 </li>
 </ul>
 </div>
 </li>
-<li>
-<p><strong>Bot Client</strong>: Cliente externo que consume el API público enviando posiciones en YEN para obtener el siguiente movimiento.</p>
-</li>
 </ul>
+</div>
+<div class="paragraph">
+<p>La comunicación técnica principal del sistema se realiza a través del gateway. El navegador carga la aplicación frontend a través de este componente, y tanto la interfaz web como los clientes externos acceden a los servicios backend mediante rutas HTTP diferenciadas.</p>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -985,6 +1025,15 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <ul>
 <li>
 <p>Rust por su alto rendimiento y seguridad</p>
+</li>
+<li>
+<p>Axum como framework HTTP asíncrono para exponer el servidor de juego</p>
+</li>
+<li>
+<p>Tokio como runtime asíncrono subyacente</p>
+</li>
+<li>
+<p>Tower-http para gestión de middleware CORS</p>
 </li>
 <li>
 <p>Puede ejecutarse como servidor web o desde línea de comandos</p>
@@ -1072,6 +1121,82 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </ul>
 </div>
 </div>
+<div class="sect3">
+<h4 id="_estrategias_de_bot_módulo_bot">4.2.3. Estrategias de Bot (módulo <code>bot/</code>)</h4>
+<div class="paragraph">
+<p>El módulo de bots se estructura en torno al trait <code>YBot</code> y un registro centralizado (<code>YBotRegistry</code>) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de tres implementaciones:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>random_bot</code></strong> (<code>random.rs</code>): Elige una celda disponible al azar, sin ninguna heurística. Sirve como línea base de comparación para el resto de estrategias.</p>
+</li>
+<li>
+<p><strong><code>greedy_bot</code></strong> (<code>greedy.rs</code>): Aplica una heurística de <em>Potencial de Conectividad</em> basada en coordenadas triangulares. Puntúa cada celda disponible según su proximidad a los bordes del tablero y su centralidad estratégica, eligiendo siempre el movimiento de menor coste. Es más predecible que MCTS pero sensiblemente mejor que el bot aleatorio.</p>
+</li>
+<li>
+<p><strong><code>mcts_bot</code></strong> (<code>mcts.rs</code>): Implementa una versión simplificada de <em>Monte Carlo Tree Search</em>. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con dos niveles de dificultad:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>5.000 iteraciones — respuesta rápida, calidad media-alta.</p>
+</li>
+<li>
+<p>20.000 iteraciones — mayor precisión, tiempo de respuesta más elevado.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_api_rest_del_motor_de_juego_game_server">4.2.4. API REST del Motor de Juego (<code>game_server/</code>)</h4>
+<div class="paragraph">
+<p>El servidor expone una API versionada bajo el prefijo <code>/v1</code> con los siguientes endpoints:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 14.2857%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Endpoint</th>
+<th class="tableblock halign-left valign-top">Método</th>
+<th class="tableblock halign-left valign-top">Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/status</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Comprueba que el servicio está en marcha.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/config</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve la configuración del tablero: tamaño mínimo y máximo permitidos.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/new</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crea una nueva partida genérica a partir de un tamaño de tablero.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/hvb/new/{bot_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inicia una partida Humano vs Bot seleccionando el bot por su identificador y el jugador que empieza.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/hvb/move/{bot_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recibe el movimiento del humano (en notación YEN), lo aplica, calcula la respuesta del bot y devuelve el nuevo estado del tablero.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_decisiones_organizativas">4.3. Decisiones Organizativas</h3>
@@ -1119,15 +1244,50 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_visión_general">5.1. Visión general</h3>
-<div class="imageblock">
-<div class="content">
-<img src="./images/05_1-Vista%20de%20bloque.drawio.png" alt="Diagrama correspondiente a la visita de bloque general" width="90%">
-</div>
-</div>
 <div class="paragraph">
-<p>Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios) y gamey (motor del juego).</p>
+<p><span class="image"><img src="./images/03_2-ContextoTecnico.png" alt="Diagrama correspondiente a la visita de bloque general" width="90%"></span>
+Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios) y gamey (motor del juego).</p>
 </div>
+<div class="sect3">
+<h4 id="_descripción_de_los_bloques">5.1.1. Descripción de los bloques</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Componente</th>
+<th class="tableblock halign-left valign-top">Responsabilidad</th>
+<th class="tableblock halign-left valign-top">Interfaces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>webapp</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Presenta la interfaz gráfica al usuario. Permite jugar partidas, registrarse e iniciar sesión.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consume la API REST de <code>users</code> para autenticación y la API REST de <code>gamey</code> para los movimientos de juego (HTTP/REST + JSON con notación YEN).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>users</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gestiona el registro, login y estadísticas de los usuarios. Expone una API REST documentada con Swagger.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se comunica con <code>MongoDB</code> para persistir datos. Expone endpoints REST consumidos por <code>webapp</code>. Métricas expuestas a Prometheus.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gamey</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego. Valida movimientos, mantiene el estado de la partida en notación YEN y gestiona las estrategias de bot.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expone una API REST consumida por <code>webapp</code>. No tiene persistencia propia.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>MongoDB</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Almacena los datos de usuarios y partidas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Solo accedida por <code>users</code> mediante lectura/escritura.</p></td>
+</tr>
+</tbody>
+</table>
 <div style="page-break-after: always;"></div>
+</div>
 </div>
 </div>
 </div>
@@ -1154,6 +1314,17 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </div>
 <div class="paragraph">
 <p>Proceso de jugar una casilla.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_jugar_una_casilla_vs_bot">6.3. Jugar una casilla vs bot</h3>
+<div class="imageblock">
+<div class="content">
+<img src="./images/06_3-Jugar%20casillabot.drawio.png" alt="Diagrama correspondiente a el proceso de jugar una casilla en una partida contra un bot" width="90%">
+</div>
+</div>
+<div class="paragraph">
+<p>Proceso de jugar una casilla en una partida contra un bot.</p>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1219,31 +1390,34 @@ when your infrastructure is more complex.</p>
 <div class="sect2">
 <h3 id="_infrastructura_nivel_1">7.1. Infrastructura Nivel 1</h3>
 <div class="paragraph">
-<p>La arquitectura de despliegue se basa en la contenedorización de los servicios, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción dentro de la infraestructura de Microsoft Azure.</p>
+<p>La arquitectura de despliegue se basa en la contenedorización de los servicios mediante <strong>Docker Compose</strong>, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción. El sistema se despliega en una <strong>máquina virtual de Microsoft Azure</strong> accesible públicamente a través del dominio <code>yovies4a.duckdns.org</code>.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/DiagramaDespliegue_07_01.drawio.png" alt="Diagrama correspondiente al Despliegue" width="50%">
+<img src="./images/User%20Interaction%20Pipeline-2026-03-07-174719.png" alt="Diagrama correspondiente al Despliegue" width="50%">
 </div>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">Motivación</dt>
 <dd>
-<p>Se ha elegido Azure por su capacidad de integración con flujos de CI/CD (GitHub Actions) y su robustez. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de prueba, evitando el clásico "en mi máquina funciona".</p>
+<p>Se ha elegido Azure por su capacidad de integración con flujos de CI/CD a través de <strong>GitHub Actions</strong> y por la robustez de su infraestructura cloud. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de desarrollo local, evitando el clásico "en mi máquina funciona". El dominio público <code>yovies4a.duckdns.org</code> se gestiona mediante DuckDNS, un servicio de DNS dinámico que apunta a la IP pública de la máquina virtual de Azure.</p>
 </dd>
 <dt class="hdlist1">Características de calidad y/o rendimiento</dt>
 <dd>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Disponibilidad:</strong> Azure garantiza un SLA elevado para sus servicios de computación.</p>
+<p><strong>Disponibilidad:</strong> Azure garantiza un SLA elevado para sus servicios de computación, reduciendo el tiempo de inactividad no planificado.</p>
 </li>
 <li>
-<p><strong>Observabilidad:</strong> La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real.</p>
+<p><strong>Observabilidad:</strong> La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real, con alertas configurables ante degradaciones.</p>
 </li>
 <li>
-<p><strong>Escalabilidad:</strong> Azure ofrece escalado automático, lo que permite ajustar los recursos según la demanda.</p>
+<p><strong>Escalabilidad:</strong> Azure ofrece escalado automático (vertical y horizontal), lo que permite ajustar los recursos según la demanda del juego.</p>
+</li>
+<li>
+<p><strong>Reproducibilidad:</strong> El fichero <code>docker-compose.yml</code> en la raíz del repositorio define la topología completa del sistema, permitiendo levantar todos los servicios con un único comando (<code>docker-compose up --build</code>).</p>
 </li>
 </ul>
 </div>
@@ -1253,35 +1427,47 @@ when your infrastructure is more complex.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 50%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
 <col style="width: 50%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Bloque de Construcción</th>
 <th class="tableblock halign-left valign-top">Puerto Externo</th>
+<th class="tableblock halign-left valign-top">Descripción</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">webapp</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">80</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interfaz web servida por Nginx. Punto de entrada para jugadores humanos.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">users</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API REST de gestión de usuarios y partidas. Punto de entrada para bots externos.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">gamey</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego en Rust. Accesible internamente y desde bots vía API.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">prometheus</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9090</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recolector de métricas del sistema.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">grafana</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9091</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Visualizador de dashboards de monitorización.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">mongodb</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27017</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base de datos documental. Solo accesible desde la red interna de Docker.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1289,39 +1475,111 @@ when your infrastructure is more complex.</p>
 <div class="sect2">
 <h3 id="_infrastructura_nivel_2">7.2. Infrastructura Nivel 2</h3>
 <div class="sect3">
-<h4 id="_servicios_de_aplicación">7.2.1. Servicios de Aplicación</h4>
+<h4 id="_pipeline_de_cicd_github_actions">7.2.1. Pipeline de CI/CD (GitHub Actions)</h4>
+<div class="paragraph">
+<p>El despliegue en producción es completamente automatizado mediante <strong>GitHub Actions</strong>. Al publicar una nueva release en el repositorio, el workflow <code>release-deploy.yml</code> ejecuta las siguientes etapas en orden:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Test:</strong> Ejecuta los tests unitarios e integración de todos los servicios (<code>webapp</code>, <code>users</code>, <code>gamey</code>).</p>
+</li>
+<li>
+<p><strong>Build:</strong> Construye las imágenes Docker de cada servicio y las publica en <strong>GitHub Container Registry (GHCR)</strong> con la etiqueta de la versión y <code>latest</code>.</p>
+</li>
+<li>
+<p><strong>Publish:</strong> Publica la imagen versionada en el registro.</p>
+</li>
+<li>
+<p><strong>Deploy:</strong> Se conecta por SSH a la máquina virtual de Azure, descarga las nuevas imágenes y reinicia los contenedores con <code>docker-compose pull &amp;&amp; docker-compose up -d</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>El análisis de calidad de código se realiza de forma continua mediante <strong>SonarCloud</strong>, que se integra en cada pull request para reportar cobertura de tests, code smells y vulnerabilidades de seguridad.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_servicios_de_aplicación">7.2.2. Servicios de Aplicación</h4>
 <div class="paragraph">
 <p>Estos contenedores representan la lógica de negocio y la interfaz de usuario:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>webapp (Puerto 80):</strong> Servidor web (Nginx/Apache) que sirve la aplicación frontend. Se comunica con el backend a través de la URL de API configurada.</p>
+<p><strong>webapp (Puerto 80):</strong> Servidor web <strong>Nginx</strong> que sirve la aplicación frontend React compilada como contenido estático. La variable de entorno <code>VITE_API_URL</code> se configura en tiempo de build para apuntar al servicio <code>users</code>. Se comunica con el backend mediante peticiones HTTP al API REST.</p>
 </li>
 <li>
-<p><strong>users (Puerto 3000):</strong> Microservicio encargado de la gestión de usuarios y autenticación.</p>
+<p><strong>users (Puerto 3000):</strong> Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la <code>webapp</code> y del <code>gateway</code>, y delegando la lógica del juego al servicio <code>gamey</code>. Expone métricas para Prometheus en el endpoint <code>/metrics</code>.</p>
 </li>
 <li>
-<p><strong>gamey (Puerto 4000):</strong> Microservicio encargado de la lógica del juego.</p>
+<p><strong>gamey (Puerto 4000):</strong> Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (incluyendo MCTS). Se comunica mediante JSON usando la notación <strong>YEN</strong>. Puede ejecutarse también en modo CLI para pruebas locales.</p>
+</li>
+<li>
+<p><strong>gateway (Puerto 443/80):</strong> Punto de entrada único al sistema que actúa como proxy inverso. Enruta el tráfico hacia <code>webapp</code> y hacia el API de <code>users</code> según la ruta solicitada, gestionando también el acceso desde bots externos.</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_servicios_de_monitorización">7.2.2. Servicios de Monitorización</h4>
+<h4 id="_servicios_de_persistencia">7.2.3. Servicios de Persistencia</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>MongoDB (Puerto 27017):</strong> Base de datos documental que almacena la información de usuarios, partidas y estadísticas. Solo es accesible desde la red interna de Docker (<code>docker network</code>), sin exposición pública de puertos. Los datos se persisten mediante un volumen Docker montado en el host.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_servicios_de_monitorización">7.2.4. Servicios de Monitorización</h4>
 <div class="paragraph">
 <p>Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo carga:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Prometheus (Puerto 9090):</strong> Recolecta métricas de los servicios <code>users</code> y otros componentes.</p>
+<p><strong>Prometheus (Puerto 9090):</strong> Recolecta métricas de los servicios <code>users</code> (y otros componentes instrumentados) mediante <strong>scraping</strong> periódico de endpoints <code>/metrics</code>. La configuración de targets se define en el fichero <code>prometheus.yml</code> y se monta como volumen.</p>
 </li>
 <li>
-<p><strong>Grafana (Puerto 9091):</strong> Visualiza las métricas recolectadas mediante paneles de control (dashboards) configurados mediante volúmenes de aprovisionamiento.</p>
+<p><strong>Grafana (Puerto 9091):</strong> Visualiza las métricas recolectadas mediante paneles de control (<strong>dashboards</strong>) preconfigurados y aprovisionados automáticamente mediante volúmenes. Permite detectar de forma visual tendencias de carga, latencias y posibles caídas de servicio.</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_entornos_de_despliegue">7.2.5. Entornos de Despliegue</h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Entorno</th>
+<th class="tableblock halign-left valign-top">URL / Acceso</th>
+<th class="tableblock halign-left valign-top">Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Producción</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="https://yovies4a.duckdns.org" class="bare">https://yovies4a.duckdns.org</a></code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Máquina virtual Azure con Docker Compose. Se actualiza automáticamente con cada release mediante GitHub Actions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Desarrollo local</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost" class="bare">http://localhost</a></code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Los desarrolladores levantan el entorno completo con <code>docker-compose up --build</code> o ejecutan cada servicio individualmente.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Revisión (PR)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GitHub Actions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En cada pull request se ejecutan los tests automáticamente pero no se despliega en infraestructura pública.</p></td>
+</tr>
+</tbody>
+</table>
 <div class="sidebarblock arc42help">
 <div class="content">
 <div class="paragraph">
@@ -1440,23 +1698,148 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_monitorización_y_observabilidad">8.1. Monitorización y Observabilidad</h3>
+<h3 id="_modelo_de_dominio">8.1. Modelo de Dominio</h3>
 <div class="paragraph">
-<p>Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal:</p>
+<p>El sistema gira en torno a la lógica del <strong>Juego Y</strong>, un juego de estrategia en tablero triangular cuyo objetivo es conectar dos lados del tablero con una cadena continua de piezas propias.</p>
+</div>
+<div class="paragraph">
+<p>Los conceptos clave del dominio son:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Recolección de métricas:</strong> Prometheus actúa como el recolector central, extrayendo datos de rendimiento de los diferentes contenedores.</p>
+<p><strong>Tablero (Board):</strong> Estructura triangular de tamaño variable (N×N casillas). Las posiciones se representan mediante <strong>coordenadas baricéntricas</strong> (x, y, z) donde <code>x + y + z = N - 1</code>, lo que facilita el cálculo de distancias a los lados.</p>
 </li>
 <li>
-<p><strong>Visualización:</strong> Grafana proporciona tableros de control para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos.</p>
+<p><strong>Partida (Game):</strong> Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores y el historial de movimientos.</p>
+</li>
+<li>
+<p><strong>Movimiento (Move):</strong> Acción de colocar una pieza en una casilla libre. Se serializa en notación <strong>YEN</strong> para el intercambio entre servicios.</p>
+</li>
+<li>
+<p><strong>Notación YEN (Y Exchange Notation):</strong> Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión entre <code>webapp</code>, <code>users</code> y <code>gamey</code>.</p>
+</li>
+<li>
+<p><strong>Notación YGN (Y Game Notation):</strong> Formato de registro de la secuencia de movimientos de una partida completa, análogo al PGN del ajedrez.</p>
+</li>
+<li>
+<p><strong>Usuario:</strong> Persona registrada en el sistema con credenciales, historial de partidas y estadísticas.</p>
+</li>
+<li>
+<p><strong>Bot:</strong> Agente automático que juega partidas consumiendo el API público. Puede usar distintas estrategias de decisión.</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_proceso_de_desarrollo_y_gestión_github_ecosystem">8.2. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</h3>
+<h3 id="_seguridad_y_autenticación">8.2. Seguridad y Autenticación</h3>
+<div class="paragraph">
+<p>La seguridad es un concepto transversal que afecta principalmente al servicio <code>users</code> y a las comunicaciones cliente-servidor.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Registro y autenticación:</strong> Los usuarios se registran y autentican mediante correo electrónico y contraseña. El sistema implementa una verificación en dos pasos (2FA por email) para confirmar la identidad del usuario antes de dar acceso a su cuenta.</p>
+</li>
+<li>
+<p><strong>Almacenamiento seguro de contraseñas:</strong> Las contraseñas <strong>nunca se almacenan en texto plano</strong>. Se guardan en MongoDB como hashes criptográficos (usando algoritmos como bcrypt), de forma que incluso un acceso no autorizado a la base de datos no exponga las credenciales reales.</p>
+</li>
+<li>
+<p><strong>Validación de entradas:</strong> El servicio <code>users</code> valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.</p>
+</li>
+<li>
+<p><strong>Control de acceso a la API:</strong> El API público para bots expone únicamente las operaciones necesarias (consultar estado, enviar movimiento), con comprobaciones de permisos para impedir acceso a datos de otros usuarios.</p>
+</li>
+<li>
+<p><strong>Red interna de Docker:</strong> MongoDB no expone puertos públicos; solo es accesible desde la red interna de contenedores (<code>docker network</code>), reduciendo la superficie de ataque.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_comunicación_entre_servicios">8.3. Comunicación entre Servicios</h3>
+<div class="paragraph">
+<p>La comunicación entre todos los componentes del sistema sigue un patrón uniforme:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Protocolo:</strong> HTTP/REST en todos los intercambios.</p>
+</li>
+<li>
+<p><strong>Formato de datos:</strong> JSON en todos los mensajes, incluyendo la representación del estado del juego en notación <strong>YEN</strong>.</p>
+</li>
+<li>
+<p><strong>Sincronía:</strong> Las llamadas son síncronas (petición-respuesta). La <code>webapp</code> llama al servicio <code>users</code>, que a su vez llama a <code>gamey</code> cuando necesita delegar lógica de juego.</p>
+</li>
+<li>
+<p><strong>Documentación del API:</strong> El servicio <code>users</code> expone su API documentada con <strong>Swagger/OpenAPI</strong>, permitiendo que los desarrolladores de bots conozcan los endpoints disponibles, sus parámetros y los formatos de respuesta esperados.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_estrategias_de_bot">8.4. Estrategias de Bot</h3>
+<div class="paragraph">
+<p>El servicio <code>gamey</code> implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Bot aleatorio:</strong> Elige una casilla válida aleatoria. Nivel de dificultad mínimo.</p>
+</li>
+<li>
+<p><strong>Bot MCTS (Monte Carlo Tree Search):</strong> Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento posible. Es el nivel de dificultad más alto. Se implementa con un límite de tiempo de respuesta para evitar bloqueos del contenedor.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>La arquitectura del módulo <code>gamey</code> separa claramente el registro de bots (<code>bot/registry</code>) de la implementación de cada estrategia (<code>bot/</code>), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_monitorización_y_observabilidad">8.5. Monitorización y Observabilidad</h3>
+<div class="paragraph">
+<p>Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal que cubre todos los entornos:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Recolección de métricas:</strong> <strong>Prometheus</strong> actúa como el recolector central, haciendo <strong>scraping</strong> periódico del endpoint <code>/metrics</code> de los diferentes servicios instrumentados. Registra métricas de rendimiento como tiempos de respuesta, número de peticiones, errores HTTP y uso de recursos.</p>
+</li>
+<li>
+<p><strong>Visualización:</strong> <strong>Grafana</strong> proporciona tableros de control (<strong>dashboards</strong>) para monitorizar en tiempo real el estado de los servicios, facilitando la detección temprana de fallos o degradaciones de rendimiento. Los dashboards se aprovisionan automáticamente como código (como volúmenes de configuración).</p>
+</li>
+<li>
+<p><strong>Trazabilidad de logs:</strong> Los servicios generan logs estructurados que permiten correlacionar eventos entre <code>webapp</code>, <code>users</code> y <code>gamey</code> para diagnosticar problemas en flujos completos.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_calidad_de_código_y_testing">8.6. Calidad de Código y Testing</h3>
+<div class="paragraph">
+<p>La calidad del código se garantiza de forma continua y transversal mediante:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Tests unitarios:</strong> Cada servicio tiene su suite de tests unitarios independiente (<code>npm test</code> para <code>webapp</code> y <code>users</code>, <code>cargo test</code> para <code>gamey</code>). Se verifica la lógica de negocio de forma aislada con mocks de dependencias.</p>
+</li>
+<li>
+<p><strong>Tests de integración:</strong> Se prueba la comunicación entre servicios para verificar que los contratos del API se cumplen correctamente.</p>
+</li>
+<li>
+<p><strong>Tests end-to-end:</strong> La <code>webapp</code> incluye tests E2E (<code>npm run test:e2e</code>) que simulan la interacción completa de un usuario con el sistema a través del navegador.</p>
+</li>
+<li>
+<p><strong>Análisis estático (SonarCloud):</strong> Integrado en el pipeline de CI/CD, analiza cada pull request en busca de <strong>code smells</strong>, duplicidades, vulnerabilidades de seguridad y cobertura de tests. Se publica un <strong>Quality Gate</strong> público con el estado del proyecto.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_proceso_de_desarrollo_y_gestión_github_ecosystem">8.7. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</h3>
 <div class="paragraph">
 <p>Para asegurar la calidad del software y la organización del equipo, se utiliza el ecosistema de GitHub de manera integral:</p>
 </div>
@@ -1466,29 +1849,38 @@ on this list.</p>
 <p><strong>Gestión de Tareas (Kanban):</strong> Se utiliza <strong>GitHub Projects</strong> con una metodología Kanban para visualizar el flujo de trabajo (To Do, In Progress, Done&#8230;&#8203;). Esto permite el seguimiento en tiempo real del estado de cada funcionalidad.</p>
 </li>
 <li>
-<p><strong>Seguimiento de Tareas (Issues):</strong> Cada nueva funcionalidad, error o mejora se documenta mediante <strong>Issues</strong>, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos.</p>
+<p><strong>Seguimiento de Tareas (Issues):</strong> Cada nueva funcionalidad, error o mejora se documenta mediante <strong>Issues</strong>, que sirven como unidad básica de trabajo y permiten la trazabilidad de los requisitos hasta el código.</p>
 </li>
 <li>
-<p><strong>Flujo de Trabajo (Pull Requests):</strong> El código no se integra directamente en la rama principal. Se utilizan <strong>Pull Requests (PRs)</strong> para la revisión, asegurando que el código cumpla con los estándares antes de ser fusionado.</p>
+<p><strong>Flujo de Trabajo (Pull Requests):</strong> El código no se integra directamente en la rama principal (<code>master</code>, que está protegida). Se utilizan <strong>Pull Requests (PRs)</strong> para la revisión por parte de otros miembros del equipo, asegurando que el código cumpla con los estándares antes de ser fusionado.</p>
+</li>
+<li>
+<p><strong>Actas de reuniones (Wiki):</strong> Las reuniones semanales de equipo y las reuniones extraordinarias quedan registradas en la <strong>Wiki del repositorio de GitHub</strong>, garantizando trazabilidad de las decisiones tomadas.</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_tecnologías">8.3. Tecnologías</h3>
+<h3 id="_tecnologías">8.8. Tecnologías</h3>
 <div class="paragraph">
-<p>El sistema adopta un enfoque de varios lenguajes, seleccionando la herramienta más adecuada para cada dominio del problema:</p>
+<p>El sistema adopta un enfoque <strong>polyglot</strong> (varios lenguajes y tecnologías), seleccionando la herramienta más adecuada para cada dominio del problema:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Backend de Gestión (Node.js/Express):</strong> El servicio <code>users</code> utiliza un entorno basado en eventos y JavaScript para gestionar la lógica de usuario de forma ágil y escalable.</p>
+<p><strong>Motor de Juego de Alto Rendimiento (Rust):</strong> El servicio <code>gamey</code> está desarrollado en Rust para garantizar la <strong>seguridad de memoria</strong> (sin garbage collector, sin carreras de datos) y un <strong>alto rendimiento</strong> en la evaluación del árbol de juego. Rust también ofrece versatilidad al poder ejecutarse tanto en modo servidor HTTP como en modo CLI para pruebas. La documentación del motor se genera automáticamente con <code>cargo doc</code>.</p>
 </li>
 <li>
-<p><strong>Motor de Juego de Alto Rendimiento (Rust):</strong> El servicio <code>gamey</code> está desarrollado en Rust para garantizar la seguridad de memoria y un alto rendimiento en la lógica del juego, ofreciendo además versatilidad al poder ejecutarse tanto en modo servidor como en modo CLI.</p>
+<p><strong>Backend de Gestión (Node.js/Express):</strong> El servicio <code>users</code> utiliza un entorno basado en eventos y JavaScript/TypeScript para gestionar la lógica de usuario de forma <strong>ágil y escalable</strong>. Node.js es especialmente apropiado para APIs REST con operaciones de I/O intensivas (acceso a MongoDB, llamadas a <code>gamey</code>).</p>
 </li>
 <li>
-<p><strong>Frontend Moderno (React + Vite):</strong> La interfaz de usuario (<code>webapp</code>) utiliza React para una gestión eficiente del estado de la UI y Vite como herramienta de construcción rápida.</p>
+<p><strong>Frontend Moderno (React + Vite + TypeScript):</strong> La interfaz de usuario (<code>webapp</code>) utiliza React para una gestión eficiente del estado de la UI, TypeScript para la seguridad de tipos en tiempo de compilación, y Vite como herramienta de construcción ultrarrápida en desarrollo.</p>
+</li>
+<li>
+<p><strong>Base de Datos Documental (MongoDB):</strong> La flexibilidad del esquema JSON/BSON facilita la evolución del modelo de datos sin migraciones complejas, y su integración nativa con el ecosistema JavaScript/TypeScript simplifica el desarrollo del servicio <code>users</code>.</p>
+</li>
+<li>
+<p><strong>Contenedorización (Docker + Docker Compose):</strong> Todos los servicios se empaquetan en imágenes Docker, garantizando la portabilidad y reproducibilidad del entorno en desarrollo, pruebas y producción.</p>
 </li>
 </ul>
 </div>
@@ -1554,29 +1946,42 @@ There you will find links and examples about ADR.</p>
 <p><strong>Estado:</strong> Aceptada.</p>
 </li>
 <li>
-<p><strong>Contexto:</strong> Se requiere un sistema de persistencia para almacenar los datos de los usuarios y del juego que sea flexible y compatible con el ecosistema tecnológico actual.</p>
+<p><strong>Contexto:</strong> Se requiere un sistema de persistencia para almacenar los datos de los usuarios, partidas y estadísticas del juego que sea flexible y compatible con el ecosistema tecnológico actual.</p>
 </li>
 <li>
-<p><strong>Alternativas:</strong> Bases de datos relacionales (como MySQL).</p>
-</li>
-<li>
-<p><strong>Justificación:</strong> <strong> </strong>Compatibilidad:<strong> MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en </strong>React<strong> y el uso de </strong>TypeScript**.</p>
+<p><strong>Alternativas consideradas:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Integración con Rust:</strong> La seguridad de tipos permite convertir documentos de la base de datos en <code>structs</code> de <strong>Rust</strong> con una sola línea de código, garantizando datos válidos en el motor <code>gamey</code>.</p>
+<p>Bases de datos relacionales como <strong>MySQL</strong> o <strong>PostgreSQL</strong>: ofrecen esquemas rígidos y transacciones ACID completas, pero requieren migraciones complejas ante cambios del modelo de datos.</p>
 </li>
 <li>
-<p><strong>Facilidad de despliegue:</strong> Gracias a <strong>Docker</strong>, levantar una instancia de MongoDB es inmediato, facilitando la adición de requisitos sin necesidad de migraciones complejas.</p>
-</li>
-<li>
-<p><strong>Idoneidad:</strong> Es ideal para estructuras de datos no excesivamente complejas, como las de un juego web.</p>
+<p><strong>SQLite</strong>: sencilla para desarrollo local, pero no adecuada para entornos distribuidos en contenedores.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Consecuencias:</strong> Se espera una mayor flexibilidad y rapidez en el desarrollo al no depender de esquemas rígidos.</p>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Compatibilidad con el stack:</strong> MongoDB utiliza formato BSON (variante de JSON), lo que facilita enormemente el flujo de datos con el frontend en React y el uso de TypeScript.</p>
+</li>
+<li>
+<p><strong>Integración con Rust:</strong> La seguridad de tipos de Rust permite deserializar documentos de MongoDB en <code>structs</code> con una sola línea de código, garantizando datos válidos en el motor <code>gamey</code>.</p>
+</li>
+<li>
+<p><strong>Facilidad de despliegue:</strong> Gracias a Docker, levantar una instancia de MongoDB es inmediato y reproducible, sin pasos de instalación manual.</p>
+</li>
+<li>
+<p><strong>Flexibilidad de esquema:</strong> Ideal para estructuras de datos en evolución, como las de un juego web en desarrollo iterativo, donde los campos de una partida o usuario pueden cambiar entre versiones sin necesidad de migraciones destructivas.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Se espera mayor velocidad de desarrollo al no depender de esquemas rígidos. Como contrapartida, se renuncia a la consistencia transaccional fuerte entre colecciones, lo que es aceptable dado el dominio del problema.</p>
 </li>
 </ul>
 </div>
@@ -1592,20 +1997,30 @@ There you will find links and examples about ADR.</p>
 <p><strong>Contexto:</strong> Necesidad de una herramienta para crear los diagramas técnicos de la documentación arc42.</p>
 </li>
 <li>
-<p><strong>Alternativas:</strong> Editores visuales como draw.io.</p>
-</li>
-<li>
-<p><strong>Justificación:</strong>  <strong>Enfoque técnico:</strong> Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico.</p>
+<p><strong>Alternativas consideradas:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Mantenibilidad:</strong> El uso de código facilita la realización de cambios rápidos y el control de versiones.</p>
+<p>Editores visuales como <strong>draw.io</strong> o <strong>Lucidchart</strong>.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Consecuencias:</strong> Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual.</p>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Enfoque técnico:</strong> Es una herramienta basada en texto ("pseudo-código") recomendada en el ámbito académico y con buen soporte en entornos de CI/CD.</p>
+</li>
+<li>
+<p><strong>Mantenibilidad:</strong> El uso de texto plano facilita la realización de cambios rápidos y el control de versiones con Git (se puede hacer <code>diff</code> entre versiones del diagrama).</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Permite la generación automática de diagramas visuales a partir de relaciones definidas por código, aunque carece de flexibilidad en la disposición visual manual, lo que provocó dificultades al representar arquitecturas complejas.</p>
 </li>
 </ul>
 </div>
@@ -1618,23 +2033,180 @@ There you will find links and examples about ADR.</p>
 <p><strong>Estado:</strong> Aceptada.</p>
 </li>
 <li>
-<p><strong>Contexto:</strong> Tras evaluar el uso de PlantUML, se identificó la necesidad de una representación más esquemática y visual de los componentes.</p>
+<p><strong>Contexto:</strong> Tras evaluar el uso de PlantUML en los primeros diagramas, se identificó la necesidad de una representación más libre, esquemática y visual de los componentes, especialmente para los diagramas de despliegue y contexto.</p>
 </li>
 <li>
-<p><strong>Alternativas:</strong> PlantUML (mantenida como opción de respaldo).</p>
-</li>
-<li>
-<p><strong>Justificación:</strong>  <strong>Intuitividad:</strong> Es una herramienta más visual que no requiere aprendizaje previo para su manejo.</p>
+<p><strong>Alternativas consideradas:</strong></p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Control Visual:</strong> Permite ubicar los componentes (<code>webapp</code>, <code>users</code>, <code>gamey</code>) libremente, facilitando la representación de relaciones y jerarquías de forma más clara y esquemática.</p>
+<p><strong>PlantUML</strong> (mantenida como opción de respaldo para diagramas de secuencia).</p>
+</li>
+<li>
+<p><strong>Mermaid:</strong> Similar a PlantUML, basada en texto, con buen soporte en GitHub Markdown.</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p><strong>Consecuencias:</strong> Aunque requiere algo más de tiempo manual para la creación, resulta más cómoda y comunicativa para el equipo de desarrollo.</p>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Intuitividad:</strong> Es una herramienta visual que no requiere aprendizaje previo para su manejo. Todos los miembros del equipo pueden contribuir a los diagramas independientemente de su perfil técnico.</p>
+</li>
+<li>
+<p><strong>Control Visual:</strong> Permite posicionar libremente los componentes (<code>webapp</code>, <code>users</code>, <code>gamey</code>), facilitando la representación de relaciones jerárquicas y flujos de comunicación de forma más clara y esquemática que el código de PlantUML.</p>
+</li>
+<li>
+<p><strong>Integración con GitHub:</strong> Los ficheros <code>.drawio</code> se pueden almacenar directamente en el repositorio y visualizarse en GitHub Pages.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Aunque requiere algo más de tiempo manual para la creación y no permite generación automática, resulta más cómoda, comunicativa y accesible para todo el equipo. Se usa conjuntamente con PlantUML para los diagramas de secuencia (vista de ejecución), donde la generación desde código sigue siendo ventajosa.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_4_implementación_del_motor_del_juego_en_rust">9.4. ADR 4: Implementación del motor del juego en Rust</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada (impuesta por los requisitos del proyecto).</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> La lógica del juego Y, incluyendo la validación de movimientos, la detección de victoria y la implementación de bots, requiere un alto rendimiento, especialmente para el algoritmo MCTS que simula miles de partidas.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Node.js:</strong> Hubiera simplificado el stack tecnológico al unificar frontend y backend en JavaScript/TypeScript, pero ofrece menor rendimiento para tareas computacionalmente intensivas.</p>
+</li>
+<li>
+<p><strong>Python:</strong> Lenguaje más familiar para el equipo, con librerías de IA disponibles, pero con el overhead del intérprete y el GIL (Global Interpreter Lock) como limitantes.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Rendimiento:</strong> Rust compila a código nativo sin <strong>garbage collector</strong>, con rendimiento comparable a C/C++. Esto es crítico para el algoritmo MCTS, que requiere explorar miles de nodos del árbol de juego por segundo.</p>
+</li>
+<li>
+<p><strong>Seguridad de memoria:</strong> El sistema de <strong>ownership</strong> de Rust garantiza la ausencia de <strong>data races</strong> y errores de acceso a memoria en tiempo de compilación, reduciendo bugs difíciles de depurar.</p>
+</li>
+<li>
+<p><strong>Versatilidad:</strong> El servicio <code>gamey</code> puede ejecutarse tanto como servidor HTTP (modo producción) como desde la línea de comandos (modo desarrollo y pruebas), gracias a la arquitectura modular del proyecto Rust.</p>
+</li>
+<li>
+<p><strong>Aprendizaje:</strong> El proyecto sirve como oportunidad para el equipo de adquirir experiencia con un lenguaje de sistemas moderno y de alta demanda laboral.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> La curva de aprendizaje de Rust es significativa (gestión de <strong>lifetimes</strong>, <strong>ownership</strong>), lo que supuso un riesgo de retraso inicial. Se mitigó empezando con implementaciones simples y evolucionando gradualmente hacia algoritmos más complejos.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_5_arquitectura_de_microservicios_con_tres_componentes_independientes">9.5. ADR 5: Arquitectura de microservicios con tres componentes independientes</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El sistema necesita integrar tecnologías heterogéneas (React, Node.js, Rust) y permitir el desarrollo en paralelo por parte de los distintos miembros del equipo.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Monolito:</strong> Una única aplicación que integre frontend, lógica de usuario y motor del juego. Más sencillo de desplegar, pero impide el uso de Rust para el motor (requisito del proyecto) e introduce acoplamiento entre responsabilidades.</p>
+</li>
+<li>
+<p><strong>Monorepo con microservicios:</strong> La solución adoptada: un único repositorio Git (<code>yovi_es4a</code>) que contiene los tres servicios (<code>webapp</code>, <code>users</code>, <code>gamey</code>) con sus propios <code>Dockerfile</code> y scripts de build, orquestados por <code>docker-compose.yml</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Separación de responsabilidades:</strong> Cada servicio tiene una única responsabilidad bien definida: UI (webapp), gestión de usuarios y partidas (users), lógica del juego (gamey).</p>
+</li>
+<li>
+<p><strong>Desarrollo en paralelo:</strong> Los miembros del equipo pueden trabajar en servicios distintos sin interferencias, reduciendo conflictos de merge.</p>
+</li>
+<li>
+<p><strong>Tecnología apropiada por dominio:</strong> Permite usar Rust donde el rendimiento es crítico, Node.js para el API REST y React para la UI, sin compromisos.</p>
+</li>
+<li>
+<p><strong>Despliegue independiente:</strong> Cada servicio se puede actualizar, escalar o reiniciar de forma independiente.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Aumenta la complejidad operacional (hay que gestionar múltiples servicios, redes Docker, configuraciones de entorno). Se mitiga mediante <code>docker-compose.yml</code> que define toda la topología en un solo fichero y un pipeline de CI/CD completamente automatizado.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_6_uso_de_mcts_como_estrategia_de_bot_de_máxima_dificultad">9.6. ADR 6: Uso de MCTS como estrategia de bot de máxima dificultad</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El bot del juego debe ofrecer al menos dos niveles de dificultad. Se necesita una estrategia de alto nivel que proporcione un oponente desafiante para usuarios avanzados.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Minimax con poda alfa-beta:</strong> Algoritmo clásico para juegos de dos jugadores con suma cero. Garantiza el movimiento óptimo hasta una profundidad dada, pero el espacio de estados del Juego Y es muy grande, limitando la profundidad explorable.</p>
+</li>
+<li>
+<p><strong>Heurísticas ad-hoc:</strong> Reglas específicas del dominio (ej. priorizar el centro, bloquear al oponente). Más rápidas, pero menos efectivas para jugadores avanzados.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Adaptabilidad:</strong> MCTS no requiere una función heurística definida manualmente; aprende qué movimientos son buenos simulando partidas completas aleatoriamente (<strong>rollouts</strong>).</p>
+</li>
+<li>
+<p><strong>Escalabilidad de calidad:</strong> Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad.</p>
+</li>
+<li>
+<p><strong>Idoneidad para el Juego Y:</strong> MCTS ha demostrado ser efectivo en juegos de tablero de alto factor de ramificación como el Juego Y, donde minimax con poda se queda corto.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> El algoritmo MCTS es computacionalmente intensivo y puede causar tiempos de respuesta elevados si no se limita. Se implementa un límite de tiempo (timeout) para garantizar que el servicio <code>gamey</code> siempre responde dentro de un umbral aceptable, devolviendo el mejor movimiento encontrado hasta ese momento.</p>
 </li>
 </ul>
 </div>
@@ -1683,7 +2255,7 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otros usuarios.</p>
+<p>Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otro usuario en local. <strong>SC8</strong><a id="SC8"></a></p>
 </li>
 <li>
 <p>Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. <strong>SC1</strong><a id="SC1"></a></p>
@@ -1740,7 +2312,7 @@ concrete and measurable.</p>
 <p>Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.</p>
 </li>
 <li>
-<p>Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. <strong>SC3</strong><a id="SC3"></a></p>
+<p>Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. <strong>SC3</strong><a id="SC3"></a> El uso de un DNS permite que los usuarios accedan a la aplicación mediante un nombre legible (yovies4a.duckdns.org) en lugar de una dirección IP técnica y difícil de recordar. <strong>SC7</strong><a id="SC7"></a></p>
 </li>
 <li>
 <p>Asistencia al usuario: Dispone de una ayuda para entender qué hace cada componente en cada caso, además de tooltips y mensajes descriptivos.</p>
@@ -1785,7 +2357,7 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a></p>
+<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a></p>
 </li>
 </ul>
 </div>
@@ -1880,6 +2452,16 @@ concrete and measurable.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC6">SC6</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mantenibilidad</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Nos comunican que hay un nuevo requisito en la interfaz y que además se ha añadido una regla, son facilmente indentificables las zonas responsables de cada tarea.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC7">SC7</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Accesibilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tratamos de compartir la aplicación con alguien y en vez de proporcionar una IP difícil de recordar le facilitamos su DNS, yovies4a.duckdns.org, lo que facilita su acceso.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC8">SC8</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adecuación funcional</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un usuario quiere jugar contra otro usuario en local. El sistema establece turnos de juego para cada jugador en la misma máquina.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1986,7 +2568,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad en el servicio de usuarios</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real. Además de todo esto, la interfaz bloquea acciones que pueden desencadenar en error, como dejar campos vacíos.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2068,6 +2650,22 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>YEN (Y Exchange Notation)</strong></em></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Formato de serialización basado en JSON inspirado en FEN. Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión.</em></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Hashing</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Proceso de transformar una contraseña en una cadena de caracteres irreversible mediante algoritmos (como bcrypt) para almacenarla de forma segura en la base de datos.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>2FA (Autenticación de Dos Factores)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Capa de seguridad adicional que requiere que el usuario confirme su identidad a través de un segundo método (en nuestro caso, un enlace de verificación enviado por correo electrónico).</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Token</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Código único y temporal generado por el backend que se envía al usuario para validar una acción específica, como la activación de una cuenta.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>SMTP (Simple Mail Transfer Protocol)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Protocolo estándar de red utilizado para el envío de correos electrónicos desde el microservicio de usuarios hacia los clientes.</em></p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -2076,7 +2674,7 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <div id="footer">
 <div id="footer-text">
 Version 8.2 EN<br>
-Last updated 2026-02-16 20:25:00 +0100
+Last updated 2026-03-05 20:35:50 +0100
 </div>
 </div>
 </body>
