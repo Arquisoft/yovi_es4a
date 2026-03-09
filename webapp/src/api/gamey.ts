@@ -13,8 +13,8 @@ export type YEN = {
  * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
  */
 // const API_URL = "/api/game";
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-
+//const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const API_URL = "";
 /**
  * Devuelve un client_id estable. La idea es guardarlo en localStorage.
  * - Si ya existe: lo devuelve
