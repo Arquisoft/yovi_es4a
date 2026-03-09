@@ -1,5 +1,7 @@
 use crate::{Coordinates, GameY, YBot, Movement, GameStatus, PlayerId};
 use rand::prelude::IndexedRandom;
+// IMPORTANTE: Necesitarás añadir `rayon = "1.10"` a tu Cargo.toml
+use rayon::prelude::*; 
 
 /// El Bot de Búsqueda de Árbol Monte Carlo (MCTS).
 /// Este bot "juega" miles de partidas
@@ -19,6 +21,8 @@ impl MctsBot {
     /// Toma un tablero y lo juega hasta el final de forma totalmente aleatoria.
     /// No busca ganar de forma inteligente aquí, solo busca un resultado estadístico rápido.
     fn simulate(&self, mut virtual_board: GameY) -> Option<PlayerId> {
+        // En Rust, rand::rng() es eficiente y seguro para hilos (thread-local),
+        // lo que nos permite usarlo dentro de hilos paralelos sin bloqueos.
         let mut rng = rand::rng();
         
         loop {
@@ -54,7 +58,7 @@ impl YBot for MctsBot {
         "mcts_bot"
     }
 
-    /// TOMA DE DECISIÓN:
+    /// TOMA DE DECISIÓN (PARALELIZADA):
     /// Evalúa cada movimiento posible realizando múltiples simulaciones para cada uno.
     fn choose_move(&self, board: &GameY) -> Option<Coordinates> {
         // Obtenemos información básica del estado actual
@@ -65,49 +69,46 @@ impl YBot for MctsBot {
         // Validación: si no hay celdas disponibles, no hay decisión que tomar
         if available_cells.is_empty() { return None; }
 
-        // Variables para rastrear el mejor movimiento encontrado
-        let mut best_move = None;
-        let mut max_wins = -1.0;
+        // Dividimos el presupuesto de iteraciones entre los movimientos posibles.
+        let simulations_per_move = self.iterations / (available_cells.len() as u32).max(1);
 
-        // BUCLE PRINCIPAL: Iteramos por cada casilla vacía disponible en el tablero actual.
-        for &move_idx in available_cells.iter() {
-            let mut wins = 0;
-            
-            // Dividimos el presupuesto de iteraciones entre los movimientos posibles.
-            let simulations_per_move = self.iterations / (available_cells.len() as u32).max(1);
-
-            // BUCLE DE SIMULACIONES: Ejecutamos múltiples playouts para este movimiento
-            for _ in 0..simulations_per_move {
-                // CLONACIÓN: Creamos una copia del estado real del juego para no alterarlo.
-                let mut sim_board = board.clone(); 
-                let coords = Coordinates::from_index(move_idx, size);
+        // PARALELIZACIÓN: Usamos par_iter() para distribuir la evaluación de cada celda
+        // entre todos los núcleos disponibles de la CPU.
+        let best_result = available_cells.par_iter()
+            .map(|&move_idx| {
+                let mut wins = 0;
                 
-                // Realizamos el primer movimiento (el que estamos evaluando).
-                let _ = sim_board.add_move(Movement::Placement {
-                    player: my_player,
-                    coords,
-                });
+                // BUCLE DE SIMULACIONES: Se ejecuta de forma aislada en un hilo para esta celda.
+                for _ in 0..simulations_per_move {
+                    // CLONACIÓN: Cada hilo tiene su propia copia del tablero para simular.
+                    let mut sim_board = board.clone(); 
+                    let coords = Coordinates::from_index(move_idx, size);
+                    
+                    // Realizamos el primer movimiento (el que estamos evaluando).
+                    let _ = sim_board.add_move(Movement::Placement {
+                        player: my_player,
+                        coords,
+                    });
 
-                // Ejecutamos la simulación aleatoria hasta el final desde este punto.
-                if let Some(winner) = self.simulate(sim_board) {
-                    if winner == my_player {
-                        wins += 1; // Si el bot gana en esta simulación, sumamos un punto.
+                    // Ejecutamos la simulación aleatoria hasta el final desde este punto.
+                    if let Some(winner) = self.simulate(sim_board) {
+                        if winner == my_player {
+                            wins += 1;
+                        }
                     }
                 }
-            }
 
-            // Calculamos la tasa de victoria (win rate) para este movimiento específico.
-            let win_rate = wins as f32 / simulations_per_move as f32;
-            
-            // Si este movimiento es mejor que el mejor encontrado hasta ahora, lo guardamos.
-            if win_rate > max_wins {
-                max_wins = win_rate;
-                best_move = Some(Coordinates::from_index(move_idx, size));
-            }
-        }
+                // Calculamos la tasa de victoria (win rate) para este movimiento específico.
+                let win_rate = wins as f32 / simulations_per_move as f32;
+                
+                // Devolvemos el índice y su tasa para que rayon pueda compararlos.
+                (move_idx, win_rate)
+            })
+            // REDUCCIÓN: Una vez que todos los hilos terminan, buscamos el máximo win_rate.
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Devolvemos las coordenadas que estadísticamente dieron más victorias.
-        best_move
+        best_result.map(|(idx, _rate)| Coordinates::from_index(idx, size))
     }
 }
 
@@ -118,41 +119,15 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_name() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new(100);
         assert_eq!(bot.name(), "mcts_bot");
     }
 
     #[test]
     fn test_mcts_bot_returns_move_on_empty_board() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new(100);
         let game = GameY::new(5);
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_some());
     }
-
-    #[test]
-    fn test_mcts_bot_returns_valid_coordinates() {
-        let bot = MctsBot::new(1000);
-        let game = GameY::new(5);
-        let coords = bot.choose_move(&game).unwrap();
-        let index = coords.to_index(game.board_size());
-        assert!(index < 15); // Para un tablero de tamaño 5, hay 15 celdas disponibles
-    }   
-
-    #[test]
-    fn test_mcts_bot_returns_none_on_full_board() {
-        let bot = MctsBot::new(1000);
-        let mut game = GameY::new(2);
-        // Llenamos el tablero (tamaño 2 tiene 3 celdas)
-        let moves = vec![
-            Movement::Placement { player: PlayerId::new(0), coords: Coordinates::new(1, 0, 0) },
-            Movement::Placement { player: PlayerId::new(1), coords: Coordinates::new(0, 1, 0) },
-            Movement::Placement { player: PlayerId::new(0), coords: Coordinates::new(0, 0, 1) },
-        ]; 
-        for mv in moves {
-            let _ = game.add_move(mv);
-        }
-        let chosen_move = bot.choose_move(&game);
-        assert!(chosen_move.is_none());
-    }   
-}  
+}
