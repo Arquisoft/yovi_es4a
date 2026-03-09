@@ -5,12 +5,17 @@ ifndef::imagesdir[:imagesdir: ../images]
 
 === Descripción de los requisitos
 
-* La app tendrá una interfaz web para jugar al juego Y.
-* Se ofrecerán dos funcionalidades de juego:
-** El usuario podrá enfrentarse a otro usuario.
-** El usuario podrá enfrentarse a un bot implementado.
-*** El bot tendrá diferentes estrategias, y el usuario podrá elegir cuál de ellas usar (nivel de dificultad).
-* El tablero tendrá tamaño variable (a elección del usuario, sino el tamaño será el establecido como automático).
+El sistema desarrollado permite jugar al juego Y a través de una interfaz web, apoyándose en una arquitectura modular compuesta por varios servicios.
+
+Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
+
+* La app dispone de una interfaz web para jugar al juego Y.
+* Se ofrecen dos modos de juego:
+** Partida jugador contra jugador.
+** Partida jugador contra bot.
+*** El bot tiene diferentes estrategias implementadas, y el usuario puede elegir cuál de ellas usar (nivel de dificultad).
+* El tablero tiene tamaño variable, configurable por el usuario dentro de unos límites establecidos.
+* El usuario puede elegir quién empieza la partida, según el modo de juego. 
 * El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.
 ** Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).
 * Se proporcionará un API externo (documentado) para que los bots puedan usar el sistema.
@@ -30,34 +35,44 @@ ifndef::imagesdir[:imagesdir: ../images]
 | El usuario se crea cuenta o entra con su cuenta para poder guardar partidas y ver estadísticas.
 
 | UC-02
-| *Crear partida con tamaño de tablero*
+| *Configurar una partida*
 | Usuario
-| El usuario crea una partida eligiendo el tamaño y el modo (vs. otro usuario o vs. bot).
+| El usuario selecciona el modo de juego, el tamaño del tablero, el bot en caso necesario y quién comienza la partida.
 
 | UC-03
-| *Jugar un turno desde la web*
+| *Crear partida jugador vs jugador*
 | Usuario
-| El usuario hace un movimiento y el sistema actualiza el estado de la partida.
+| El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.
 
 | UC-04
-| *Jugar contra bot (pedir movimiento)*
-| Sistema / Usuario
-| Si es el turno del bot, se llama al servicio (módulo `gamey') para que sugiera el siguiente movimiento según la estrategia/dificultad escogida.
+| *Crear partida jugador vs bot*
+| Usuario
+| El sistema crea una nueva sesión de juego HvB, aplicando la configuración elegida y, si corresponde, realizando el primer movimiento del bot.
 
 | UC-05
-| *Comprobar si alguien ha ganado*
-| Sistema
-| Después de cada movimiento, se comprueba si la partida está ganada.
+| *Jugar un turno desde la web*
+| Usuario
+| El usuario selecciona una celda válida y el sistema actualiza el estado de la partida.
 
 | UC-06
+| *Obtener la respuesta del bot*
+| Sistema
+| Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.
+
+| UC-07
+| *Comprobar si la partida ha finalizado*
+| Sistema
+| Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.
+
+| UC-08
 | *Ver historial y estadísticas*
 | Usuario registrado
 | El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.
 
-| UC-07
-| *Consultar/gestionar datos vía API*
-| Bot
-| El bot puede acceder/gestionar información de usuarios y partidas (según los permisos establecidos).
+| UC-09
+| *Consultar el estado de una partida*
+| Usuario
+| La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.
 |===
 
 

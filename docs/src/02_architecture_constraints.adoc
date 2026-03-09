@@ -10,21 +10,24 @@ ifndef::imagesdir[:imagesdir: ../images]
 | Restricción | Descripción
 
 | Frontend desarrollado con Vite y React
-| La interfaz gráfica debe implementarse con Vite y/o React.
+| La interfaz gráfica del sistema debe implementarse como una aplicación web usando React y Vite.
 
 | Servicio de usuarios desarrollado con Node.js y Express
-| El servicio dedicado a la gestión de usaurios debe ser un REST API implementado con Node.js y/o Express.
+| El servicio dedicado a la gestión de usaurios debe implementarse con una API REST con Node.js y Express, utilizando persistencia en MongoDB.
 
 | Juego desarrollado con Rust
-| La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y expuesta como servicio web.
+| La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y exponerse mediante un servicio HTTP.
 
-| Comunicación por JSON usando notación YEN
-| Los mensajes entre los módulos de interfaz (`webapp`) y el servicio Rust (`gamey`) deben usar JSON y representar posiciones con la notación YEN.
+| Comunicación entre servicios mediante HTTP y JSON
+| La integración entre los distintos módulos del sistema debe realizarse mediante peticiones HTTP e intercambio de datos en formato JSON.
+
+| Uso de notación YEN para representar el estado de la partida
+| El estado del tablero se representa mediante la notación YEN. Además, el sistema puede intercambiar jugadas mediante identificadores de celda dentro de las sesiones de juego.
 
 | Soporte de tablero de tamaño variable
-| El sistema debe soportar un tablero cuyo tamaño sea variable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente).
+| El sistema debe soportar un tablero cuyo tamaño sea configurable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente, dentro de los límites definidos).
 
-| Diverentes estrategias de bot (dificultad)
+| Diferentes estrategias de bot (dificultad)
 | El bot debe tener más de una estrategia y el usuario debe poder elegirla (relacionado con niveles de dificultad).
 
 | Host en Docker
