@@ -11,4 +11,4 @@ const userSchema = new mongoose.Schema({
   verificationToken: { type: String }
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);

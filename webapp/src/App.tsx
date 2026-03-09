@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Bienvenida from "./vistas/Bienvenida";
 import Home from "./vistas/Home";
 import GameHvB from "./vistas/GameHvB";
+import GameHvH from "./vistas/GameHvH";
 import RegisterForm from "./vistas/RegisterForm";
 
 function App() {
@@ -13,7 +14,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Bienvenida />} />
         <Route path="/home" element={<Home />} />
-        <Route path="/game" element={<GameHvB />} />
+        <Route path="/game-hvb" element={<GameHvB />} />
+        <Route path="/game-hvh" element={<GameHvH />} />
         <Route path="/registro" element={<RegisterForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
