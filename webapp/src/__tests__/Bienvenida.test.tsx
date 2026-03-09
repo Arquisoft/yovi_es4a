@@ -33,20 +33,26 @@ describe("Bienvenida", () => {
         navigateMock.mockReset();
     });
 
-    it("renderiza logo, título y botones (2 disabled + 1 navegable)", () => {
+    it("renderiza logo, título, enlace y botones", () => {
         render(<Bienvenida />);
 
         const link = screen.getByRole("link");
         expect(link).toHaveAttribute("href", "https://github.com/Arquisoft/yovi_es4a");
 
         expect(screen.getByAltText("Yovi logo")).toBeInTheDocument();
-
         expect(screen.getByText("Bienvenido a YOVI")).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Iniciar sesión" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Registrarse" })).toBeEnabled();
-
         expect(screen.getByRole("button", { name: "Continuar sin cuenta" })).toBeEnabled();
+    });
+
+    it("navega a /registro al pulsar 'Registrarse'", async () => {
+        const user = userEvent.setup();
+        render(<Bienvenida />);
+
+        await user.click(screen.getByRole("button", { name: "Registrarse" }));
+        expect(navigateMock).toHaveBeenCalledWith("/registro");
     });
 
     it("navega a /home al pulsar 'Continuar sin cuenta'", async () => {
