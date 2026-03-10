@@ -62,7 +62,7 @@ app.post('/createuser', async (req, res) => {
     // AQUÍ IRÍA EL ENVÍO REAL DEL CORREO (ej: usando Nodemailer y Google SMTP)
     // De momento lo simulamos en consola para poder probar:
     console.log(`\n[SIMULADOR DE CORREO] 📧`);
-    console.log(`Para: ${email}`);
+    console.log(`Para: ${sanitize(email)}`);
     console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
     console.log(`http://localhost:3000/verify?token=${verificationToken}\n`);
 
