@@ -85,7 +85,7 @@ app.post('/createuser', async (req, res) => {
 app.get('/verify', async (req, res) => {
   const { token } = req.query;
   try {
-    const user = await User.findOne({ verificationToken: token });
+    const user = await User.findOne({ verificationToken: sanitize(token) });
     if (!user) {
       return res.status(400).json({ error: 'Token inválido o expirado' });
     }
