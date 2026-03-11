@@ -123,18 +123,40 @@ const RegisterForm: React.FC = () => {
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#1F2A30' }}>Elige tu Avatar de perfil</label>
             <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '10px' }}>
               {AVATARS.map((av) => (
-                <img 
-                  key={av.id} src={av.src} alt={av.label} title={av.label}
-                  style={{ 
-                    width: '80px', height: '80px', borderRadius: '50%', cursor: 'pointer', objectFit: 'cover',
-                    border: profilePicture === av.id ? '3px solid #FF7B00' : '3px solid transparent',
-                    boxShadow: profilePicture === av.id ? '0 4px 12px rgba(255,123,0,0.3)' : 'none',
-                    transition: 'all 0.2s',
-                    backgroundColor: '#f0f0f0'
-                  }}
+                <button
+                  key={av.id}
+                  type="button"
                   onClick={() => setProfilePicture(av.id)}
-                  onError={(e) => { (e.target as any).src = "https://via.placeholder.com/60?text=Avatar" }}
-                />
+                  aria-label={`Seleccionar avatar ${av.label}`}
+                  aria-pressed={profilePicture === av.id}
+                  style={{
+                    background: 'none',
+                    border: profilePicture === av.id ? '3px solid #FF7B00' : '3px solid transparent',
+                    borderRadius: '50%',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: profilePicture === av.id ? '0 4px 12px rgba(255,123,0,0.3)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    outlineColor: '#FF7B00'
+                  }}
+                >
+                  <img 
+                    src={av.src} 
+                    alt={av.label} 
+                    title={av.label}
+                    style={{ 
+                      width: '80px', 
+                      height: '80px', 
+                      borderRadius: '50%', 
+                      objectFit: 'cover',
+                      backgroundColor: '#f0f0f0'
+                    }}
+                    onError={(e) => { (e.target as any).src = "https://via.placeholder.com/60?text=Avatar" }}
+                  />
+                </button>
               ))}
             </div>
           </div>
