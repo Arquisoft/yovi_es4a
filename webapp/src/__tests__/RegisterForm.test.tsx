@@ -71,7 +71,7 @@ describe('RegisterForm Component', () => {
 
   it('debe permitir la selección de un avatar diferente', async () => {
     render(<RegisterForm />);
-    const avatars = screen.getAllByRole('img');
+    const avatars = screen.getAllByRole('button');
     
     // comprobación de selección de avatar
     fireEvent.click(avatars[1]);
