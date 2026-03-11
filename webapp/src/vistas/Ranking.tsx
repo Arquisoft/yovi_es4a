@@ -4,8 +4,7 @@ import { TrophyOutlined, RiseOutlined, PlayCircleOutlined, ArrowLeftOutlined } f
 import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
-const USERS_URL = (typeof process !== "undefined" && process.env?.REACT_APP_USERS_URL) || "http://localhost:3000";
-
+const USERS_URL = "/api/users";
 type SortBy = "winRate" | "gamesWon" | "gamesPlayed";
 
 type RankingEntry = {
@@ -155,8 +154,7 @@ export default function Ranking() {
                 <Title level={3} style={{ margin: 0 }}>Clasificación</Title>
               </Flex>
 
-              {error && <Alert type="error" message="No se pudo cargar el ranking" description={error} />}
-
+                {error && <Alert type="error" title="No se pudo cargar el ranking" description={error} />}      
               <Table
                 dataSource={entries}
                 columns={columns}
