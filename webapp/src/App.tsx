@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Bienvenida from "./vistas/Bienvenida";
 import Home from "./vistas/Home";
 import GameHvB from "./vistas/GameHvB";
-import RegisterForm from "./vistas/RegisterForm";
+import RegisterForm from "./vistas/tabsInicio/RegisterForm";
 
 function App() {
   return (

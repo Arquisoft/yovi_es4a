@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RegisterForm from '../vistas/RegisterForm';
+import RegisterForm from '../vistas/tabsInicio/RegisterForm.tsx';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 

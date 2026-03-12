@@ -1,45 +1,98 @@
-import { Button, Space, Typography } from "antd";
+import { Button, Space, Typography, Tabs, Card, Grid, Flex } from "antd";
 import { useNavigate } from "react-router-dom";
 import yoviLogo from "../assets/yovi-logo.svg";
+import LoginForm from "./tabsInicio/LoginForm";
+import RegisterForm from "./tabsInicio/RegisterForm";
 
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function Bienvenida() {
   const navigate = useNavigate();
+  const screens = useBreakpoint();
 
   return (
     <div className="App home">
-      <Space direction="vertical" size="large" align="center">
-        <a href="https://github.com/Arquisoft/yovi_es4a" target="_blank" rel="noreferrer">
-          <img src={yoviLogo} className="logo yovi" alt="Yovi logo" />
-        </a>
+      {/* Aplicamos la estructura flex y anchos calcados de la vista Home */}
+      <Flex justify="center" align="center" style={{ padding: 20, minHeight: "100vh" }}>
+        <div style={{ width: "min(1000px, 100%)" }}>
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            
+            <Card 
+              styles={{ body: { padding: 0 } }} 
+              bordered={true}
+            >
+              <Flex 
+                vertical={!screens.md} // Si es menor a 'md' (móvil), se apila verticalmente
+                align="stretch"
+              >
+                {/* LADO IZQUIERDO: Contenido original de Bienvenida */}
+                <Flex 
+                  vertical
+                  justify="center"
+                  align="center"
+                  style={{ 
+                    flex: 1,
+                    padding: '60px 40px', 
+                    // Línea separadora adaptativa
+                    borderRight: screens.md ? '1px solid #f0f0f0' : 'none',
+                    borderBottom: !screens.md ? '1px solid #f0f0f0' : 'none',
+                  }}
+                >
+                  <Space direction="vertical" size="large" align="center">
+                    <a href="https://github.com/Arquisoft/yovi_es4a" target="_blank" rel="noreferrer">
+                      <img src={yoviLogo} className="logo yovi" alt="Yovi logo" style={{ width: '100%', maxWidth: '280px' }} />
+                    </a>
 
-        <Title level={2} style={{ margin: 0 }}>
-          Bienvenido a YOVI
-        </Title>
+                    <Title level={2} style={{ margin: 0, textAlign: 'center' }}>
+                      Bienvenido a YOVI
+                    </Title>
+                  </Space>
+                </Flex>
 
-        <Button type="primary" size="large" style={{ width: 180 }} disabled>
-          Iniciar sesión
-        </Button>
+                {/* LADO DERECHO: Pestañas de Login y Registro */}
+                <Flex 
+                  vertical
+                  style={{ 
+                    flex: 1,
+                    padding: '50px 40px' 
+                  }}
+                >
+                  <Tabs
+                    defaultActiveKey="1"
+                    centered
+                    size="large"
+                    items={[
+                      {
+                        key: '1',
+                        label: 'Iniciar Sesión',
+                        children: <div style={{ marginTop: '20px' }}><LoginForm /></div>,
+                      },
+                      {
+                        key: '2',
+                        label: 'Registrarse',
+                        children: <div style={{ marginTop: '20px' }}><RegisterForm /></div>,
+                      },
+                    ]}
+                  />
+                </Flex>
+              </Flex>
+            </Card>
 
-        <Button 
-          type="primary" 
-          size="large" 
-          style={{ width: 180 }}
-          onClick={() => navigate("/registro")}
-          >
-          Registrarse
-        </Button>
+            {/* LINK DE CONTINUAR: Fuera del recuadro central y centrado */}
+            <Flex justify="center">
+              <Button 
+                color="default" 
+                variant="link" 
+                onClick={() => navigate("/home")}
+              >
+                <u>Continuar sin cuenta</u>
+              </Button>
+            </Flex>
 
-        <Button
-          type="text"
-          size="large"
-          style={{ width: 200 }}
-          onClick={() => navigate("/home")}
-        >
-          Continuar sin cuenta
-        </Button>
-      </Space>
+          </Space>
+        </div>
+      </Flex>
     </div>
   );
 }
