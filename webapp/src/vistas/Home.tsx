@@ -15,6 +15,7 @@ import {
   PlayCircleOutlined,
   RobotOutlined,
   TeamOutlined,
+  TrophyOutlined,
   UserOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -35,17 +36,11 @@ const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
 function loadLastConfigHvB(): LastConfigHvB | null {
   try {
     const raw = localStorage.getItem(LAST_CONFIG_KEY_HVB);
-    if (!raw)
-      return null;
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvB>;
-
-    if (typeof parsed.size !== "number")
-      return null;
-    if (typeof parsed.botId !== "string")
-      return null;
-    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot")
-      return null;
-
+    if (typeof parsed.size !== "number") return null;
+    if (typeof parsed.botId !== "string") return null;
+    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot") return null;
     return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
@@ -55,23 +50,16 @@ function loadLastConfigHvB(): LastConfigHvB | null {
 function saveLastConfigHvB(cfg: LastConfigHvB) {
   try {
     localStorage.setItem(LAST_CONFIG_KEY_HVB, JSON.stringify(cfg));
-  }
-  catch {
-  }
+  } catch {}
 }
 
 function loadLastConfigHvH(): LastConfigHvH | null {
   try {
     const raw = localStorage.getItem(LAST_CONFIG_KEY_HVH);
-    if (!raw)
-      return null;
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvH>;
-
-    if (typeof parsed.size !== "number")
-      return null;
-    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1")
-      return null;
-
+    if (typeof parsed.size !== "number") return null;
+    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1") return null;
     return { size: parsed.size, hvhstarter: parsed.hvhstarter };
   } catch {
     return null;
@@ -81,8 +69,7 @@ function loadLastConfigHvH(): LastConfigHvH | null {
 function saveLastConfigHvH(cfg: LastConfigHvH) {
   try {
     localStorage.setItem(LAST_CONFIG_KEY_HVH, JSON.stringify(cfg));
-  } catch {
-  }
+  } catch {}
 }
 
 function clampSize(n: number, meta: MetaResponse | null) {
@@ -96,7 +83,6 @@ export default function Home() {
   const navigate = useNavigate();
 
   const [meta, setMeta] = useState<MetaResponse | null>(null);
-
   const [size, setSize] = useState(7);
 
   // HvB config
@@ -106,7 +92,6 @@ export default function Home() {
   // HvH config
   const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
-  // Cargar config del server (min/max)
   useEffect(() => {
     getMeta()
       .then((c) => setMeta(c))
@@ -118,7 +103,6 @@ export default function Home() {
       }));
   }, []);
 
-  // Cargar last configs (HVB + HVH)
   useEffect(() => {
     const lastHvb = loadLastConfigHvB();
     const lastHvh = loadLastConfigHvH();
@@ -130,8 +114,7 @@ export default function Home() {
     }
 
     if (lastHvh) {
-      if (!lastHvb)
-        setSize(lastHvh.size);
+      if (!lastHvb) setSize(lastHvh.size);
       setHvhStarter(lastHvh.hvhstarter);
     }
   }, []);
@@ -157,23 +140,19 @@ export default function Home() {
   function handlePlayHvB() {
     const s = clampSize(size, meta);
     saveLastConfigHvB({ size: s, botId, hvbstarter });
-
     const params = new URLSearchParams();
     params.set("size", String(s));
     params.set("bot", botId);
     params.set("hvbstarter", hvbstarter);
-
     navigate(`/game-hvb?${params.toString()}`);
   }
 
   function handlePlayHvH() {
     const s = clampSize(size, meta);
     saveLastConfigHvH({ size: s, hvhstarter: hvhStarter });
-
     const params = new URLSearchParams();
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
-
     navigate(`/game-hvh?${params.toString()}`);
   }
 
@@ -194,6 +173,9 @@ export default function Home() {
               <Title level={2} style={{ margin: 0 }}>YOVI</Title>
 
               <Space>
+                <Button icon={<TrophyOutlined />} onClick={() => navigate("/ranking")}>
+                  Ranking
+                </Button>
                 <Button icon={<UserOutlined />}>
                   Ver perfil
                 </Button>
@@ -218,9 +200,7 @@ export default function Home() {
                       min={minSize}
                       max={maxSize}
                       value={size}
-                      onChange={(next) => {
-                        setSize(clampSize(Number(next ?? 7), meta))
-                      }}
+                      onChange={(next) => setSize(clampSize(Number(next ?? 7), meta))}
                       style={{ width: 140 }}
                     />
                   </div>
@@ -274,9 +254,7 @@ export default function Home() {
                       min={minSize}
                       max={maxSize}
                       value={size}
-                      onChange={(next) => {
-                        setSize(clampSize(Number(next ?? 7), meta))
-                      }}
+                      onChange={(next) => setSize(clampSize(Number(next ?? 7), meta))}
                       style={{ width: 140 }}
                     />
                   </div>
@@ -313,12 +291,12 @@ export default function Home() {
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={3} style={{ margin: 0 }}>Estadísticas</Title>
               </Flex>
-
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Text type="secondary">Sin implementar todavía</Text>
               </Flex>
             </Space>
           </Card>
+
         </Space>
       </div>
     </Flex>
