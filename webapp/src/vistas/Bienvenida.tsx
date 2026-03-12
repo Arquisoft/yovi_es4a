@@ -14,7 +14,7 @@ export default function Bienvenida() {
   return (
     <div className="App home">
       {/* Aplicamos la estructura flex y anchos calcados de la vista Home */}
-      <Flex justify="center" align="center" style={{ padding: 20, minHeight: "100vh" }}>
+      <Flex justify="center" align="center" style={{ padding: 20, minHeight: "100vh", minWidth: "200vw"}}>
         <div style={{ width: "min(1000px, 100%)" }}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             
@@ -54,7 +54,7 @@ export default function Bienvenida() {
                 <Flex 
                   vertical
                   style={{ 
-                    flex: 1,
+                    flex: 2,
                     padding: '50px 40px' 
                   }}
                 >

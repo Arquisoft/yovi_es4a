@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Alert } from 'antd';
+import { Form, Input, Button, Alert, Row, Col } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
 import { evaluatePasswordStrength, AVATARS, type StrengthResult } from '../../utils/Validation';
 import '../../estilos/RegisterForm.css';
@@ -99,28 +99,66 @@ const RegisterForm: React.FC = () => {
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 15 }} />}
       {success && <Alert message={success} type="success" showIcon style={{ marginBottom: 15 }} />}
 
-      <Form.Item
-        name="username"
-        label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Nombre de Usuario</span>}
-        rules={[{ required: true, message: 'Por favor, ingresa tu usuario.' }]}
-      >
-        <Input prefix={<UserOutlined />} placeholder="Ej: user123" size="large" />
-      </Form.Item>
+      {/* Fila 1: Correo y Nombre de Usuario */}
+      <Row gutter={24}>
+        <Col xs={24} md={12}>
+          <Form.Item
+            name="email"
+            label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Correo Electrónico</span>}
+            rules={[
+              { required: true, message: 'Por favor, ingresa tu correo.' },
+              { type: 'email', message: 'Ingresa un correo válido.' }
+            ]}
+          >
+            <Input prefix={<MailOutlined />} placeholder="ejemplo@correo.com" size="large" />
+          </Form.Item>
+        </Col>
 
-      <Form.Item
-        name="email"
-        label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Correo Electrónico</span>}
-        rules={[
-          { required: true, message: 'Por favor, ingresa tu correo.' },
-          { type: 'email', message: 'Ingresa un correo válido.' }
-        ]}
-      >
-        <Input prefix={<MailOutlined />} placeholder="ejemplo@correo.com" size="large" />
-      </Form.Item>
+        <Col xs={24} md={12}>
+          <Form.Item
+            name="username"
+            label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Nombre de Usuario</span>}
+            rules={[{ required: true, message: 'Por favor, ingresa tu usuario.' }]}
+          >
+            <Input prefix={<UserOutlined />} placeholder="Ej: user123" size="large" />
+          </Form.Item>
+        </Col>
+      </Row>
 
-      {/* Selector de Avatar (Se mantiene tu estilo original flex) */}
-      <Form.Item label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Elige tu Avatar de perfil</span>}>
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '10px' }}>
+      {/* Fila 2: Contraseña y Selector de Avatar */}
+      <Row gutter={24}>
+        <Col xs={24} md={12}>
+          <Form.Item
+            name="password"
+            label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Contraseña</span>}
+            rules={[{ required: true, message: 'Por favor, ingresa tu contraseña.' }]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Contraseña"
+              size="large"
+              onChange={(e) => setPassword(e.target.value)}
+              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+              visibilityToggle={{ visible: passwordVisible, onVisibleChange: setPasswordVisible }}
+            />
+          </Form.Item>
+          
+          {/* Medidor de fuerza de la contraseña (se mantiene debajo del input de contraseña) */}
+          {password && (
+            <div style={{ marginTop: '-15px', marginBottom: '15px' }}>
+              <div style={{ background: '#edf2f7', height: '6px', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                <div style={{ width: strength.width, backgroundColor: strength.color, height: '100%', transition: 'width 0.3s' }} />
+              </div>
+              <span style={{ color: strength.color, fontSize: '0.8rem', fontWeight: 'bold' }}>
+                Nivel de seguridad: {strength.label}
+              </span>
+            </div>
+          )}
+        </Col>
+
+        <Col xs={24} md={12}>
+          <Form.Item label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Elige tu Avatar de perfil</span>}>
+            <div style={{ display: 'flex', gap: '1px', justifyContent: 'center', marginTop: '10px' }}>
               {AVATARS.map((av) => (
                 <button
                   key={av.id}
@@ -147,8 +185,8 @@ const RegisterForm: React.FC = () => {
                     alt={av.label} 
                     title={av.label}
                     style={{ 
-                  width: '60px', // Reducido levemente para ajustarse mejor a la tarjeta
-                  height: '60px', 
+                      width: '40px',
+                      height: '40px', 
                       borderRadius: '50%', 
                       objectFit: 'cover',
                       backgroundColor: '#f0f0f0'
@@ -158,65 +196,48 @@ const RegisterForm: React.FC = () => {
                 </button>
               ))}
             </div>
-      </Form.Item>
+          </Form.Item>
+        </Col>
+      </Row>
 
-      <Form.Item
-        name="password"
-        label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Contraseña</span>}
-        rules={[{ required: true, message: 'Por favor, ingresa tu contraseña.' }]}
-      >
-        <Input.Password
-          prefix={<LockOutlined />}
-          placeholder="Contraseña"
-          size="large"
-          onChange={(e) => setPassword(e.target.value)}
-          iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-          visibilityToggle={{ visible: passwordVisible, onVisibleChange: setPasswordVisible }}
-        />
-      </Form.Item>
-      
-      {/* Medidor de fuerza de la contraseña */}
-            {password && (
-        <div style={{ marginTop: '-15px', marginBottom: '15px' }}>
-                <div style={{ background: '#edf2f7', height: '6px', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
-                  <div style={{ width: strength.width, backgroundColor: strength.color, height: '100%', transition: 'width 0.3s' }} />
-                </div>
-                <span style={{ color: strength.color, fontSize: '0.8rem', fontWeight: 'bold' }}>
-                  Nivel de seguridad: {strength.label}
-                </span>
-              </div>
-            )}
-
-      <Form.Item
-        name="confirmPassword"
-        label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Repetir Contraseña</span>}
-        dependencies={['password']}
-        rules={[
-          { required: true, message: 'Por favor, confirma tu contraseña.' },
-          ({ getFieldValue }) => ({
-            validator(_, value) {
-              if (!value || getFieldValue('password') === value) {
-                return Promise.resolve();
-              }
-              return Promise.reject(new Error('Las contraseñas no coinciden.'));
-            },
-          }),
-        ]}
-      >
-        <Input.Password
-          prefix={<LockOutlined />}
-          placeholder="Repetir Contraseña"
-          size="large"
-          iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-          visibilityToggle={{ visible: confirmPasswordVisible, onVisibleChange: setConfirmPasswordVisible }}
+      {/* Fila 3: Repetir Contraseña y Botón de Registro */}
+      <Row gutter={24}>
+        <Col xs={24} md={12}>
+          <Form.Item
+            name="confirmPassword"
+            label={<span style={{ fontWeight: 'bold', color: '#1F2A30' }}>Repetir Contraseña</span>}
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Por favor, confirma tu contraseña.' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Las contraseñas no coinciden.'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Repetir Contraseña"
+              size="large"
+              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+              visibilityToggle={{ visible: confirmPasswordVisible, onVisibleChange: setConfirmPasswordVisible }}
             />
-      </Form.Item>
+          </Form.Item>
+        </Col>
 
-      <Form.Item>
-        <Button type="primary" htmlType="submit" size="large" block>
-          Registrarse
-        </Button>
-      </Form.Item>
+        <Col xs={24} md={12}>
+          {/* Etiqueta invisible para mantener la misma alineación que el input de la izquierda */}
+          <Form.Item label={<span style={{ visibility: 'hidden' }}>Acción</span>}>
+            <Button type="primary" htmlType="submit" size="large" block>
+              Registrarse
+            </Button>
+          </Form.Item>
+        </Col>
+      </Row>
     </Form>
   );
 };

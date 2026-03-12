@@ -16,7 +16,7 @@ const LoginForm: React.FC = () => {
       initialValues={{ remember: true }} 
       onFinish={onFinish} 
       layout="vertical"
-      style={{ width: '100%' }}
+      style={{ width: '100%', height:'100%' }}
     >
       <Form.Item 
         name="username" 
