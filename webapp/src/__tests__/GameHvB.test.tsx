@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 
 import GameHvB from "../vistas/GameHvB";
-import { createHvbGame, hvbHumanMove, putConfig } from "../api/gamey";
+import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig } from "../api/gamey";
 
 const sessionGamePageMock = vi.fn();
 
@@ -20,6 +20,7 @@ vi.mock("react-router-dom", async () => {
 vi.mock("../api/gamey", () => ({
     createHvbGame: vi.fn(),
     hvbHumanMove: vi.fn(),
+    hvbBotMove: vi.fn(),
     putConfig: vi.fn(),
 }));
 
@@ -35,6 +36,7 @@ describe("GameHvB", () => {
         sessionGamePageMock.mockReset();
         vi.mocked(createHvbGame).mockReset();
         vi.mocked(hvbHumanMove).mockReset();
+        vi.mocked(hvbBotMove).mockReset();
         vi.mocked(putConfig).mockReset();
 
         mockSearchParams = new URLSearchParams("size=7&bot=random_bot");
@@ -68,6 +70,8 @@ describe("GameHvB", () => {
                 },
             },
         });
+
+        expect(typeof props.botMove).toBe("function");
     });
 
     it("normaliza starter=bot y respeta bot/size de la query", () => {
@@ -103,7 +107,7 @@ describe("GameHvB", () => {
             game_id: "g1",
             mode: "hvb",
             yen: { size: 9, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            status: { state: "ongoing", next: "bot" },
         });
 
         mockSearchParams = new URLSearchParams("size=9&bot=mcts_bot&hvbstarter=bot");
@@ -130,7 +134,7 @@ describe("GameHvB", () => {
             game_id: "g1",
             mode: "hvb",
             yen: { size: 9, layout: "." },
-            status: { state: "ongoing", next: "human" },
+            status: { state: "ongoing", next: "bot" },
         });
     });
 
@@ -139,8 +143,7 @@ describe("GameHvB", () => {
             game_id: "g1",
             yen: { size: 7, layout: "." },
             human_move: { cell_id: 3, coords: { x: 1, y: 2, z: 3 } },
-            bot_move: null,
-            status: { state: "ongoing", next: "human" },
+            status: { state: "ongoing", next: "bot" },
         });
 
         render(<GameHvB />);
@@ -149,6 +152,22 @@ describe("GameHvB", () => {
         await props.move("g1", 3);
 
         expect(hvbHumanMove).toHaveBeenCalledWith("g1", 3);
+    });
+
+    it("botMove delega en hvbBotMove", async () => {
+        vi.mocked(hvbBotMove).mockResolvedValue({
+            game_id: "g1",
+            yen: { size: 7, layout: "." },
+            bot_move: { cell_id: 4, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "human" },
+        });
+
+        render(<GameHvB />);
+
+        const props = sessionGamePageMock.mock.calls[0][0];
+        await props.botMove("g1");
+
+        expect(hvbBotMove).toHaveBeenCalledWith("g1");
     });
 
     it("genera textos de resultado correctos", () => {
