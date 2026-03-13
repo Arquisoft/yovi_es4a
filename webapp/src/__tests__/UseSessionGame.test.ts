@@ -11,7 +11,7 @@ describe("useSessionGame", () => {
         moveMock.mockReset();
     });
 
-    it("inicia partida al montar y rellena yen/gameId", async () => {
+    it("inicia partida al montar y rellena yen/gameId/nextTurn", async () => {
         startMock.mockResolvedValueOnce({
             game_id: "g1",
             yen: { size: 7, layout: "." },
@@ -38,9 +38,10 @@ describe("useSessionGame", () => {
         expect(result.current.yen).toEqual({ size: 7, layout: "." });
         expect(result.current.gameOver).toBe(false);
         expect(result.current.winner).toBeNull();
+        expect(result.current.nextTurn).toBe("human");
     });
 
-    it("si start devuelve finished marca gameOver y winner", async () => {
+    it("si start devuelve finished marca gameOver, winner y limpia nextTurn", async () => {
         startMock.mockResolvedValueOnce({
             game_id: "g2",
             yen: { size: 7, layout: "." },
@@ -61,6 +62,7 @@ describe("useSessionGame", () => {
 
         expect(result.current.gameOver).toBe(true);
         expect(result.current.winner).toBe("human");
+        expect(result.current.nextTurn).toBeNull();
     });
 
     it("si start devuelve finished sin winner usa null", async () => {
@@ -84,6 +86,7 @@ describe("useSessionGame", () => {
 
         expect(result.current.gameOver).toBe(true);
         expect(result.current.winner).toBeNull();
+        expect(result.current.nextTurn).toBeNull();
     });
 
     it("si start falla con Error usa e.message", async () => {
@@ -104,6 +107,7 @@ describe("useSessionGame", () => {
         expect(result.current.error).toBe("boom");
         expect(result.current.yen).toBeNull();
         expect(result.current.gameId).toBeNull();
+        expect(result.current.nextTurn).toBeNull();
     });
 
     it("si start falla con string usa String(e)", async () => {
@@ -156,6 +160,7 @@ describe("useSessionGame", () => {
         expect(result.current.gameOver).toBe(true);
         expect(result.current.winner).toBe("human");
         expect(result.current.gameId).toBe("g1");
+        expect(result.current.nextTurn).toBeNull();
 
         rerender({ deps: [9] });
 
@@ -165,6 +170,7 @@ describe("useSessionGame", () => {
         expect(result.current.gameId).toBeNull();
         expect(result.current.winner).toBeNull();
         expect(result.current.gameOver).toBe(false);
+        expect(result.current.nextTurn).toBeNull();
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -173,6 +179,7 @@ describe("useSessionGame", () => {
         expect(startMock).toHaveBeenCalledTimes(2);
         expect(result.current.gameId).toBe("g2");
         expect(result.current.yen).toEqual({ size: 9, layout: ".." });
+        expect(result.current.nextTurn).toBe("bot");
     });
 
     it("onCellClick no hace nada si no hay yen", async () => {
@@ -253,7 +260,7 @@ describe("useSessionGame", () => {
         expect(moveMock).not.toHaveBeenCalled();
     });
 
-    it("onCellClick limpia error, pone loading y actualiza yen en ongoing", async () => {
+    it("onCellClick limpia error, pone loading y actualiza yen y nextTurn en ongoing", async () => {
         startMock.mockResolvedValueOnce({
             game_id: "g1",
             yen: { size: 7, layout: "." },
@@ -302,6 +309,7 @@ describe("useSessionGame", () => {
         expect(result.current.yen).toEqual({ size: 7, layout: "x" });
         expect(result.current.gameOver).toBe(false);
         expect(result.current.winner).toBeNull();
+        expect(result.current.nextTurn).toBe("bot");
     });
 
     it("onCellClick marca finished con winner", async () => {
@@ -335,6 +343,7 @@ describe("useSessionGame", () => {
         expect(result.current.yen).toEqual({ size: 7, layout: "y" });
         expect(result.current.gameOver).toBe(true);
         expect(result.current.winner).toBe("bot");
+        expect(result.current.nextTurn).toBeNull();
     });
 
     it("onCellClick marca finished con winner null si falta winner", async () => {
@@ -367,6 +376,7 @@ describe("useSessionGame", () => {
 
         expect(result.current.gameOver).toBe(true);
         expect(result.current.winner).toBeNull();
+        expect(result.current.nextTurn).toBeNull();
     });
 
     it("onCellClick captura errores con Error.message", async () => {
@@ -396,6 +406,7 @@ describe("useSessionGame", () => {
 
         expect(result.current.error).toBe("BAD_MOVE");
         expect(result.current.loading).toBe(false);
+        expect(result.current.nextTurn).toBe("human");
     });
 
     it("onCellClick captura errores con String(e)", async () => {
@@ -424,6 +435,7 @@ describe("useSessionGame", () => {
         });
 
         expect(result.current.error).toBe("MOVE_FAIL");
+        expect(result.current.nextTurn).toBe("human");
     });
 
     it("si se desmonta antes de que start resuelva no intenta actualizar estado", async () => {
