@@ -17,6 +17,8 @@ type Props = {
     onAbandon: () => void;
     abandonDisabled?: boolean;
 
+    turnIndicator?: React.ReactNode;
+
     board: React.ReactNode;
     result?: React.ReactNode;
 };
@@ -30,6 +32,7 @@ export default function GameShell({
     emptyText,
     onAbandon,
     abandonDisabled,
+    turnIndicator,
     board,
     result,
 }: Props) {
@@ -53,6 +56,8 @@ export default function GameShell({
                     </Card>
 
                     {error && <Alert type="error" showIcon message={error} />}
+
+                    {hasBoard && turnIndicator}
 
                     {!hasBoard ? (
                         <Card>

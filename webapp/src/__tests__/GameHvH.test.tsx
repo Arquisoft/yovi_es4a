@@ -47,12 +47,26 @@ describe("GameHvH", () => {
 
         expect(props.deps).toEqual([7, "player0"]);
         expect(props.resultConfig.title).toBe("Juego Y — Human vs Human");
-        expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: player0");
+        expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: Player 0");
         expect(props.resultConfig.abandonOkText).toBe("Abandonar");
         expect(props.winnerPalette).toEqual({
             highlightedWinner: "player0",
             highlightedBackground: "#28bbf532",
             otherWinnerBackground: "#ff7b0033",
+        });
+
+        expect(props.turnConfig).toEqual({
+            textPrefix: "Turno actual:",
+            turns: {
+                player0: {
+                    label: "Player 0",
+                    color: "#28BBF5",
+                },
+                player1: {
+                    label: "Player 1",
+                    color: "#FF7B00",
+                },
+            },
         });
     });
 
@@ -63,7 +77,7 @@ describe("GameHvH", () => {
 
         const props = sessionGamePageMock.mock.calls[0][0];
         expect(props.deps).toEqual([9, "player1"]);
-        expect(props.resultConfig.subtitle).toBe("Tamaño: 9 · Empieza: player1");
+        expect(props.resultConfig.subtitle).toBe("Tamaño: 9 · Empieza: Player 1");
     });
 
     it("hace fallback a size=7 y starter=player0", () => {
@@ -73,7 +87,7 @@ describe("GameHvH", () => {
 
         const props = sessionGamePageMock.mock.calls[0][0];
         expect(props.deps).toEqual([7, "player0"]);
-        expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: player0");
+        expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: Player 0");
     });
 
     it("start guarda config y crea la partida HvH", async () => {

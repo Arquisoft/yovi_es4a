@@ -76,7 +76,7 @@ pub enum GameStatus {
     Finished { winner: Winner },
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum NextTurn {
     Human,
@@ -85,7 +85,7 @@ pub enum NextTurn {
     Player1,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Winner {
     Human,

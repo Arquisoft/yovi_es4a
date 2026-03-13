@@ -46,6 +46,7 @@ describe("GameShell", () => {
         emptyText: "No hay partida",
         onAbandon: vi.fn(),
         abandonDisabled: false,
+        turnIndicator: <div>TURN INDICATOR</div>,
         board: <div>BOARD CONTENT</div>,
         result: <div>RESULT CONTENT</div>,
     };
@@ -114,9 +115,10 @@ describe("GameShell", () => {
         expect(screen.getByText("No se pudo crear la partida.")).toBeInTheDocument();
     });
 
-    it("si hasBoard=true renderiza board y result", () => {
+    it("si hasBoard=true renderiza turnIndicator, board y result", () => {
         render(<GameShell {...baseProps} />);
 
+        expect(screen.getByText("TURN INDICATOR")).toBeInTheDocument();
         expect(screen.getByText("BOARD CONTENT")).toBeInTheDocument();
         expect(screen.getByText("RESULT CONTENT")).toBeInTheDocument();
     });
@@ -128,7 +130,14 @@ describe("GameShell", () => {
         expect(screen.queryByText("RESULT CONTENT")).not.toBeInTheDocument();
     });
 
-    it("si hasBoard=false no renderiza board ni result", () => {
+    it("si hasBoard=true y turnIndicator es null no lo renderiza", () => {
+        render(<GameShell {...baseProps} turnIndicator={null} />);
+
+        expect(screen.queryByText("TURN INDICATOR")).not.toBeInTheDocument();
+        expect(screen.getByText("BOARD CONTENT")).toBeInTheDocument();
+    });
+
+    it("si hasBoard=false no renderiza turnIndicator, board ni result", () => {
         render(
             <GameShell
                 {...baseProps}
@@ -138,6 +147,7 @@ describe("GameShell", () => {
             />,
         );
 
+        expect(screen.queryByText("TURN INDICATOR")).not.toBeInTheDocument();
         expect(screen.queryByText("BOARD CONTENT")).not.toBeInTheDocument();
         expect(screen.queryByText("RESULT CONTENT")).not.toBeInTheDocument();
         expect(screen.getByText("Vacío")).toBeInTheDocument();

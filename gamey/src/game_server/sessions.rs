@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use crate::GameY;
 
 use super::auth::Principal;
-use super::dto::{GameConfig, GameMode};
+use super::dto::{GameConfig, GameMode, Winner};
 
 #[derive(Debug, Clone)]
 pub struct GameSession {
@@ -19,6 +19,11 @@ pub struct GameSession {
     pub game: GameY,
     pub bot_id: Option<String>,
 
+    // Estado específico HvB
+    pub hvb_next_is_human: Option<bool>,
+    pub hvb_winner: Option<Winner>,
+
+    // Estado específico HvH
     pub hvh_next_player: Option<u8>,
     pub hvh_winner: Option<u8>,
 }
@@ -84,6 +89,10 @@ mod tests {
             },
             game: GameY::new(2),
             bot_id: None,
+
+            hvb_next_is_human: None,
+            hvb_winner: None,
+
             hvh_next_player: Some(0),
             hvh_winner: None,
         }
