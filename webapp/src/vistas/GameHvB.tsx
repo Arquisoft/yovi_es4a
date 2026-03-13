@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 
-import { createHvbGame, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
+import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
 import SessionGamePage from "../game/SessionGamePage";
 
 type StarterHvB = "human" | "bot";
@@ -44,6 +44,7 @@ export default function GameHvB() {
         });
       }}
       move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
+      botMove={(gameId) => hvbBotMove(gameId)}
       resultConfig={{
         title: "Juego Y — Human vs Bot",
         subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${participantLabels[starter]}`,

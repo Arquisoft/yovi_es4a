@@ -46,6 +46,8 @@ pub async fn create_game(
         config: cfg.clone(),
         game,
         bot_id: None,
+        hvb_next_is_human: None,
+        hvb_winner: None,
         hvh_next_player: Some(next_player),
         hvh_winner: None,
     };
@@ -372,6 +374,8 @@ mod tests {
             },
             game: GameY::new(2),
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: Some(0),
             hvh_winner: None,
         };
@@ -411,6 +415,8 @@ mod tests {
             },
             game: GameY::new(2),
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: Some(0),
             hvh_winner: None,
         };
@@ -510,6 +516,8 @@ mod tests {
             },
             game: GameY::new(2),
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: None,
             hvh_winner: None,
         };
@@ -561,6 +569,8 @@ mod tests {
             },
             game,
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: Some(0),
             hvh_winner: Some(1),
         };
@@ -614,6 +624,8 @@ mod tests {
             },
             game,
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: Some(0),
             hvh_winner: Some(0),
         };
@@ -660,6 +672,8 @@ mod tests {
             },
             game,
             bot_id: None,
+            hvb_next_is_human: None,
+            hvb_winner: None,
             hvh_next_player: Some(1),
             hvh_winner: None,
         };
