@@ -27,6 +27,9 @@ El sistema adopta una *arquitectura de microservicios* con tres componentes prin
 *Motor de juego (gamey)*:
 
 * Rust por su alto rendimiento y seguridad
+* Axum como framework HTTP asíncrono para exponer el servidor de juego
+* Tokio como runtime asíncrono subyacente
+* Tower-http para gestión de middleware CORS
 * Puede ejecutarse como servidor web o desde línea de comandos
 
 *Base de datos*:
@@ -63,6 +66,47 @@ gamey separa la lógica del juego de los detalles técnicos:
 * `game_server/`: Servidor del juego con el servidor
 * `bot_server/`: Conexión del bot con el servidor
 * `notation/`: Conversión entre formatos (YEN, YGN)
+
+==== Estrategias de Bot (módulo `bot/`)
+
+El módulo de bots se estructura en torno al trait `YBot` y un registro centralizado (`YBotRegistry`) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de tres implementaciones:
+
+* *`random_bot`* (`random.rs`): Elige una celda disponible al azar, sin ninguna heurística. Sirve como línea base de comparación para el resto de estrategias.
+
+* *`greedy_bot`* (`greedy.rs`): Aplica una heurística de _Potencial de Conectividad_ basada en coordenadas triangulares. Puntúa cada celda disponible según su proximidad a los bordes del tablero y su centralidad estratégica, eligiendo siempre el movimiento de menor coste. Es más predecible que MCTS pero sensiblemente mejor que el bot aleatorio.
+
+* *`mcts_bot`* (`mcts.rs`): Implementa una versión simplificada de _Monte Carlo Tree Search_. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con dos niveles de dificultad:
+** 5.000 iteraciones — respuesta rápida, calidad media-alta.
+** 20.000 iteraciones — mayor precisión, tiempo de respuesta más elevado.
+
+==== API REST del Motor de Juego (`game_server/`)
+
+El servidor expone una API versionada bajo el prefijo `/v1` con los siguientes endpoints:
+
+[cols="2,1,4", options="header"]
+|===
+| Endpoint | Método | Descripción
+
+| `/status`
+| GET
+| Comprueba que el servicio está en marcha.
+
+| `/v1/game/config`
+| GET
+| Devuelve la configuración del tablero: tamaño mínimo y máximo permitidos.
+
+| `/v1/game/new`
+| POST
+| Crea una nueva partida genérica a partir de un tamaño de tablero.
+
+| `/v1/game/hvb/new/{bot_id}`
+| POST
+| Inicia una partida Humano vs Bot seleccionando el bot por su identificador y el jugador que empieza.
+
+| `/v1/game/hvb/move/{bot_id}`
+| POST
+| Recibe el movimiento del humano (en notación YEN), lo aplica, calcula la respuesta del bot y devuelve el nuevo estado del tablero.
+|===
 
 === Decisiones Organizativas
 

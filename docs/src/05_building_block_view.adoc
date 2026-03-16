@@ -4,5 +4,28 @@ ifndef::imagesdir[:imagesdir: ../images]
 ==  Vista de bloques
 
 === Visión general
-image::05_1-Vista de bloque.drawio.png["Diagrama correspondiente a la visita de bloque general", width=90%]
+image:03_2-ContextoTecnico.png["Diagrama correspondiente a la visita de bloque general", width=90%]
 Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios) y gamey (motor del juego).
+
+==== Descripción de los bloques
+
+[cols="1,2,2", options="header"]
+|===
+| Componente | Responsabilidad | Interfaces
+
+| *webapp*
+| Presenta la interfaz gráfica al usuario. Permite jugar partidas, registrarse e iniciar sesión.
+| Consume la API REST de `users` para autenticación y la API REST de `gamey` para los movimientos de juego (HTTP/REST + JSON con notación YEN).
+
+| *users*
+| Gestiona el registro, login y estadísticas de los usuarios. Expone una API REST documentada con Swagger.
+| Se comunica con `MongoDB` para persistir datos. Expone endpoints REST consumidos por `webapp`. Métricas expuestas a Prometheus.
+
+| *gamey*
+| Motor del juego. Valida movimientos, mantiene el estado de la partida en notación YEN y gestiona las estrategias de bot.
+| Expone una API REST consumida por `webapp`. No tiene persistencia propia.
+
+| *MongoDB*
+| Almacena los datos de usuarios y partidas.
+| Solo accedida por `users` mediante lectura/escritura.
+|===

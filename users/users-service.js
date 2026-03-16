@@ -56,7 +56,7 @@ app.post('/createuser', async (req, res) => {
     await user.save();
 
     console.log(`\n[SIMULADOR DE CORREO] 📧`);
-    console.log(`Para: ${email}`);
+    console.log(`Para: ${sanitize(email)}`);
     console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
     console.log(`http://localhost:3000/verify?token=${verificationToken}\n`);
 
@@ -78,7 +78,7 @@ app.post('/createuser', async (req, res) => {
 app.get('/verify', async (req, res) => {
   const { token } = req.query;
   try {
-    const user = await User.findOne({ verificationToken: token });
+    const user = await User.findOne({ verificationToken: sanitize(token) });
     if (!user) {
       return res.status(400).json({ error: 'Token inválido o expirado' });
     }

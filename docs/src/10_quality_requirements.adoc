@@ -34,7 +34,7 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Adecuación funcional*
 
-* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otros usuarios.
+* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otro usuario en local. **SC8**[[SC8]]
 * Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. **SC1**[[SC1]]
 
 *Eficiencia de desempeño*
@@ -55,7 +55,7 @@ image::requisitos de calidad.png[arbol de calidad]
 * Operabilidad: La propia interfaz te guía durante el juego mostrándote de quién es el turno, las casillas disponibles y opciones disponibles. **SC2**[[SC2]]
 * Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego.
 * Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.
-* Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. **SC3**[[SC3]]
+* Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. **SC3**[[SC3]] El uso de un DNS permite que los usuarios accedan a la aplicación mediante un nombre legible (yovies4a.duckdns.org) en lugar de una dirección IP técnica y difícil de recordar. **SC7**[[SC7]]
 * Asistencia al usuario: Dispone de una ayuda para entender qué hace cada componente en cada caso, además de tooltips y mensajes descriptivos.
 * Autodescripción: Se busca dejar lo más claro posible el uso de cada herramienta ya sea con un texto descriptivo en botones o dibujos que indiquen claramente su finalidad.
 
@@ -72,7 +72,7 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Mantenibilidad*
 
-* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no proboca un efecto de cascada. **SC6**[[SC6]]
+* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]]
 
 *Portabilidad*
 
@@ -131,6 +131,15 @@ A continuación se exponen distintos escenarios de uso identificados por un cód
 |<<SC6, SC6>>
 |Mantenibilidad
 |Nos comunican que hay un nuevo requisito en la interfaz y que además se ha añadido una regla, son facilmente indentificables las zonas responsables de cada tarea.
+
+|<<SC7, SC7>>
+|Accesibilidad
+|Tratamos de compartir la aplicación con alguien y en vez de proporcionar una IP difícil de recordar le facilitamos su DNS, yovies4a.duckdns.org, lo que facilita su acceso.
+
+|<<SC8, SC8>>
+|Adecuación funcional
+|Un usuario quiere jugar contra otro usuario en local. El sistema establece turnos de juego para cada jugador en la misma máquina.
+
 |===
 
 ifdef::arc42help[]
