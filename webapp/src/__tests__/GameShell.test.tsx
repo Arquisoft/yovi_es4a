@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import GameShell from "../game/GameShell";
@@ -27,8 +27,16 @@ vi.mock("antd", () => {
         ),
         Card: ({ children }: any) => <div data-testid="card">{children}</div>,
         Empty: EmptyComp,
-        Flex: ({ children }: any) => <div>{children}</div>,
-        Space: ({ children }: any) => <div>{children}</div>,
+        Flex: ({ children, style }: any) => (
+            <div data-testid="flex" data-style={JSON.stringify(style ?? {})}>
+                {children}
+            </div>
+        ),
+        Space: ({ children, style }: any) => (
+            <div data-testid="space" data-style={JSON.stringify(style ?? {})}>
+                {children}
+            </div>
+        ),
         Typography: {
             Title: ({ children }: any) => <div>{children}</div>,
             Text: ({ children }: any) => <div>{children}</div>,
@@ -57,6 +65,25 @@ describe("GameShell", () => {
         expect(screen.getByText("Mi partida")).toBeInTheDocument();
         expect(screen.getByText("Subtítulo")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Abandonar" })).toBeInTheDocument();
+    });
+
+    it("aplica el padding responsivo y minHeight al contenedor principal", () => {
+        render(<GameShell {...baseProps} />);
+
+        const flexs = screen.getAllByTestId("flex");
+        expect(flexs[0]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                padding: "clamp(10px, 3vw, 20px)",
+                minHeight: "100vh",
+            }),
+        );
+    });
+
+    it("mantiene el ancho máximo del contenido principal", () => {
+        render(<GameShell {...baseProps} />);
+
+        expect(screen.getByText("Mi partida").parentElement?.parentElement).toBeInTheDocument();
     });
 
     it("ejecuta onAbandon al pulsar Abandonar", async () => {

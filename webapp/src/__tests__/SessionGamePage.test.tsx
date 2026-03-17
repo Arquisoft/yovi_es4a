@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import SessionGamePage from "../game/SessionGamePage";
@@ -12,85 +12,90 @@ const useSessionGameMock = vi.fn();
 const parseYenToCellsMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
-    const actual = await vi.importActual<any>("react-router-dom");
-    return {
-        ...actual,
-        useNavigate: () => navigateMock,
-    };
+  const actual = await vi.importActual<any>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
 });
 
 vi.mock("antd", () => ({
-    App: {
-        useApp: () => ({
-            modal: { confirm: confirmMock },
-        }),
-    },
-    Button: ({ children, onClick, disabled, type }: any) => (
-        <button onClick={onClick} disabled={disabled} data-type={type}>
-            {children}
-        </button>
-    ),
-    Card: ({ children, style }: any) => (
-        <div data-testid="card" data-style={JSON.stringify(style ?? {})}>
-            {children}
-        </div>
-    ),
-    Flex: ({ children }: any) => <div>{children}</div>,
-    Space: ({ children }: any) => <div>{children}</div>,
-    Typography: {
-        Title: ({ children }: any) => <div>{children}</div>,
-        Text: ({ children }: any) => <div>{children}</div>,
-    },
+  App: {
+    useApp: () => ({
+      modal: { confirm: confirmMock },
+    }),
+  },
+  Button: ({ children, onClick, disabled, type }: any) => (
+    <button onClick={onClick} disabled={disabled} data-type={type}>
+      {children}
+    </button>
+  ),
+  Card: ({ children, style, bodyStyle, size }: any) => (
+    <div
+      data-testid="card"
+      data-style={JSON.stringify(style ?? {})}
+      data-body-style={JSON.stringify(bodyStyle ?? {})}
+      data-size={size ?? ""}
+    >
+      {children}
+    </div>
+  ),
+  Flex: ({ children }: any) => <div>{children}</div>,
+  Space: ({ children }: any) => <div>{children}</div>,
+  Typography: {
+    Title: ({ children }: any) => <div>{children}</div>,
+    Text: ({ children }: any) => <div>{children}</div>,
+  },
 }));
 
 vi.mock("../game/useSessionGame", () => ({
-    useSessionGame: (...args: any[]) => useSessionGameMock(...args),
+  useSessionGame: (...args: any[]) => useSessionGameMock(...args),
 }));
 
 vi.mock("../game/yen", () => ({
-    parseYenToCells: (...args: any[]) => parseYenToCellsMock(...args),
+  parseYenToCells: (...args: any[]) => parseYenToCellsMock(...args),
 }));
 
 vi.mock("../game/Board", () => ({
-    default: ({ size, cells, disabled, onCellClick }: any) => (
-        <div>
-            <div>BOARD size={size}</div>
-            <div>BOARD disabled={String(disabled)}</div>
-            <div>BOARD cells={JSON.stringify(cells)}</div>
-            <button aria-label="board-cell-0" onClick={() => onCellClick(0)} disabled={disabled}>
-                cell0
-            </button>
-        </div>
-    ),
+  default: ({ size, cells, disabled, onCellClick }: any) => (
+    <div>
+      <div>BOARD size={size}</div>
+      <div>BOARD disabled={String(disabled)}</div>
+      <div>BOARD cells={JSON.stringify(cells)}</div>
+      <button aria-label="board-cell-0" onClick={() => onCellClick(0)} disabled={disabled}>
+        cell0
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../game/GameShell", () => ({
-    default: ({
-        title,
-        subtitle,
-        onAbandon,
-        board,
-        result,
-        turnIndicator,
-        abandonDisabled,
-        emptyText,
-        error,
-        hasBoard,
-    }: any) => (
-        <div>
-            <div>{title}</div>
-            <div>{subtitle}</div>
-            <div>error={error}</div>
-            <div>hasBoard={String(hasBoard)}</div>
-            <div>emptyText={emptyText}</div>
-            <button onClick={onAbandon} disabled={!!abandonDisabled}>
-                Abandonar
-            </button>
-            <div data-testid="shell-turn">{turnIndicator}</div>
-            <div data-testid="shell-board">{board}</div>
-            <div data-testid="shell-result">{result}</div>
-        </div>
-    ),
+  default: ({
+    title,
+    subtitle,
+    onAbandon,
+    board,
+    result,
+    turnIndicator,
+    abandonDisabled,
+    emptyText,
+    error,
+    hasBoard,
+  }: any) => (
+    <div>
+      <div>{title}</div>
+      <div>{subtitle}</div>
+      <div>error={error}</div>
+      <div>hasBoard={String(hasBoard)}</div>
+      <div>emptyText={emptyText}</div>
+      <button onClick={onAbandon} disabled={!!abandonDisabled}>
+        Abandonar
+      </button>
+      <div data-testid="shell-turn">{turnIndicator}</div>
+      <div data-testid="shell-board">{board}</div>
+      <div data-testid="shell-result">{result}</div>
+    </div>
+  ),
 }));
 
 describe("SessionGamePage", () => {
@@ -212,6 +217,19 @@ describe("SessionGamePage", () => {
 
         expect(screen.getByTestId("shell-turn")).toHaveTextContent("Turno actual:");
         expect(screen.getByTestId("shell-turn")).toHaveTextContent("Humano");
+    });
+
+    it("el indicador de turno usa la Card pequeña con borde lateral del color correcto", () => {
+        render(<SessionGamePage {...baseProps} />);
+
+        const cards = screen.getAllByTestId("card");
+        expect(cards[0]).toHaveAttribute("data-size", "small");
+        expect(cards[0]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                borderLeft: "6px solid #28BBF5",
+            }),
+        );
     });
 
     it("no muestra indicador de turno si gameOver=true", () => {
@@ -338,37 +356,25 @@ describe("SessionGamePage", () => {
                 border: "2px solid #28BBF5",
                 boxShadow: "0 0 0 3px #28BBF522",
                 transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                width: "100%",
+                overflow: "hidden",
             }),
         );
     });
 
-    it("aplica borde naranja al tablero si el turno es bot", () => {
-        useSessionGameMock.mockReturnValueOnce({
-            yen: { size: 7, layout: "." },
-            gameId: "g1",
-            winner: null,
-            nextTurn: "bot",
-            error: "",
-            loading: false,
-            gameOver: false,
-            onCellClick: vi.fn(),
-            onBotTurn: vi.fn().mockResolvedValue(undefined),
-        });
-
+    it("pasa el bodyStyle responsivo a la Card del tablero", () => {
         render(<SessionGamePage {...baseProps} />);
 
         const cards = screen.getAllByTestId("card");
         expect(cards[1]).toHaveAttribute(
-            "data-style",
+            "data-body-style",
             JSON.stringify({
-                border: "2px solid #FF7B00",
-                boxShadow: "0 0 0 3px #FF7B0022",
-                transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                padding: "clamp(8px, 2vw, 16px)",
             }),
         );
     });
 
-    it("dispara onBotTurn cuando nextTurn es bot", () => {
+    it("aplica borde naranja al tablero si el turno es bot", async () => {
         const onBotTurn = vi.fn().mockResolvedValue(undefined);
 
         useSessionGameMock.mockReturnValueOnce({
@@ -385,7 +391,43 @@ describe("SessionGamePage", () => {
 
         render(<SessionGamePage {...baseProps} />);
 
+        const cards = screen.getAllByTestId("card");
+        expect(cards[1]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                border: "2px solid #FF7B00",
+                boxShadow: "0 0 0 3px #FF7B0022",
+                transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+                width: "100%",
+                overflow: "hidden",
+            }),
+        );
+
+        await waitFor(() => {
         expect(onBotTurn).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    it("dispara onBotTurn cuando nextTurn es bot", async () => {
+        const onBotTurn = vi.fn().mockResolvedValue(undefined);
+
+        useSessionGameMock.mockReturnValueOnce({
+            yen: { size: 7, layout: "." },
+            gameId: "g1",
+            winner: null,
+            nextTurn: "bot",
+            error: "",
+            loading: false,
+            gameOver: false,
+            onCellClick: vi.fn(),
+            onBotTurn,
+        });
+
+        render(<SessionGamePage {...baseProps} />);
+
+        await waitFor(() => {
+        expect(onBotTurn).toHaveBeenCalledTimes(1);
+        });
     });
 
     it("no dispara onBotTurn si nextTurn es human", () => {
@@ -468,6 +510,26 @@ describe("SessionGamePage", () => {
         expect(onBotTurn).not.toHaveBeenCalled();
     });
 
+    it("no dispara onBotTurn si no existe botMove", () => {
+        const onBotTurn = vi.fn().mockResolvedValue(undefined);
+
+        useSessionGameMock.mockReturnValueOnce({
+            yen: { size: 7, layout: "." },
+            gameId: "g1",
+            winner: null,
+            nextTurn: "bot",
+            error: "",
+            loading: false,
+            gameOver: false,
+            onCellClick: vi.fn(),
+            onBotTurn,
+        });
+
+        render(<SessionGamePage {...baseProps} botMove={undefined} />);
+
+        expect(onBotTurn).not.toHaveBeenCalled();
+    });
+
     it("muestra resultado si gameOver=true y gana el highlightedWinner", async () => {
         const user = userEvent.setup();
 
@@ -489,7 +551,14 @@ describe("SessionGamePage", () => {
         expect(screen.getByText("Has ganado la partida.")).toBeInTheDocument();
 
         const cards = screen.getAllByTestId("card");
-        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({ background: "#28bbf532" }));
+        expect(cards[0]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                background: "#28bbf532",
+                width: "100%",
+                overflow: "hidden",
+            }),
+        );
 
         await user.click(screen.getByRole("button", { name: "Volver a Home" }));
         expect(navigateMock).toHaveBeenCalledWith("/home", { replace: true });
@@ -514,7 +583,14 @@ describe("SessionGamePage", () => {
         expect(screen.getByText("Ha ganado random_bot. ¡Inténtalo de nuevo!")).toBeInTheDocument();
 
         const cards = screen.getAllByTestId("card");
-        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({ background: "#ff7b0033" }));
+        expect(cards[0]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                background: "#ff7b0033",
+                width: "100%",
+                overflow: "hidden",
+            }),
+        );
     });
 
     it("no aplica color si gameOver=true pero no hay winner", () => {
@@ -533,7 +609,13 @@ describe("SessionGamePage", () => {
         render(<SessionGamePage {...baseProps} />);
 
         const cards = screen.getAllByTestId("card");
-        expect(cards[0]).toHaveAttribute("data-style", JSON.stringify({}));
+        expect(cards[0]).toHaveAttribute(
+            "data-style",
+            JSON.stringify({
+                width: "100%",
+                overflow: "hidden",
+            }),
+        );
     });
 
     it("no muestra resultado si gameOver=false", () => {
@@ -560,6 +642,25 @@ describe("SessionGamePage", () => {
 
         modalArgs.onOk();
         expect(navigateMock).toHaveBeenCalledWith("/home", { replace: true });
+    });
+
+    it("usa abandonOkText por defecto si no se pasa", async () => {
+        const user = userEvent.setup();
+
+        render(
+        <SessionGamePage
+            {...baseProps}
+            resultConfig={{
+            ...baseProps.resultConfig,
+            abandonOkText: undefined,
+            }}
+        />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Abandonar" }));
+
+        const modalArgs = confirmMock.mock.calls[0][0];
+        expect(modalArgs.okText).toBe("Abandonar");
     });
 
     it("usa emptyText por defecto si no se pasa", () => {

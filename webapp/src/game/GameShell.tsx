@@ -37,7 +37,14 @@ export default function GameShell({
     result,
 }: Props) {
     return (
-        <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
+        <Flex
+            justify="center"
+            align="start"
+            style={{
+                padding: "clamp(10px, 3vw, 20px)",
+                minHeight: "100vh",
+            }}
+        >
             <div style={{ width: "min(1000px, 100%)" }}>
                 <Space direction="vertical" size={16} style={{ width: "100%" }}>
                     <Card>
