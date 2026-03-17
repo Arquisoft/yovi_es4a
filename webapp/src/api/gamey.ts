@@ -142,11 +142,17 @@ export type CellMoveRequest = {
 export type MoveCoords = { x: number; y: number; z: number };
 export type AppliedMove = { cell_id: number; coords: MoveCoords };
 
-export type HvbMoveResponse = {
+export type HvbHumanMoveResponse = {
   game_id: string;
   yen: YEN;
   human_move: AppliedMove;
-  bot_move: AppliedMove | null;
+  status: GameStatus;
+};
+
+export type HvbBotMoveResponse = {
+  game_id: string;
+  yen: YEN;
+  bot_move: AppliedMove;
   status: GameStatus;
 };
 
@@ -182,11 +188,18 @@ export async function getHvbGame(gameId: string): Promise<GameStateResponse> {
   });
 }
 
-export async function hvbHumanMove(gameId: string, cellId: number): Promise<HvbMoveResponse> {
-  return http<HvbMoveResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/moves`, {
+export async function hvbHumanMove(gameId: string, cellId: number): Promise<HvbHumanMoveResponse> {
+  return http<HvbHumanMoveResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/moves`, {
     method: "POST",
     headers: buildHeaders(),
     body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
+  });
+}
+
+export async function hvbBotMove(gameId: string): Promise<HvbBotMoveResponse> {
+  return http<HvbBotMoveResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/bot-move`, {
+    method: "POST",
+    headers: buildHeaders(),
   });
 }
 

@@ -11,6 +11,7 @@ export type SessionGameStartResponse<YEN> = {
 };
 
 export type SessionGameMoveResponse<YEN> = {
+    game_id?: string;
     yen: YEN;
     status: SessionGameStatus;
 };
@@ -19,12 +20,14 @@ type UseSessionGameArgs<YEN> = {
     deps: readonly unknown[];
     start: () => Promise<SessionGameStartResponse<YEN>>;
     move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<YEN>>;
+    botMove?: (gameId: string) => Promise<SessionGameMoveResponse<YEN>>;
 };
 
-export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YEN>) {
+export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGameArgs<YEN>) {
     const [yen, setYen] = useState<YEN | null>(null);
     const [gameId, setGameId] = useState<string | null>(null);
     const [winner, setWinner] = useState<string | null>(null);
+    const [nextTurn, setNextTurn] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [gameOver, setGameOver] = useState(false);
@@ -39,6 +42,7 @@ export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YE
             setYen(null);
             setGameId(null);
             setWinner(null);
+            setNextTurn(null);
             setGameOver(false);
 
             try {
@@ -51,6 +55,11 @@ export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YE
                 if (r.status.state === "finished") {
                     setGameOver(true);
                     setWinner(r.status.winner ?? null);
+                    setNextTurn(null);
+                } else {
+                    setGameOver(false);
+                    setWinner(null);
+                    setNextTurn(r.status.next ?? null);
                 }
             } catch (e: any) {
                 if (!cancelled) setError(e?.message ?? String(e));
@@ -71,6 +80,7 @@ export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YE
 
             setError("");
             setLoading(true);
+
             try {
                 const r = await move(gameId, cellId);
                 setYen(r.yen);
@@ -78,9 +88,11 @@ export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YE
                 if (r.status.state === "finished") {
                     setGameOver(true);
                     setWinner(r.status.winner ?? null);
+                    setNextTurn(null);
                 } else {
                     setGameOver(false);
                     setWinner(null);
+                    setNextTurn(r.status.next ?? null);
                 }
             } catch (e: any) {
                 setError(e?.message ?? String(e));
@@ -91,18 +103,45 @@ export function useSessionGame<YEN>({ deps, start, move }: UseSessionGameArgs<YE
         [yen, gameId, gameOver, move],
     );
 
+    const onBotTurn = useCallback(async () => {
+        if (!botMove || !gameId || gameOver) return;
+
+        setError("");
+        setLoading(true);
+
+        try {
+            const r = await botMove(gameId);
+            setYen(r.yen);
+
+            if (r.status.state === "finished") {
+                setGameOver(true);
+                setWinner(r.status.winner ?? null);
+                setNextTurn(null);
+            } else {
+                setGameOver(false);
+                setWinner(null);
+                setNextTurn(r.status.next ?? null);
+            }
+        } catch (e: any) {
+            setError(e?.message ?? String(e));
+        } finally {
+            setLoading(false);
+        }
+    }, [botMove, gameId, gameOver]);
+
     const resetState = useMemo(
         () => ({
             yen,
             gameId,
             winner,
+            nextTurn,
             error,
             loading,
             gameOver,
             setError,
         }),
-        [yen, gameId, winner, error, loading, gameOver],
+        [yen, gameId, winner, nextTurn, error, loading, gameOver],
     );
 
-    return { ...resetState, onCellClick };
+    return { ...resetState, onCellClick, onBotTurn };
 }

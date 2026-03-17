@@ -52,6 +52,7 @@ pub fn create_router(state: GameServerState) -> Router {
         .route("/api/v1/hvb/games", post(hvb::create_game))
         .route("/api/v1/hvb/games/{game_id}", get(hvb::get_game).delete(hvb::delete_game))
         .route("/api/v1/hvb/games/{game_id}/moves", post(hvb::post_human_move))
+        .route("/api/v1/hvb/games/{game_id}/bot-move", post(hvb::post_bot_move))
         .with_state(state)
         .layer(cors)
 }

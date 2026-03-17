@@ -11,15 +11,13 @@ import {
 } from "antd";
 import {
   BuildOutlined,
-  LogoutOutlined,
   PlayCircleOutlined,
   RobotOutlined,
   TeamOutlined,
-  UserOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { App } from "antd";
 import { getMeta, type MetaResponse } from "../api/gamey";
+import AppHeader from "./AppHeader.tsx";
 
 const { Title, Text } = Typography;
 
@@ -92,7 +90,6 @@ function clampSize(n: number, meta: MetaResponse | null) {
 }
 
 export default function Home() {
-  const { modal } = App.useApp();
   const navigate = useNavigate();
 
   const [meta, setMeta] = useState<MetaResponse | null>(null);
@@ -144,16 +141,6 @@ export default function Home() {
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
 
-  function handleLogout() {
-    modal.confirm({
-      title: "Cerrar sesión",
-      content: "¿Seguro que quieres cerrar sesión y salir?",
-      okText: "Sí, salir",
-      cancelText: "Cancelar",
-      onOk: () => navigate("/", { replace: true }),
-    });
-  }
-
   function handlePlayHvB() {
     const s = clampSize(size, meta);
     saveLastConfigHvB({ size: s, botId, hvbstarter });
@@ -183,23 +170,7 @@ export default function Home() {
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
 
           {/* Barra Menú */}
-          <Card>
-            <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-              <Space>
-                <Button icon={<LogoutOutlined />} onClick={handleLogout}>
-                  Cerrar sesión
-                </Button>
-              </Space>
-
-              <Title level={2} style={{ margin: 0 }}>YOVI</Title>
-
-              <Space>
-                <Button icon={<UserOutlined />}>
-                  Ver perfil
-                </Button>
-              </Space>
-            </Flex>
-          </Card>
+          <AppHeader title="YOVI" />
 
           {/* Juego */}
           <Card>
