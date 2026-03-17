@@ -39,14 +39,15 @@ const RegisterForm: React.FC = () => {
   /**
    * Procesa el envío del formulario.
    * Realiza validaciones de seguridad y envía los datos al microservicio de usuarios.
-   * @param {React.FormEvent} e - El evento de envío del formulario.
+   * @param {any} values - Valores extraídos del formulario tras pasar las validaciones de AntD.
    */
   const onFinish = async (values: any) => {
     setError('');
     setSuccess('');
 
-    // Validación: Repetir contraseña
-    if (password !== confirmPassword) {
+    // Validación: Repetir contraseña. 
+    // Usamos los valores devueltos por Ant Design (values) para asegurar precisión
+    if (values.password !== values.confirmPassword) {
       setError('Las contraseñas no coinciden. Por favor, verifícalas.');
       return;
     }
@@ -223,6 +224,7 @@ const RegisterForm: React.FC = () => {
               prefix={<LockOutlined />}
               placeholder="Repetir Contraseña"
               size="large"
+              onChange={(e) => setConfirmPassword(e.target.value)} // <-- AÑADIDO PARA SINCRONIZAR EL ESTADO
               iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
               visibilityToggle={{ visible: confirmPasswordVisible, onVisibleChange: setConfirmPasswordVisible }}
             />
