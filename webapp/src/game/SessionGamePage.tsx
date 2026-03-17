@@ -162,7 +162,16 @@ export default function SessionGamePage<TYen extends GameYEN>({
       abandonDisabled={loading || gameOver}
       turnIndicator={turnIndicator}
       board={
-        <Card style={boardCardStyle}>
+        <Card
+          style={{
+            ...boardCardStyle,
+            width: "100%",
+            overflow: "hidden",
+          }}
+          bodyStyle={{
+            padding: "clamp(8px, 2vw, 16px)",
+          }}
+        >
           <Board
             size={yen?.size ?? 7}
             cells={cells}

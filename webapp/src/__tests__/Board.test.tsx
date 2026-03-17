@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Board from "../game/Board.tsx";
@@ -38,13 +38,43 @@ function makeCells(): Cell[] {
     ];
 }
 
+const observeMock = vi.fn();
+const disconnectMock = vi.fn();
+
+class ResizeObserverMock {
+    observe = observeMock;
+    disconnect = disconnectMock;
+
+    constructor(_callback: ResizeObserverCallback) {}
+}
+
 describe("Board", () => {
+    beforeEach(() => {
+        observeMock.mockClear();
+        disconnectMock.mockClear();
+
+        vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+
+        Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+            configurable: true,
+            get() {
+                return 360;
+            },
+        });
+    });
+
     it("renderiza un botón por celda", () => {
         render(<Board size={2} cells={makeCells()} onCellClick={() => {}} />);
 
         expect(screen.getByLabelText("cell-0")).toBeInTheDocument();
         expect(screen.getByLabelText("cell-1")).toBeInTheDocument();
         expect(screen.getByLabelText("cell-2")).toBeInTheDocument();
+    });
+
+    it("crea el ResizeObserver y observa el contenedor", () => {
+        render(<Board size={2} cells={makeCells()} onCellClick={() => {}} />);
+
+        expect(observeMock).toHaveBeenCalledTimes(1);
     });
 
     it("permite click en celdas vacías si disabled=false", async () => {
@@ -90,5 +120,89 @@ describe("Board", () => {
 
         await user.click(empty0);
         expect(onCellClick).not.toHaveBeenCalled();
+    });
+
+    it("aplica estilos responsivos en móvil pequeño", () => {
+        Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+            configurable: true,
+            get() {
+                return 360;
+            },
+        });
+
+        render(<Board size={6} cells={makeCells()} onCellClick={() => {}} />);
+
+        const cell0 = screen.getByLabelText("cell-0");
+
+        expect(cell0).toHaveStyle({
+            width: "38px",
+            minWidth: "38px",
+            height: "38px",
+            fontSize: "14px",
+            background: "rgb(240, 240, 240)",
+            color: "rgb(17, 24, 39)",
+        });
+    });
+
+    it("aplica estilos responsivos en tablet", () => {
+        Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+            configurable: true,
+            get() {
+                return 600;
+            },
+        });
+
+        render(<Board size={6} cells={makeCells()} onCellClick={() => {}} />);
+
+        const cell0 = screen.getByLabelText("cell-0");
+
+        expect(cell0).toHaveStyle({
+            width: "50px",
+            minWidth: "50px",
+            height: "50px",
+            fontSize: "14px",
+        });
+    });
+
+    it("reduce la fuente cuando la celda es muy pequeña", () => {
+        Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+            configurable: true,
+            get() {
+                return 150;
+            },
+        });
+
+        render(<Board size={6} cells={makeCells()} onCellClick={() => {}} />);
+
+        const cell0 = screen.getByLabelText("cell-0");
+
+        expect(cell0).toHaveStyle({
+            width: "22px",
+            minWidth: "22px",
+            height: "22px",
+            fontSize: "10px",
+        });
+    });
+
+    it("usa el color azul para celdas B y naranja para celdas R", () => {
+        render(<Board size={2} cells={makeCells()} onCellClick={() => {}} />);
+
+        expect(screen.getByLabelText("cell-1")).toHaveStyle({
+            background: "rgb(40, 187, 245)",
+            color: "rgb(255, 255, 255)",
+        });
+
+        expect(screen.getByLabelText("cell-2")).toHaveStyle({
+            background: "rgb(255, 123, 0)",
+            color: "rgb(255, 255, 255)",
+        });
+    });
+
+    it("desconecta el ResizeObserver al desmontar", () => {
+        const { unmount } = render(<Board size={2} cells={makeCells()} onCellClick={() => {}} />);
+
+        unmount();
+
+        expect(disconnectMock).toHaveBeenCalledTimes(1);
     });
 });

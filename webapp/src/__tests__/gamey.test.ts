@@ -23,6 +23,33 @@ function jsonResponse(data: unknown, ok = true, status = 200) {
     } as Response;
 }
 
+function mockFetchOk(data: unknown) {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(data));
+}
+
+function mockFetchError(data: unknown, status = 500) {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        jsonResponse(data, false, status),
+    );
+}
+
+function expectRequest(
+    spy: ReturnType<typeof vi.spyOn>,
+    expected: {
+        path: string;
+        method: string;
+        body?: string;
+    },
+) {
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain(expected.path);
+    expect(init?.method).toBe(expected.method);
+
+    if (expected.body !== undefined) {
+        expect(init?.body).toBe(expected.body);
+    }
+}
+
 describe("gamey api client", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
@@ -33,34 +60,31 @@ describe("gamey api client", () => {
     });
 
     it("getMeta ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                api_version: "v1",
-                min_board_size: 2,
-                max_board_size: 15,
-                bots: ["random_bot", "mcts_bot"],
-            }),
-        );
+        const spy = mockFetchOk({
+            api_version: "v1",
+            min_board_size: 2,
+            max_board_size: 15,
+            bots: ["random_bot", "mcts_bot"],
+        });
 
         const res = await getMeta();
 
         expect(res.api_version).toBe("v1");
         expect(res.bots).toEqual(["random_bot", "mcts_bot"]);
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/meta");
-        expect(init?.method).toBe("GET");
+        expectRequest(spy, {
+            path: "/api/v1/meta",
+            method: "GET",
+        });
     });
 
     it("getConfig ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                size: 7,
-                hvb_starter: "human",
-                hvh_starter: "player0",
-                bot_id: "random_bot",
-            }),
-        );
+        const spy = mockFetchOk({
+            size: 7,
+            hvb_starter: "human",
+            hvh_starter: "player0",
+            bot_id: "random_bot",
+        });
 
         const res = await getConfig();
 
@@ -68,21 +92,13 @@ describe("gamey api client", () => {
         expect(res.hvb_starter).toBe("human");
         expect(res.bot_id).toBe("random_bot");
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/config");
-        expect(init?.method).toBe("GET");
+        expectRequest(spy, {
+            path: "/api/v1/config",
+            method: "GET",
+        });
     });
 
     it("putConfig ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                size: 9,
-                hvb_starter: "bot",
-                hvh_starter: "player1",
-                bot_id: "mcts_bot",
-            }),
-        );
-
         const payload = {
             size: 9,
             hvb_starter: "bot" as const,
@@ -90,72 +106,78 @@ describe("gamey api client", () => {
             bot_id: "mcts_bot",
         };
 
+        const spy = mockFetchOk({
+            size: 9,
+            hvb_starter: "bot",
+            hvh_starter: "player1",
+            bot_id: "mcts_bot",
+        });
+
         const res = await putConfig(payload);
 
         expect(res.size).toBe(9);
         expect(res.hvb_starter).toBe("bot");
         expect(res.hvh_starter).toBe("player1");
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/config");
-        expect(init?.method).toBe("PUT");
-        expect(init?.body).toBe(JSON.stringify(payload));
+        expectRequest(spy, {
+            path: "/api/v1/config",
+            method: "PUT",
+            body: JSON.stringify(payload),
+        });
     });
 
     it("createHvbGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g1",
-                mode: "hvb",
-                yen: { size: 7, layout: "." },
-                status: { state: "ongoing", next: "human" },
-            }),
-        );
-
-        const res = await createHvbGame({
+        const payload = {
             size: 7,
             bot_id: "random_bot",
-            hvb_starter: "human",
+            hvb_starter: "human" as const,
+        };
+
+        const spy = mockFetchOk({
+            game_id: "g1",
+            mode: "hvb",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "human" },
         });
+
+        const res = await createHvbGame(payload);
 
         expect(res.game_id).toBe("g1");
         expect(res.mode).toBe("hvb");
         expect(res.status).toEqual({ state: "ongoing", next: "human" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvb/games");
-        expect(init?.method).toBe("POST");
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games",
+            method: "POST",
+        });
     });
 
     it("getHvbGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g1",
-                mode: "hvb",
-                yen: { size: 7, layout: "." },
-                status: { state: "ongoing", next: "bot" },
-            }),
-        );
+        const spy = mockFetchOk({
+            game_id: "g1",
+            mode: "hvb",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "bot" },
+        });
 
         const res = await getHvbGame("g1");
 
         expect(res.game_id).toBe("g1");
         expect(res.status).toEqual({ state: "ongoing", next: "bot" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvb/games/g1");
-        expect(init?.method).toBe("GET");
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1",
+            method: "GET",
+        });
     });
 
     it("hvbHumanMove ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g1",
-                yen: { size: 7, layout: "." },
-                human_move: { cell_id: 3, coords: { x: 1, y: 2, z: 3 } },
-                status: { state: "ongoing", next: "bot" },
-            }),
-        );
+        const spy = mockFetchOk({
+            game_id: "g1",
+            yen: { size: 7, layout: "." },
+            human_move: { cell_id: 3, coords: { x: 1, y: 2, z: 3 } },
+            status: { state: "ongoing", next: "bot" },
+        });
 
         const res = await hvbHumanMove("g1", 3);
 
@@ -163,21 +185,20 @@ describe("gamey api client", () => {
         expect(res.human_move.cell_id).toBe(3);
         expect(res.status).toEqual({ state: "ongoing", next: "bot" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvb/games/g1/moves");
-        expect(init?.method).toBe("POST");
-        expect(init?.body).toBe(JSON.stringify({ cell_id: 3 }));
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1/moves",
+            method: "POST",
+            body: JSON.stringify({ cell_id: 3 }),
+        });
     });
 
     it("hvbBotMove ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g1",
-                yen: { size: 7, layout: "." },
-                bot_move: { cell_id: 4, coords: { x: 1, y: 1, z: 2 } },
-                status: { state: "ongoing", next: "human" },
-            }),
-        );
+        const spy = mockFetchOk({
+            game_id: "g1",
+            yen: { size: 7, layout: "." },
+            bot_move: { cell_id: 4, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "human" },
+        });
 
         const res = await hvbBotMove("g1");
 
@@ -185,108 +206,104 @@ describe("gamey api client", () => {
         expect(res.bot_move.cell_id).toBe(4);
         expect(res.status).toEqual({ state: "ongoing", next: "human" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvb/games/g1/bot-move");
-        expect(init?.method).toBe("POST");
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1/bot-move",
+            method: "POST",
+        });
     });
 
     it("deleteHvbGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({ deleted: true }),
-        );
+        const spy = mockFetchOk({ deleted: true });
 
         const res = await deleteHvbGame("g1");
 
         expect(res.deleted).toBe(true);
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvb/games/g1");
-        expect(init?.method).toBe("DELETE");
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1",
+            method: "DELETE",
+        });
     });
 
     it("createHvhGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g2",
-                mode: "hvh",
-                yen: { size: 7, layout: "." },
-                status: { state: "ongoing", next: "player0" },
-            }),
-        );
-
-        const res = await createHvhGame({
+        const payload = {
             size: 7,
-            hvh_starter: "player0",
+            hvh_starter: "player0" as const,
+        };
+
+        const spy = mockFetchOk({
+            game_id: "g2",
+            mode: "hvh",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "player0" },
         });
+
+        const res = await createHvhGame(payload);
 
         expect(res.game_id).toBe("g2");
         expect(res.mode).toBe("hvh");
         expect(res.status).toEqual({ state: "ongoing", next: "player0" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvh/games");
-        expect(init?.method).toBe("POST");
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games",
+            method: "POST",
+        });
     });
 
     it("getHvhGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g2",
-                mode: "hvh",
-                yen: { size: 7, layout: "." },
-                status: { state: "ongoing", next: "player1" },
-            }),
-        );
+        const spy = mockFetchOk({
+            game_id: "g2",
+            mode: "hvh",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "player1" },
+        });
 
         const res = await getHvhGame("g2");
 
         expect(res.game_id).toBe("g2");
         expect(res.status).toEqual({ state: "ongoing", next: "player1" });
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvh/games/g2");
-        expect(init?.method).toBe("GET");
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2",
+            method: "GET",
+        });
     });
 
     it("hvhMove ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                game_id: "g2",
-                yen: { size: 7, layout: "." },
-                applied_move: { cell_id: 2, coords: { x: 1, y: 1, z: 2 } },
-                status: { state: "ongoing", next: "player1" },
-            }),
-        );
+        const spy = mockFetchOk({
+            game_id: "g2",
+            yen: { size: 7, layout: "." },
+            applied_move: { cell_id: 2, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "player1" },
+        });
 
         const res = await hvhMove("g2", 2);
 
         expect(res.game_id).toBe("g2");
         expect(res.applied_move.cell_id).toBe(2);
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvh/games/g2/moves");
-        expect(init?.method).toBe("POST");
-        expect(init?.body).toBe(JSON.stringify({ cell_id: 2 }));
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2/moves",
+            method: "POST",
+            body: JSON.stringify({ cell_id: 2 }),
+        });
     });
 
     it("deleteHvhGame ok", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({ deleted: true }),
-        );
+        const spy = mockFetchOk({ deleted: true });
 
         const res = await deleteHvhGame("g2");
 
         expect(res.deleted).toBe(true);
 
-        const [url, init] = spy.mock.calls[0];
-        expect(String(url)).toContain("/api/v1/hvh/games/g2");
-        expect(init?.method).toBe("DELETE");
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2",
+            method: "DELETE",
+        });
     });
 
     it("lanza Error si la respuesta no es ok", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({ error: "boom" }, false, 500),
-        );
+        mockFetchError({ error: "boom" }, 500);
 
         await expect(getMeta()).rejects.toThrow();
     });

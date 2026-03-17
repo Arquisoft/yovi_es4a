@@ -11,17 +11,66 @@ use uuid::Uuid;
 
 use crate::{GameY, Movement, PlayerId};
 
-use super::auth::resolve_principal;
+use super::auth::{resolve_principal, Principal};
 use super::dto::{AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus};
 use super::error::ApiErrorResponse;
-// use super::sessions::{GameSession, SessionStore};
-use super::sessions::{GameSession};
+use super::sessions::GameSession;
 use super::state::GameServerState;
 
 fn parse_uuid(id: &str) -> Result<String, ApiErrorResponse> {
     Uuid::parse_str(id)
         .map(|u| u.to_string())
         .map_err(|_| ApiErrorResponse::bad_request("Invalid game_id", "invalid_game_id"))
+}
+
+async fn load_owned_session(
+    state: &GameServerState,
+    principal: &Principal,
+    game_id: &str,
+) -> Result<GameSession, ApiErrorResponse> {
+    state
+        .sessions
+        .assert_owner(principal, game_id)
+        .await
+        .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))
+}
+
+async fn save_session(
+    state: &GameServerState,
+    game_id: &str,
+    session: GameSession,
+) -> Result<(), ApiErrorResponse> {
+    state
+        .sessions
+        .update(game_id, session)
+        .await
+        .map_err(|_| ApiErrorResponse::internal("Failed to update session", "session_update_failed"))
+}
+
+fn validate_cell_id(cell_id: u32, size: u32) -> Result<(), ApiErrorResponse> {
+    let total_cells = (size * (size + 1)) / 2;
+    if cell_id >= total_cells {
+        return Err(ApiErrorResponse::bad_request(
+            "cell_id out of range",
+            "cell_id_out_of_range",
+        ));
+    }
+    Ok(())
+}
+
+fn hvh_state_response(game_id: String, session: &GameSession) -> GameStateResponse {
+    let finished = session.game.check_game_over();
+
+    GameStateResponse {
+        game_id,
+        mode: GameMode::Hvh,
+        yen: crate::YEN::from(&session.game),
+        status: super::dto::status_hvh_from_session(
+            finished,
+            session.hvh_next_player.unwrap_or(0),
+            session.hvh_winner,
+        ),
+    }
 }
 
 /// POST /api/v1/hvh/games
@@ -60,7 +109,7 @@ pub async fn create_game(
         super::dto::NextTurn::Player0
     };
 
-   Ok(Json(GameStateResponse {
+    Ok(Json(GameStateResponse {
         game_id,
         mode: GameMode::Hvh,
         yen: crate::YEN::from(&session.game),
@@ -76,25 +125,9 @@ pub async fn get_game(
 ) -> Result<Json<GameStateResponse>, ApiErrorResponse> {
     let principal = resolve_principal(&headers);
     let game_id = parse_uuid(&game_id)?;
+    let session = load_owned_session(&state, &principal, &game_id).await?;
 
-    let session = state
-        .sessions
-        .assert_owner(&principal, &game_id)
-        .await
-        .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))?;
-
-    let finished = session.game.check_game_over();
-
-    Ok(Json(GameStateResponse {
-        game_id,
-        mode: GameMode::Hvh,
-        yen: crate::YEN::from(&session.game),
-        status: super::dto::status_hvh_from_session(
-            finished,
-            session.hvh_next_player.unwrap_or(0),
-            session.hvh_winner,
-        ),
-    }))
+    Ok(Json(hvh_state_response(game_id, &session)))
 }
 
 /// DELETE /api/v1/hvh/games/{game_id}
@@ -106,9 +139,7 @@ pub async fn delete_game(
     let principal = resolve_principal(&headers);
     let game_id = parse_uuid(&game_id)?;
 
-    let _ = state.sessions.assert_owner(&principal, &game_id).await
-        .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))?;
-
+    let _session = load_owned_session(&state, &principal, &game_id).await?;
     state.sessions.remove(&game_id).await;
 
     Ok(Json(serde_json::json!({ "deleted": true })))
@@ -124,20 +155,10 @@ pub async fn post_move(
     let principal = resolve_principal(&headers);
     let game_id = parse_uuid(&game_id)?;
 
-    let mut session = state
-        .sessions
-        .assert_owner(&principal, &game_id)
-        .await
-        .map_err(|_| ApiErrorResponse::not_found("Game not found", "game_not_found"))?;
+    let mut session = load_owned_session(&state, &principal, &game_id).await?;
 
     let size = session.game.board_size();
-    let total_cells = (size * (size + 1)) / 2;
-    if req.cell_id >= total_cells {
-        return Err(ApiErrorResponse::bad_request(
-            "cell_id out of range",
-            "cell_id_out_of_range",
-        ));
-    }
+    validate_cell_id(req.cell_id, size)?;
 
     if session.game.check_game_over() {
         return Err(ApiErrorResponse::conflict(
@@ -164,11 +185,7 @@ pub async fn post_move(
         session.hvh_next_player = Some(1 - played_by);
     }
 
-    state
-        .sessions
-        .update(&game_id, session.clone())
-        .await
-        .map_err(|_| ApiErrorResponse::internal("Failed to update session", "session_update_failed"))?;
+    save_session(&state, &game_id, session.clone()).await?;
 
     let status = super::dto::status_hvh_from_session(
         finished,
