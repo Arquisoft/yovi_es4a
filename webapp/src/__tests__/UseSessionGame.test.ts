@@ -7,6 +7,59 @@ describe("useSessionGame", () => {
     const moveMock = vi.fn();
     const botMoveMock = vi.fn();
 
+    const ongoingStart = (next: string = "human", overrides: Record<string, unknown> = {}) => ({
+        game_id: "g1",
+        yen: { size: 7, layout: "." },
+        status: { state: "ongoing" as const, next },
+        ...overrides,
+    });
+
+    const finishedStart = (winner?: string, overrides: Record<string, unknown> = {}) => ({
+        game_id: "g1",
+        yen: { size: 7, layout: "." },
+        status: winner
+            ? { state: "finished" as const, winner }
+            : { state: "finished" as const },
+        ...overrides,
+    });
+
+    function renderSessionGame(options?: {
+        deps?: readonly unknown[];
+        start?: typeof startMock;
+        move?: typeof moveMock;
+        botMove?: typeof botMoveMock | undefined;
+    }) {
+        return renderHook(() =>
+            useSessionGame<any>({
+                deps: options?.deps ?? [7],
+                start: options?.start ?? startMock,
+                move: options?.move ?? moveMock,
+                botMove: options?.botMove === undefined ? botMoveMock : options.botMove,
+            }),
+        );
+    }
+
+    async function setupStarted(
+        startResponse = ongoingStart("human"),
+        options?: {
+            deps?: readonly unknown[];
+            botMove?: typeof botMoveMock | undefined;
+        },
+    ) {
+        startMock.mockResolvedValueOnce(startResponse);
+
+        const hook = renderSessionGame({
+            deps: options?.deps,
+            botMove: options?.botMove,
+        });
+
+        await waitFor(() => {
+            expect(hook.result.current.loading).toBe(false);
+        });
+
+        return hook;
+    }
+
     beforeEach(() => {
         startMock.mockReset();
         moveMock.mockReset();
@@ -14,97 +67,32 @@ describe("useSessionGame", () => {
     });
 
     it("inicia partida al montar y rellena yen/gameId/nextTurn", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
+        const { result } = renderSessionGame();
 
         expect(result.current.loading).toBe(true);
         expect(result.current.error).toBe("");
 
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        startMock.mockResolvedValueOnce(ongoingStart("human"));
 
-        expect(startMock).toHaveBeenCalledTimes(1);
-        expect(result.current.gameId).toBe("g1");
-        expect(result.current.yen).toEqual({ size: 7, layout: "." });
-        expect(result.current.gameOver).toBe(false);
-        expect(result.current.winner).toBeNull();
-        expect(result.current.nextTurn).toBe("human");
-    });
-
-    it("si start devuelve finished marca gameOver, winner y limpia nextTurn", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g2",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished", winner: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
+        // Volvemos a montar con la respuesta preparada
+        const mounted = renderSessionGame();
 
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(mounted.result.current.loading).toBe(false);
         });
 
-        expect(result.current.gameOver).toBe(true);
-        expect(result.current.winner).toBe("human");
-        expect(result.current.nextTurn).toBeNull();
-    });
-
-    it("si start devuelve finished sin winner usa null", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g3",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        expect(result.current.gameOver).toBe(true);
-        expect(result.current.winner).toBeNull();
-        expect(result.current.nextTurn).toBeNull();
+        expect(startMock).toHaveBeenCalledTimes(2);
+        expect(mounted.result.current.gameId).toBe("g1");
+        expect(mounted.result.current.yen).toEqual({ size: 7, layout: "." });
+        expect(mounted.result.current.gameOver).toBe(false);
+        expect(mounted.result.current.winner).toBeNull();
+        expect(mounted.result.current.nextTurn).toBe("human");
     });
 
     it("si start falla con Error usa e.message", async () => {
         startMock.mockRejectedValueOnce(new Error("boom"));
 
-        const { result } = renderHook(() =>
-            useSessionGame({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
+        const { result } = renderSessionGame();
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -119,14 +107,7 @@ describe("useSessionGame", () => {
     it("si start falla con string usa String(e)", async () => {
         startMock.mockRejectedValueOnce("START_FAIL");
 
-        const { result } = renderHook(() =>
-            useSessionGame({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
+        const { result } = renderSessionGame();
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -137,20 +118,16 @@ describe("useSessionGame", () => {
 
     it("resetea estado cuando cambian las deps y vuelve a iniciar", async () => {
         startMock
-            .mockResolvedValueOnce({
-                game_id: "g1",
-                yen: { size: 7, layout: "." },
-                status: { state: "finished", winner: "human" },
-            })
+            .mockResolvedValueOnce(finishedStart("human"))
             .mockResolvedValueOnce({
                 game_id: "g2",
                 yen: { size: 9, layout: ".." },
-                status: { state: "ongoing", next: "bot" },
+                status: { state: "ongoing" as const, next: "bot" },
             });
 
         const { result, rerender } = renderHook(
             ({ deps }) =>
-                useSessionGame({
+                useSessionGame<any>({
                     deps,
                     start: startMock,
                     move: moveMock,
@@ -190,94 +167,8 @@ describe("useSessionGame", () => {
         expect(result.current.nextTurn).toBe("bot");
     });
 
-    it("onCellClick no hace nada si no hay yen", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: null,
-            status: { state: "ongoing", next: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onCellClick(0);
-        });
-
-        expect(moveMock).not.toHaveBeenCalled();
-    });
-
-    it("onCellClick no hace nada si no hay gameId", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: null,
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onCellClick(0);
-        });
-
-        expect(moveMock).not.toHaveBeenCalled();
-    });
-
-    it("onCellClick no hace nada si gameOver=true", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished", winner: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onCellClick(0);
-        });
-
-        expect(moveMock).not.toHaveBeenCalled();
-    });
 
     it("onCellClick limpia error, pone loading y actualiza yen y nextTurn en ongoing", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
         let resolveMove!: (value: any) => void;
         moveMock.mockReturnValueOnce(
             new Promise((res) => {
@@ -285,18 +176,7 @@ describe("useSessionGame", () => {
             }),
         );
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("human"));
 
         act(() => {
             result.current.setError("OLD_ERROR");
@@ -325,29 +205,12 @@ describe("useSessionGame", () => {
     });
 
     it("onCellClick marca finished con winner", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
         moveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "y" },
             status: { state: "finished", winner: "bot" },
         });
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("human"));
 
         await act(async () => {
             await result.current.onCellClick(1);
@@ -360,29 +223,12 @@ describe("useSessionGame", () => {
     });
 
     it("onCellClick marca finished con winner null si falta winner", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
         moveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "z" },
             status: { state: "finished" },
         });
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("human"));
 
         await act(async () => {
             await result.current.onCellClick(2);
@@ -393,171 +239,30 @@ describe("useSessionGame", () => {
         expect(result.current.nextTurn).toBeNull();
     });
 
-    it("onCellClick captura errores con Error.message", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
+    it.each([
+        ["Error.message", new Error("BAD_MOVE"), "BAD_MOVE"],
+        ["String(e)", "MOVE_FAIL", "MOVE_FAIL"],
+    ])("onCellClick captura errores con %s", async (_, thrown, expectedMessage) => {
+        moveMock.mockRejectedValueOnce(thrown);
 
-        moveMock.mockRejectedValueOnce(new Error("BAD_MOVE"));
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("human"));
 
         await act(async () => {
             await result.current.onCellClick(5);
         });
 
-        expect(result.current.error).toBe("BAD_MOVE");
+        expect(result.current.error).toBe(expectedMessage);
         expect(result.current.loading).toBe(false);
         expect(result.current.nextTurn).toBe("human");
     });
 
-    it("onCellClick captura errores con String(e)", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "human" },
-        });
-
-        moveMock.mockRejectedValueOnce("MOVE_FAIL");
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onCellClick(5);
-        });
-
-        expect(result.current.error).toBe("MOVE_FAIL");
-        expect(result.current.nextTurn).toBe("human");
-    });
-
-    it("onBotTurn no hace nada si no hay botMove", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "bot" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onBotTurn();
-        });
-
-        expect(result.current.nextTurn).toBe("bot");
-    });
-
-    it("onBotTurn no hace nada si no hay gameId", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: null,
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "bot" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onBotTurn();
-        });
-
-        expect(botMoveMock).not.toHaveBeenCalled();
-    });
-
-    it("onBotTurn no hace nada si gameOver=true", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "finished", winner: "human" },
-        });
-
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
-
-        await act(async () => {
-            await result.current.onBotTurn();
-        });
-
-        expect(botMoveMock).not.toHaveBeenCalled();
-    });
-
     it("onBotTurn actualiza yen y nextTurn en ongoing", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "bot" },
-        });
-
         botMoveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "after-bot" },
             status: { state: "ongoing", next: "human" },
         });
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("bot"));
 
         await act(async () => {
             await result.current.onBotTurn();
@@ -570,29 +275,12 @@ describe("useSessionGame", () => {
     });
 
     it("onBotTurn marca finished con winner", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "bot" },
-        });
-
         botMoveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "bot-win" },
             status: { state: "finished", winner: "bot" },
         });
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("bot"));
 
         await act(async () => {
             await result.current.onBotTurn();
@@ -604,26 +292,9 @@ describe("useSessionGame", () => {
     });
 
     it("onBotTurn captura errores", async () => {
-        startMock.mockResolvedValueOnce({
-            game_id: "g1",
-            yen: { size: 7, layout: "." },
-            status: { state: "ongoing", next: "bot" },
-        });
-
         botMoveMock.mockRejectedValueOnce(new Error("BOT_FAIL"));
 
-        const { result } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
-
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = await setupStarted(ongoingStart("bot"));
 
         await act(async () => {
             await result.current.onBotTurn();
@@ -644,14 +315,7 @@ describe("useSessionGame", () => {
 
         const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-        const { unmount } = renderHook(() =>
-            useSessionGame<any>({
-                deps: [7],
-                start: startMock,
-                move: moveMock,
-                botMove: botMoveMock,
-            }),
-        );
+        const { unmount } = renderSessionGame();
 
         unmount();
 
