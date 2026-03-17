@@ -13,10 +13,10 @@ const LoginForm: React.FC = () => {
   return (
     <Form 
       name="login_form" 
-      initialValues={{ remember: true }} 
+      initialValues={{ remember: false }} 
       onFinish={onFinish} 
       layout="vertical"
-      style={{ width: '100%', height:'100%' }}
+      style={{ width: '70%', height:'100%', margin: '0 auto' }}
     >
       <Form.Item 
         name="username" 
@@ -45,7 +45,7 @@ const LoginForm: React.FC = () => {
       </Form.Item>
 
       <Form.Item>
-        <Button type="primary" htmlType="submit" size="large" block>
+        <Button type="primary" htmlType="submit" size="large">
           Iniciar Sesión
         </Button>
       </Form.Item>

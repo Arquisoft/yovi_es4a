@@ -93,7 +93,7 @@ const RegisterForm: React.FC = () => {
       name="register_form"
       layout="vertical"
       onFinish={onFinish}
-      style={{ width: '100%' }} // <-- Forzamos a que ocupe todo el ancho
+      style={{ width: '100%', margin: '0 auto'}}
     >
       {/* Alertas de error/éxito usando componentes de Ant Design */}
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 15 }} />}
@@ -126,7 +126,7 @@ const RegisterForm: React.FC = () => {
       </Row>
 
       {/* Fila 2: Contraseña y Selector de Avatar */}
-      <Row gutter={24}>
+      <Row gutter={24} style={{ marginTop: '10px' }}>
         <Col xs={24} md={12}>
           <Form.Item
             name="password"
@@ -232,7 +232,7 @@ const RegisterForm: React.FC = () => {
         <Col xs={24} md={12}>
           {/* Etiqueta invisible para mantener la misma alineación que el input de la izquierda */}
           <Form.Item label={<span style={{ visibility: 'hidden' }}>Acción</span>}>
-            <Button type="primary" htmlType="submit" size="large" block>
+            <Button type="primary" htmlType="submit" size="large">
               Registrarse
             </Button>
           </Form.Item>
