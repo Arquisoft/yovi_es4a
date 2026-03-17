@@ -10,3 +10,7 @@ Proceso de registrar un usuario.
 === Jugar una casilla
 image::06_2-Jugar casilla.drawio.png["Diagrama correspondiente a el proceso de jugar una casilla", width=90%]
 Proceso de jugar una casilla.
+
+=== Jugar una casilla vs bot
+image::06_3-Jugar casillabot.drawio.png["Diagrama correspondiente a el proceso de jugar una casilla en una partida contra un bot", width=90%]
+Proceso de jugar una casilla en una partida contra un bot.

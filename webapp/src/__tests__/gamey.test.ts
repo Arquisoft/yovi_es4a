@@ -1,179 +1,310 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { newGame, newHvbGame, getGameConfig, humanVsBotMove } from "../api/gamey.ts";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+    createHvbGame,
+    getHvbGame,
+    hvbHumanMove,
+    hvbBotMove,
+    deleteHvbGame,
+    createHvhGame,
+    getHvhGame,
+    hvhMove,
+    deleteHvhGame,
+    getMeta,
+    getConfig,
+    putConfig,
+} from "../api/gamey";
 
-function jsonResponse(body: any, init?: ResponseInit) {
-    return new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    });
+function jsonResponse(data: unknown, ok = true, status = 200) {
+    return {
+        ok,
+        status,
+        json: async () => data,
+        text: async () => JSON.stringify(data),
+    } as Response;
 }
 
-describe("api/gamey", () => {
+function mockFetchOk(data: unknown) {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(data));
+}
+
+function mockFetchError(data: unknown, status = 500) {
+    return vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        jsonResponse(data, false, status),
+    );
+}
+
+function expectRequest(
+    spy: ReturnType<typeof vi.spyOn>,
+    expected: {
+        path: string;
+        method: string;
+        body?: string;
+    },
+) {
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain(expected.path);
+    expect(init?.method).toBe(expected.method);
+
+    if (expected.body !== undefined) {
+        expect(init?.body).toBe(expected.body);
+    }
+}
+
+describe("gamey api client", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
     });
 
-    it("newGame ok", async () => {
-        const spy = vi
-            .spyOn(globalThis, "fetch")
-            .mockResolvedValue(
-                jsonResponse({
-                    yen: { size: 5, turn: 0, players: ["B", "R"], layout: "./../..../....." },
-                })
-            );
-
-        const res = await newGame(5);
-
-        expect(spy).toHaveBeenCalledTimes(1);
-        const [url, init] = spy.mock.calls[0];
-
-        expect(String(url)).toContain("/v1/game/new");
-        expect(init?.method).toBe("POST");
-        expect(init?.headers).toEqual({ "Content-Type": "application/json" });
-        expect(init?.body).toBe(JSON.stringify({ size: 5 }));
-
-        expect(res.yen.size).toBe(5);
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
-    it("newGame error con message", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ message: "server down" }, { status: 500 }));
-        await expect(newGame(5)).rejects.toThrow("server down");
+    it("getMeta ok", async () => {
+        const spy = mockFetchOk({
+            api_version: "v1",
+            min_board_size: 2,
+            max_board_size: 15,
+            bots: ["random_bot", "mcts_bot"],
+        });
+
+        const res = await getMeta();
+
+        expect(res.api_version).toBe("v1");
+        expect(res.bots).toEqual(["random_bot", "mcts_bot"]);
+
+        expectRequest(spy, {
+            path: "/api/v1/meta",
+            method: "GET",
+        });
     });
 
-    it("newGame: si HTTP no ok y el json es {} (sin message), lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            new Response(JSON.stringify({}), {
-                status: 418,
-                headers: { "Content-Type": "application/json" },
-            })
-        );
+    it("getConfig ok", async () => {
+        const spy = mockFetchOk({
+            size: 7,
+            hvb_starter: "human",
+            hvh_starter: "player0",
+            bot_id: "random_bot",
+        });
 
-        await expect(newGame(5)).rejects.toThrow("HTTP 418");
+        const res = await getConfig();
+
+        expect(res.size).toBe(7);
+        expect(res.hvb_starter).toBe("human");
+        expect(res.bot_id).toBe("random_bot");
+
+        expectRequest(spy, {
+            path: "/api/v1/config",
+            method: "GET",
+        });
     });
 
-    it("newGame: si !ok y res.json() falla, usa el catch(() => ({})) y lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: false,
-            status: 503,
-            json: vi.fn().mockRejectedValue(new Error("invalid json")),
-        } as any);
+    it("putConfig ok", async () => {
+        const payload = {
+            size: 9,
+            hvb_starter: "bot" as const,
+            hvh_starter: "player1" as const,
+            bot_id: "mcts_bot",
+        };
 
-        await expect(newGame(5)).rejects.toThrow("HTTP 503");
+        const spy = mockFetchOk({
+            size: 9,
+            hvb_starter: "bot",
+            hvh_starter: "player1",
+            bot_id: "mcts_bot",
+        });
+
+        const res = await putConfig(payload);
+
+        expect(res.size).toBe(9);
+        expect(res.hvb_starter).toBe("bot");
+        expect(res.hvh_starter).toBe("player1");
+
+        expectRequest(spy, {
+            path: "/api/v1/config",
+            method: "PUT",
+            body: JSON.stringify(payload),
+        });
     });
 
-    it("newHvbGame ok (encode botId + body incluye starter)", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                yen: { size: 7, turn: 0, players: ["B", "R"], layout: "./../..../......." },
-                bot_move: null,
-                status: { state: "ongoing", next: "B" },
-            })
-        );
+    it("createHvbGame ok", async () => {
+        const payload = {
+            size: 7,
+            bot_id: "random_bot",
+            hvb_starter: "human" as const,
+        };
 
-        const res = await newHvbGame(7, "mcts bot/1", "bot");
+        const spy = mockFetchOk({
+            game_id: "g1",
+            mode: "hvb",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "human" },
+        });
 
-        expect(res.yen.size).toBe(7);
+        const res = await createHvbGame(payload);
 
-        expect(spy).toHaveBeenCalledTimes(1);
-        const [url, init] = spy.mock.calls[0];
+        expect(res.game_id).toBe("g1");
+        expect(res.mode).toBe("hvb");
+        expect(res.status).toEqual({ state: "ongoing", next: "human" });
 
-        expect(String(url)).toContain("/v1/game/hvb/new/mcts%20bot%2F1");
-        expect(init?.method).toBe("POST");
-        expect(init?.headers).toEqual({ "Content-Type": "application/json" });
-        expect(init?.body).toBe(JSON.stringify({ size: 7, starter: "bot" }));
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games",
+            method: "POST",
+        });
     });
 
-    it("newHvbGame error con message", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ message: "bad bot" }, { status: 400 }));
-        await expect(newHvbGame(7, "random_bot", "human")).rejects.toThrow("bad bot");
+    it("getHvbGame ok", async () => {
+        const spy = mockFetchOk({
+            game_id: "g1",
+            mode: "hvb",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "bot" },
+        });
+
+        const res = await getHvbGame("g1");
+
+        expect(res.game_id).toBe("g1");
+        expect(res.status).toEqual({ state: "ongoing", next: "bot" });
+
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1",
+            method: "GET",
+        });
     });
 
-    it("newHvbGame: si HTTP no ok y body NO es JSON, lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            new Response("NOT_JSON", { status: 500, headers: { "Content-Type": "application/json" } })
-        );
+    it("hvbHumanMove ok", async () => {
+        const spy = mockFetchOk({
+            game_id: "g1",
+            yen: { size: 7, layout: "." },
+            human_move: { cell_id: 3, coords: { x: 1, y: 2, z: 3 } },
+            status: { state: "ongoing", next: "bot" },
+        });
 
-        await expect(newHvbGame(7, "random_bot", "human")).rejects.toThrow("HTTP 500");
+        const res = await hvbHumanMove("g1", 3);
+
+        expect(res.game_id).toBe("g1");
+        expect(res.human_move.cell_id).toBe(3);
+        expect(res.status).toEqual({ state: "ongoing", next: "bot" });
+
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1/moves",
+            method: "POST",
+            body: JSON.stringify({ cell_id: 3 }),
+        });
     });
 
-    it("newHvbGame: si !ok y res.json() falla, lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: false,
-            status: 502,
-            json: vi.fn().mockRejectedValue(new Error("invalid json")),
-        } as any);
+    it("hvbBotMove ok", async () => {
+        const spy = mockFetchOk({
+            game_id: "g1",
+            yen: { size: 7, layout: "." },
+            bot_move: { cell_id: 4, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "human" },
+        });
 
-        await expect(newHvbGame(7, "random_bot", "human")).rejects.toThrow("HTTP 502");
+        const res = await hvbBotMove("g1");
+
+        expect(res.game_id).toBe("g1");
+        expect(res.bot_move.cell_id).toBe(4);
+        expect(res.status).toEqual({ state: "ongoing", next: "human" });
+
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1/bot-move",
+            method: "POST",
+        });
     });
 
-    it("getGameConfig ok", async () => {
-        const spy = vi
-            .spyOn(globalThis, "fetch")
-            .mockResolvedValue(jsonResponse({ min_board_size: 2, max_board_size: 15 }));
+    it("deleteHvbGame ok", async () => {
+        const spy = mockFetchOk({ deleted: true });
 
-        const cfg = await getGameConfig();
+        const res = await deleteHvbGame("g1");
 
-        expect(cfg.min_board_size).toBe(2);
-        expect(cfg.max_board_size).toBe(15);
+        expect(res.deleted).toBe(true);
 
-        expect(spy).toHaveBeenCalledTimes(1);
-        expect(String(spy.mock.calls[0][0])).toContain("/v1/game/config");
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games/g1",
+            method: "DELETE",
+        });
     });
 
-    it("getGameConfig error con message", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ message: "no config" }, { status: 500 }));
-        await expect(getGameConfig()).rejects.toThrow("no config");
+    it("createHvhGame ok", async () => {
+        const payload = {
+            size: 7,
+            hvh_starter: "player0" as const,
+        };
+
+        const spy = mockFetchOk({
+            game_id: "g2",
+            mode: "hvh",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "player0" },
+        });
+
+        const res = await createHvhGame(payload);
+
+        expect(res.game_id).toBe("g2");
+        expect(res.mode).toBe("hvh");
+        expect(res.status).toEqual({ state: "ongoing", next: "player0" });
+
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games",
+            method: "POST",
+        });
     });
 
-    it("getGameConfig: si HTTP no ok y el json es {} (sin message), lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            new Response(JSON.stringify({}), { status: 401, headers: { "Content-Type": "application/json" } })
-        );
+    it("getHvhGame ok", async () => {
+        const spy = mockFetchOk({
+            game_id: "g2",
+            mode: "hvh",
+            yen: { size: 7, layout: "." },
+            status: { state: "ongoing", next: "player1" },
+        });
 
-        await expect(getGameConfig()).rejects.toThrow("HTTP 401");
+        const res = await getHvhGame("g2");
+
+        expect(res.game_id).toBe("g2");
+        expect(res.status).toEqual({ state: "ongoing", next: "player1" });
+
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2",
+            method: "GET",
+        });
     });
 
-    it("getGameConfig: si !ok y res.json() falla, lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue({
-            ok: false,
-            status: 503,
-            json: vi.fn().mockRejectedValue(new Error("invalid json")),
-        } as any);
+    it("hvhMove ok", async () => {
+        const spy = mockFetchOk({
+            game_id: "g2",
+            yen: { size: 7, layout: "." },
+            applied_move: { cell_id: 2, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "player1" },
+        });
 
-        await expect(getGameConfig()).rejects.toThrow("HTTP 503");
+        const res = await hvhMove("g2", 2);
+
+        expect(res.game_id).toBe("g2");
+        expect(res.applied_move.cell_id).toBe(2);
+
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2/moves",
+            method: "POST",
+            body: JSON.stringify({ cell_id: 2 }),
+        });
     });
 
-    it("humanVsBotMove ok (encode botId)", async () => {
-        const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            jsonResponse({
-                yen: { size: 5, turn: 1, players: ["B", "R"], layout: "./../..../..B.." },
-                human_move: { cell_id: 3, coords: { x: 1, y: 0, z: 3 } },
-                bot_move: null,
-                status: { state: "ongoing", next: "R" },
-            })
-        );
+    it("deleteHvhGame ok", async () => {
+        const spy = mockFetchOk({ deleted: true });
 
-        const yen = { size: 5, turn: 0, players: ["B", "R"], layout: "./../..../....." } as any;
-        await humanVsBotMove("mcts bot/1", yen, 3);
+        const res = await deleteHvhGame("g2");
 
-        const [url, init] = spy.mock.calls[0];
+        expect(res.deleted).toBe(true);
 
-        expect(String(url)).toContain("/v1/game/hvb/move/mcts%20bot%2F1");
-        expect(init?.method).toBe("POST");
-        expect(init?.headers).toEqual({ "Content-Type": "application/json" });
-        expect(init?.body).toBe(JSON.stringify({ yen, cell_id: 3 }));
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games/g2",
+            method: "DELETE",
+        });
     });
 
-    it("humanVsBotMove: si HTTP no ok y el body NO es JSON, cae al catch y lanza HTTP <status>", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(
-            new Response("NOT_JSON", {
-                status: 500,
-                headers: { "Content-Type": "application/json" },
-            })
-        );
+    it("lanza Error si la respuesta no es ok", async () => {
+        mockFetchError({ error: "boom" }, 500);
 
-        const yen = { size: 5, turn: 0, players: ["B", "R"], layout: "./../..../....." } as any;
-
-        await expect(humanVsBotMove("random_bot", yen, 0)).rejects.toThrow("HTTP 500");
+        await expect(getMeta()).rejects.toThrow();
     });
 });

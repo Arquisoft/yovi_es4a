@@ -1,13 +1,14 @@
 openapi: 3.0.0
 info:
   title: User Service API
-  version: 1.0.0
-  description: API for managing users
+  version: 1.1.0
+  description: API for managing users and game rankings
+
 paths:
   /createuser:
     post:
       summary: Creates a new user
-      description: Creates a new user with the given username.
+      description: Creates a new user with the given username, password and email.
       requestBody:
         required: true
         content:
@@ -16,10 +17,22 @@ paths:
               type: object
               required:
                 - username
+                - password
+                - email
               properties:
                 username:
                   type: string
                   example: "testuser"
+                password:
+                  type: string
+                  example: "secret123"
+                email:
+                  type: string
+                  format: email
+                  example: "testuser@example.com"
+                profilePicture:
+                  type: string
+                  example: "webapp/public/avatars/seniora.png"
       responses:
         '200':
           description: User created successfully
@@ -30,6 +43,206 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Hello testuser! welcome to the course!"
+                    example: "Bienvenido testuser. Por favor, revisa tu correo para verificar tu cuenta."
         '400':
-          description: Error creating user
+          description: Error creating user (duplicate username/email or validation error)
+
+  /login:
+    post:
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Email not verified
+
+  /verify:
+    get:
+      summary: Verify user email
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email verified successfully
+        '400':
+          description: Invalid or expired token
+
+  /ranking:
+    get:
+      summary: Get user ranking
+      description: >
+        Returns a list of users sorted by the requested metric.
+        Only users who have played at least one game are included.
+      parameters:
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [winRate, gamesWon, gamesPlayed]
+            default: winRate
+          description: >
+            Metric to sort by:
+            - `winRate`: % of games won (default)
+            - `gamesWon`: absolute number of wins
+            - `gamesPlayed`: total games played
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of players to return (max 100)
+      responses:
+        '200':
+          description: Ranking returned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sortBy:
+                    type: string
+                    example: winRate
+                  ranking:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RankingEntry'
+        '500':
+          description: Internal server error
+
+  /users/{username}/stats:
+    get:
+      summary: Get individual user statistics
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User stats returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+        '404':
+          description: User not found
+
+    patch:
+      summary: Update user game statistics after a match
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - won
+                - totalMoves
+              properties:
+                won:
+                  type: boolean
+                  description: Whether the user won the game
+                totalMoves:
+                  type: integer
+                  minimum: 0
+                  description: Number of moves made by the user (only accumulated when won=true)
+      responses:
+        '200':
+          description: Stats updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+        '400':
+          description: Invalid request body
+        '404':
+          description: User not found
+
+components:
+  schemas:
+    GameStats:
+      type: object
+      properties:
+        gamesPlayed:
+          type: integer
+          description: Total games played
+        gamesWon:
+          type: integer
+          description: Games won
+        gamesLost:
+          type: integer
+          description: Games lost
+        totalMoves:
+          type: integer
+          description: Total moves made in winning games
+        winRate:
+          type: integer
+          description: Percentage of games won (0–100)
+
+    UserStats:
+      type: object
+      properties:
+        username:
+          type: string
+        profilePicture:
+          type: string
+        stats:
+          $ref: '#/components/schemas/GameStats'
+
+    RankingEntry:
+      type: object
+      properties:
+        username:
+          type: string
+        profilePicture:
+          type: string
+        gamesPlayed:
+          type: integer
+        gamesWon:
+          type: integer
+        gamesLost:
+          type: integer
+        totalMoves:
+          type: integer
+          description: Total moves made in winning games
+        winRate:
+          type: integer
+          description: Percentage of games won (0–100)

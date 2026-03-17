@@ -13,6 +13,15 @@ export default defineConfig({
     include: ["antd"],
   },
 
+  server: {
+    proxy: {
+      "/api/users": {
+        target: "http://localhost:80",
+        changeOrigin: true,
+      },
+    },
+  },
+
   test: {
     globals: true,
     environment: 'jsdom',
