@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AppHeader from "../vistas/AppHeader.tsx";
-
 const navigateMock = vi.fn();
 const confirmMock = vi.fn();
 
@@ -34,15 +33,19 @@ vi.mock("antd", () => ({
         <div>
             <div>{children}</div>
             <div data-testid="dropdown-menu">
-                {menu?.items?.map((item: any) => (
-                    <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => menu.onClick?.({ key: item.key })}
-                    >
-                        {item.label}
-                    </button>
-                ))}
+                {/* Ignoramos los 'dividers' para que no rendericen botones vacíos */}
+                {menu?.items?.map((item: any, index: number) => {
+                    if (item.type === "divider") return null;
+                    return (
+                        <button
+                            key={item.key || index}
+                            type="button"
+                            onClick={() => menu.onClick?.({ key: item.key })}
+                        >
+                            {item.label}
+                        </button>
+                    )
+                })}
             </div>
         </div>
     ),
@@ -57,6 +60,7 @@ vi.mock("@ant-design/icons", () => ({
     LogoutOutlined: () => null,
     QuestionCircleOutlined: () => null,
     UserOutlined: () => null,
+    TrophyOutlined: () => null, 
 }));
 
 describe("AppHeader", () => {
@@ -70,14 +74,25 @@ describe("AppHeader", () => {
         expect(screen.getByText("Perfil")).toBeInTheDocument();
     });
 
-    it("renderiza las 5 opciones del dropdown", () => {
+    it("renderiza todas las opciones del dropdown incluyendo el Ranking", () => {
         render(<AppHeader title="YOVI" />);
 
         expect(screen.getByRole("button", { name: "Ver Perfil" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Ver Estadísticas" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Ranking Global" })).toBeInTheDocument(); 
         expect(screen.getByRole("button", { name: "Volver a Home" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Ayuda" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cerrar Sesión" })).toBeInTheDocument();
+    });
+
+    it("al pulsar 'Ranking Global' navega a '/ranking'", async () => {
+        const user = userEvent.setup();
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Ranking Global" }));
+
+        // Comprobamos que el botón del ranking llama a navigate correctamente
+        expect(navigateMock).toHaveBeenCalledWith("/ranking");
     });
 
     it("al pulsar 'Cerrar Sesión' del menú abre modal.confirm", async () => {
