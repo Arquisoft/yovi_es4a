@@ -44,6 +44,7 @@ pub struct GameConfig {
 pub enum HvBStarter {
     Human,
     Bot,
+    Random,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +52,7 @@ pub enum HvBStarter {
 pub enum HvHStarter {
     Player0,
     Player1,
+    Random,
 }
 
 /// Respuesta estándar de estado de juego (para HvH y HvB).

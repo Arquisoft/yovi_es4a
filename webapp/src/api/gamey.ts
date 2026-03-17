@@ -15,6 +15,7 @@ export type YEN = {
 // const API_URL = "/api/game";
 //const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const API_URL = "";
+
 /**
  * Devuelve un client_id estable. La idea es guardarlo en localStorage.
  * - Si ya existe: lo devuelve
@@ -89,9 +90,9 @@ export async function getMeta(): Promise<MetaResponse> {
 // CONFIG (recordada por client_id / user en el futuro)
 // --------------------------------------------------------------------------------------
 
-export type HvBStarter = "human" | "bot";
+export type HvBStarter = "human" | "bot" | "random";
 
-export type HvHStarter = "player0" | "player1";
+export type HvHStarter = "player0" | "player1" | "random";
 
 export type GameConfig = {
   size: number;

@@ -32,6 +32,14 @@ fn parse_uuid(id: &str) -> Result<String, ApiErrorResponse> {
         .map_err(|_| ApiErrorResponse::bad_request("Invalid game_id", "invalid_game_id"))
 }
 
+fn resolve_hvb_starter(starter: &HvBStarter) -> bool {
+    match starter {
+        HvBStarter::Human => true,
+        HvBStarter::Bot => false,
+        HvBStarter::Random => rand::random::<bool>(),
+    }
+}
+
 async fn load_owned_session(
     state: &GameServerState,
     principal: &Principal,
@@ -151,7 +159,7 @@ pub async fn create_game(
     state.config_store.set(&principal, cfg.clone());
 
     let game_id = Uuid::new_v4().to_string();
-    let next_is_human = matches!(cfg.hvb_starter, HvBStarter::Human);
+    let next_is_human = resolve_hvb_starter(&cfg.hvb_starter);
 
     let session = GameSession {
         owner_key: principal.key(),
