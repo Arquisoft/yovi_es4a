@@ -5,7 +5,8 @@ import {
   HomeOutlined,
   LogoutOutlined,
   QuestionCircleOutlined,
-  UserOutlined
+  UserOutlined,
+  TrophyOutlined // 1. Importamos el icono del trofeo
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
@@ -38,8 +39,11 @@ export default function AppHeader({ title }: AppHeaderProps) {
       case "stats":
         //navigate("/stats");
         break;
+      case "ranking":       // 2. Añadimos el caso para navegar al ranking
+        navigate("/ranking");
+        break;
       case "home":
-        //navigate("/home");
+        navigate("/home");
         break;
       case "help":
         //navigate("/help");
@@ -64,6 +68,14 @@ export default function AppHeader({ title }: AppHeaderProps) {
       label: "Ver Estadísticas",
     },
     {
+      key: "ranking",       // 3. Añadimos el botón visual al menú
+      icon: <TrophyOutlined />,
+      label: "Ranking Global",
+    },
+    {
+      type: "divider",      // (Opcional) Una pequeña línea para separar el menú principal
+    },
+    {
       key: "home",
       icon: <HomeOutlined />,
       label: "Volver a Home",
@@ -72,6 +84,9 @@ export default function AppHeader({ title }: AppHeaderProps) {
       key: "help",
       icon: <QuestionCircleOutlined />,
       label: "Ayuda",
+    },
+    {
+      type: "divider",
     },
     {
       key: "logout",

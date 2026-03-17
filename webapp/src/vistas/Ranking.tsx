@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Select, Typography, Alert, Avatar, Tag, Tooltip, Card, Flex, Space, Button, Table, Progress } from "antd";
-import { TrophyOutlined, RiseOutlined, PlayCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { Select, Typography, Alert, Avatar, Tag, Tooltip, Card, Flex, Space, Table, Progress } from "antd";
+import { TrophyOutlined, RiseOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import AppHeader from "./AppHeader"; // <-- Importamos tu nuevo Header
 
 const { Title, Text } = Typography;
 const USERS_URL = "/api/users";
@@ -26,7 +26,6 @@ const SORT_OPTIONS = [
 const MEDAL = ["🥇", "🥈", "🥉"];
 
 export default function Ranking() {
-  const navigate = useNavigate();
   const [sortBy, setSortBy]   = useState<SortBy>("winRate");
   const [entries, setEntries] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,18 +117,17 @@ export default function Ranking() {
       <div style={{ width: "min(1000px, 100%)" }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
 
-          {/* Barra Menú */}
+          {/* Barra Menú compartida */}
+          <AppHeader title="🏆 Ranking" />
+
+          {/* Tabla de Ranking */}
           <Card>
-            <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-              <Space>
-                <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/home")}>
-                  Volver
-                </Button>
-              </Space>
-
-              <Title level={2} style={{ margin: 0 }}>🏆 Ranking</Title>
-
-              <Space>
+            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+              
+              {/* Controles de la tabla: Título a la izquierda, Selector a la derecha */}
+              <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
+                <Title level={3} style={{ margin: 0 }}>Clasificación</Title>
+                
                 <Select
                   value={sortBy}
                   onChange={v => setSortBy(v as SortBy)}
@@ -143,18 +141,10 @@ export default function Ranking() {
                     )
                   }))}
                 />
-              </Space>
-            </Flex>
-          </Card>
-
-          {/* Tabla de Ranking */}
-          <Card>
-            <Space direction="vertical" size={16} style={{ width: "100%" }}>
-              <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Title level={3} style={{ margin: 0 }}>Clasificación</Title>
               </Flex>
 
-                {error && <Alert type="error" title="No se pudo cargar el ranking" description={error} />}      
+              {error && <Alert type="error" title="No se pudo cargar el ranking" description={error} />}      
+              
               <Table
                 dataSource={entries}
                 columns={columns}
@@ -165,8 +155,8 @@ export default function Ranking() {
               />
 
               <Flex justify="center">
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.{" "}
+                <Text type="secondary" style={{ fontSize: 13, textAlign: "center" }}>
+                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.{" "}<br/>
                   <strong>Movimientos</strong> — total de movimientos realizados únicamente en partidas ganadas.
                 </Text>
               </Flex>
