@@ -44,6 +44,7 @@ pub struct GameConfig {
 pub enum HvBStarter {
     Human,
     Bot,
+    Random,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +52,7 @@ pub enum HvBStarter {
 pub enum HvHStarter {
     Player0,
     Player1,
+    Random,
 }
 
 /// Respuesta estándar de estado de juego (para HvH y HvB).
@@ -243,5 +245,17 @@ mod tests {
             GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Bot)),
             _ => panic!("expected ongoing"),
         }
+    }
+
+    #[test]
+    fn hvb_starter_deserializes_random() {
+        let starter: HvBStarter = serde_json::from_str("\"random\"").unwrap();
+        assert!(matches!(starter, HvBStarter::Random));
+    }
+
+    #[test]
+    fn hvh_starter_deserializes_random() {
+        let starter: HvHStarter = serde_json::from_str("\"random\"").unwrap();
+        assert!(matches!(starter, HvHStarter::Random));
     }
 }
