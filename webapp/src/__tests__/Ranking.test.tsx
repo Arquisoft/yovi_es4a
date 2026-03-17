@@ -28,7 +28,16 @@ global.fetch = vi.fn();
 
 describe("Ranking Component", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    // Restaurar matchMedia tras el reset
+    window.matchMedia = matchMediaMock;
+    Object.defineProperty(window, 'getComputedStyle', {
+      value: () => ({
+        getPropertyValue: () => {
+          return '';
+        }
+      })
+    });
   });
 
   it("renderiza el ranking haciendo la petición a la URL correcta", async () => {
