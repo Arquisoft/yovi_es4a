@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import Home from "../vistas/Home.tsx";
 
 const navigateMock = vi.fn();
-const confirmMock = vi.fn();
 const getMetaMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
@@ -20,12 +19,13 @@ vi.mock("../api/gamey", () => ({
     getMeta: () => getMetaMock(),
 }));
 
+vi.mock("../vistas/AppHeader.tsx", () => ({
+    default: ({ title }: { title: string }) => (
+        <div data-testid="app-header">{title}</div>
+    ),
+}));
+
 vi.mock("antd", () => ({
-    App: {
-        useApp: () => ({
-            modal: { confirm: confirmMock },
-        }),
-    },
     Button: ({ children, onClick, disabled, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
             {children}
@@ -65,10 +65,10 @@ vi.mock("antd", () => ({
             values.includes("random_bot") || values.includes("mcts_bot")
                 ? "bot-select"
                 : values.includes("human") || values.includes("bot")
-                ? "hvb-starter-select"
-                : values.includes("player0") || values.includes("player1")
-                    ? "hvh-starter-select"
-                    : "select";
+                    ? "hvb-starter-select"
+                    : values.includes("player0") || values.includes("player1")
+                        ? "hvh-starter-select"
+                        : "select";
 
         return (
             <select aria-label={aria} value={value} onChange={(e) => onChange(e.target.value)}>
@@ -84,11 +84,9 @@ vi.mock("antd", () => ({
 
 vi.mock("@ant-design/icons", () => ({
     BuildOutlined: () => null,
-    LogoutOutlined: () => null,
     PlayCircleOutlined: () => null,
     RobotOutlined: () => null,
     TeamOutlined: () => null,
-    UserOutlined: () => null,
 }));
 
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
@@ -106,10 +104,17 @@ function metaOk() {
 describe("Home", () => {
     beforeEach(() => {
         navigateMock.mockReset();
-        confirmMock.mockReset();
         getMetaMock.mockReset();
         vi.restoreAllMocks();
         localStorage.clear();
+    });
+
+    it("renderiza el AppHeader con el título YOVI", async () => {
+        metaOk();
+
+        render(<Home />);
+
+        expect(await screen.findByTestId("app-header")).toHaveTextContent("YOVI");
     });
 
     it("renderiza valores por defecto", async () => {
@@ -428,33 +433,14 @@ describe("Home", () => {
         expect(navigateMock).toHaveBeenCalled();
     });
 
-    it("al pulsar 'Cerrar sesión' abre modal.confirm y al confirmar navega a '/' con replace", async () => {
-        metaOk();
-
-        const user = userEvent.setup();
-        render(<Home />);
-
-        await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-
-        expect(confirmMock).toHaveBeenCalledTimes(1);
-        const args = confirmMock.mock.calls[0][0];
-        expect(args.title).toBe("Cerrar sesión");
-        expect(args.okText).toBe("Sí, salir");
-        expect(args.cancelText).toBe("Cancelar");
-
-        args.onOk();
-        expect(navigateMock).toHaveBeenCalledWith("/", { replace: true });
-    });
-
-    it("renderiza el bloque de estadísticas y el botón 'Ver perfil'", async () => {
+    it("renderiza el bloque de estadísticas", async () => {
         metaOk();
 
         render(<Home />);
 
         await waitFor(() => {
-        expect(screen.getByText("Estadísticas")).toBeInTheDocument();
-        expect(screen.getByText("Sin implementar todavía")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ver perfil" })).toBeInTheDocument();
+            expect(screen.getByText("Estadísticas")).toBeInTheDocument();
+            expect(screen.getByText("Sin implementar todavía")).toBeInTheDocument();
         });
     });
 });

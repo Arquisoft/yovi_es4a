@@ -20,6 +20,11 @@ export default function GameHvH() {
   const size = parseBoardSize(searchParams.get("size"));
   const starter = parseHvHStarter(searchParams.get("hvhstarter"));
 
+  const playerLabels = {
+    player0: "Player 0",
+    player1: "Player 1",
+  } as const;
+
   return (
     <SessionGamePage<YEN>
       deps={[size, starter]}
@@ -39,18 +44,31 @@ export default function GameHvH() {
       move={(gameId, cellId) => hvhMove(gameId, cellId)}
       resultConfig={{
         title: "Juego Y — Human vs Human",
-        subtitle: `Tamaño: ${size} · Empieza: ${starter}`,
+        subtitle: `Tamaño: ${size} · Empieza: ${playerLabels[starter]}`,
         abandonOkText: "Abandonar",
         getResultTitle: () => "Partida finalizada",
         getResultText: (winner) =>
           winner === "player0"
-            ? "Player 0 ha ganado la partida."
-            : "Player 1 ha ganado la partida.",
+            ? `${playerLabels.player0} ha ganado la partida.`
+            : `${playerLabels.player1} ha ganado la partida.`,
       }}
       winnerPalette={{
         highlightedWinner: "player0",
         highlightedBackground: "#28bbf532",
         otherWinnerBackground: "#ff7b0033",
+      }}
+      turnConfig={{
+        textPrefix: "Turno actual:",
+        turns: {
+          player0: {
+            label: playerLabels.player0,
+            color: "#28BBF5",
+          },
+          player1: {
+            label: playerLabels.player1,
+            color: "#FF7B00",
+          },
+        },
       }}
     />
   );

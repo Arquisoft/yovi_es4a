@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 
-import { createHvbGame, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
+import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
 import SessionGamePage from "../game/SessionGamePage";
 
 type StarterHvB = "human" | "bot";
@@ -21,6 +21,11 @@ export default function GameHvB() {
   const botId = searchParams.get("bot") ?? "random_bot";
   const starter = parseHvBStarter(searchParams.get("hvbstarter"));
 
+  const participantLabels = {
+    human: "Humano",
+    bot: botId,
+  } as const;
+
   return (
     <SessionGamePage<YEN>
       deps={[size, botId, starter]}
@@ -39,21 +44,35 @@ export default function GameHvB() {
         });
       }}
       move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
+      botMove={(gameId) => hvbBotMove(gameId)}
       resultConfig={{
         title: "Juego Y — Human vs Bot",
-        subtitle: `Tamaño: ${size} · Bot: ${botId} · Empieza: ${starter}`,
+        subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${participantLabels[starter]}`,
         abandonOkText: "Sí, abandonar",
         getResultTitle: (winner) =>
           winner === "human" ? "¡Felicidades!" : "Game Over",
         getResultText: (winner) =>
           winner === "human"
             ? "Has ganado la partida."
-            : "Ha ganado el bot. ¡Inténtalo de nuevo!",
+            : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
       }}
       winnerPalette={{
         highlightedWinner: "human",
         highlightedBackground: "#28bbf532",
         otherWinnerBackground: "#ff7b0033",
+      }}
+      turnConfig={{
+        textPrefix: "Turno actual:",
+        turns: {
+          human: {
+            label: participantLabels.human,
+            color: "#28BBF5",
+          },
+          bot: {
+            label: participantLabels.bot,
+            color: "#FF7B00",
+          },
+        },
       }}
     />
   );
