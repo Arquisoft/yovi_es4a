@@ -2,7 +2,8 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import AppHeader from "../vistas/AppHeader.tsx";
+import AppHeader from "../vistas/AppHeader.tsx"; 
+
 const navigateMock = vi.fn();
 const confirmMock = vi.fn();
 
@@ -33,7 +34,6 @@ vi.mock("antd", () => ({
         <div>
             <div>{children}</div>
             <div data-testid="dropdown-menu">
-                {/* Ignoramos los 'dividers' para que no rendericen botones vacíos */}
                 {menu?.items?.map((item: any, index: number) => {
                     if (item.type === "divider") return null;
                     return (
@@ -60,7 +60,7 @@ vi.mock("@ant-design/icons", () => ({
     LogoutOutlined: () => null,
     QuestionCircleOutlined: () => null,
     UserOutlined: () => null,
-    TrophyOutlined: () => null, 
+    TrophyOutlined: () => null,
 }));
 
 describe("AppHeader", () => {
@@ -79,7 +79,7 @@ describe("AppHeader", () => {
 
         expect(screen.getByRole("button", { name: "Ver Perfil" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Ver Estadísticas" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ranking Global" })).toBeInTheDocument(); 
+        expect(screen.getByRole("button", { name: "Ranking Global" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Volver a Home" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Ayuda" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cerrar Sesión" })).toBeInTheDocument();
@@ -91,8 +91,16 @@ describe("AppHeader", () => {
 
         await user.click(screen.getByRole("button", { name: "Ranking Global" }));
 
-        // Comprobamos que el botón del ranking llama a navigate correctamente
         expect(navigateMock).toHaveBeenCalledWith("/ranking");
+    });
+
+    it("al pulsar 'Volver a Home' navega a '/home'", async () => {
+        const user = userEvent.setup();
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Volver a Home" }));
+
+        expect(navigateMock).toHaveBeenCalledWith("/home");
     });
 
     it("al pulsar 'Cerrar Sesión' del menú abre modal.confirm", async () => {
@@ -130,7 +138,6 @@ describe("AppHeader", () => {
 
         await user.click(screen.getByRole("button", { name: "Ver Perfil" }));
         await user.click(screen.getByRole("button", { name: "Ver Estadísticas" }));
-        await user.click(screen.getByRole("button", { name: "Volver a Home" }));
         await user.click(screen.getByRole("button", { name: "Ayuda" }));
 
         expect(navigateMock).not.toHaveBeenCalled();
