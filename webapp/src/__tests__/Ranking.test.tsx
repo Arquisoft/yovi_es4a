@@ -3,10 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { App } from "antd";
-import Ranking from "../vistas/Ranking"; 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation(query => ({
+import Ranking from "../vistas/Ranking";
+
+const { matchMediaMock } = vi.hoisted(() => {
+  const matchMediaMock = vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -15,7 +15,12 @@ Object.defineProperty(window, 'matchMedia', {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  })),
+  }));
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: matchMediaMock,
+  });
+  return { matchMediaMock };
 });
 
 // Mock global del fetch
@@ -30,25 +35,25 @@ describe("Ranking Component", () => {
     const mockRankingData = {
       sortBy: "winRate",
       ranking: [
-        { 
-          username: "Faker", 
-          winRate: 100, 
-          gamesWon: 10, 
-          gamesPlayed: 10, 
-          gamesLost: 0, 
-          totalMoves: 150, 
-          profilePicture: "faker.png" 
+        {
+          username: "Faker",
+          winRate: 100,
+          gamesWon: 10,
+          gamesPlayed: 10,
+          gamesLost: 0,
+          totalMoves: 150,
+          profilePicture: "faker.png",
         },
-        { 
-          username: "Novato", 
-          winRate: 50, 
-          gamesWon: 1, 
-          gamesPlayed: 2, 
-          gamesLost: 1, 
-          totalMoves: 25, 
-          profilePicture: "novato.png" 
-        }
-      ]
+        {
+          username: "Novato",
+          winRate: 50,
+          gamesWon: 1,
+          gamesPlayed: 2,
+          gamesLost: 1,
+          totalMoves: 25,
+          profilePicture: "novato.png",
+        },
+      ],
     };
 
     (global.fetch as any).mockResolvedValue({
@@ -64,7 +69,9 @@ describe("Ranking Component", () => {
       </MemoryRouter>
     );
 
-    expect(global.fetch).toHaveBeenCalledWith("/api/users/ranking?sortBy=winRate&limit=20");
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/ranking?sortBy=winRate&limit=20"
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Faker")).toBeInTheDocument();
@@ -77,7 +84,7 @@ describe("Ranking Component", () => {
   it("muestra un mensaje de error si la API falla", async () => {
     (global.fetch as any).mockResolvedValue({
       ok: false,
-      status: 500
+      status: 500,
     });
 
     render(
@@ -89,7 +96,9 @@ describe("Ranking Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("No se pudo cargar el ranking")).toBeInTheDocument();
+      expect(
+        screen.getByText("No se pudo cargar el ranking")
+      ).toBeInTheDocument();
       expect(screen.getByText("Error 500")).toBeInTheDocument();
     });
   });
