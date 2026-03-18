@@ -8,6 +8,12 @@ export type YEN = {
   players?: string[];
 };
 
+/**
+ * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
+ * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
+ */
+// const API_URL = "/api/game";
+//const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const API_URL = "";
 
 /**
@@ -81,7 +87,7 @@ export async function getMeta(): Promise<MetaResponse> {
 }
 
 // --------------------------------------------------------------------------------------
-// CONFIG
+// CONFIG (recordada por client_id / user en el futuro)
 // --------------------------------------------------------------------------------------
 
 export type HvBStarter = "human" | "bot" | "random";
