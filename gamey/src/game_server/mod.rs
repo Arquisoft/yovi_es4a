@@ -23,7 +23,6 @@ use axum::{Router, http, routing::{get, post}};
 use http::Method;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::gamey_error::GameYError;
 use state::GameServerState;
 
 /// Límites de tablero
@@ -59,30 +58,13 @@ pub fn create_router(state: GameServerState) -> Router {
         .route("/api/v1/hvb/games/{game_id}", get(hvb::get_game).delete(hvb::delete_game))
         .route("/api/v1/hvb/games/{game_id}/moves", post(hvb::post_human_move))
         .route("/api/v1/hvb/games/{game_id}/bot-move", post(hvb::post_bot_move))
+        .route("/api/v1/hvb/games/{game_id}/hint", get(hvb::get_hint))
         .with_state(state)
         .layer(cors)
 }
 
 pub async fn status() -> &'static str {
     "OK"
-}
-
-pub async fn run_game_server(port: u16) -> Result<(), GameYError> {
-    let state = GameServerState::new_default();
-    let app = create_router(state);
-
-    let addr = format!("0.0.0.0:{port}");
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .map_err(|e| GameYError::ServerError { message: e.to_string() })?;
-
-    println!("Game server listening on http://{addr}");
-
-    axum::serve(listener, app)
-        .await
-        .map_err(|e| GameYError::ServerError { message: e.to_string() })?;
-
-    Ok(())
 }
 
 #[cfg(test)]

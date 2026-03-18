@@ -84,8 +84,9 @@ impl GameServerState {
         let bots = YBotRegistry::new()
             .with_bot(Arc::new(RandomBot))
             .with_bot(Arc::new(GreedyBot))
-            .with_bot(Arc::new(MctsBot::named("mcts_fast_bot", 5_000)))
-            .with_bot(Arc::new(MctsBot::named("mcts_strong_bot", 20_000)));
+            .with_bot(Arc::new(MctsBot::new("mcts_medio",     20000)))
+            .with_bot(Arc::new(MctsBot::new("mcts_dificil",   30000)))
+            .with_bot(Arc::new(MctsBot::new("mcts_demencial", 100000)));
 
         Self {
             bots: Arc::new(bots),

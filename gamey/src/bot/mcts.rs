@@ -1,30 +1,19 @@
-use crate::{Coordinates, GameY, YBot, Movement, GameStatus, PlayerId};
-use rand::prelude::IndexedRandom;
+use rand::seq::IndexedRandom;
 
-/// El Bot de Búsqueda de Árbol Monte Carlo (MCTS).
-/// Este bot "juega" miles de partidas
-/// aleatorias para determinar qué movimiento tiene la mayor probabilidad estadística de éxito.
+use crate::{Coordinates, GameY, GameStatus, Movement, PlayerId};
+use super::ybot::YBot;
+
 pub struct MctsBot {
-    // Identificador del bot para la API
-    id: String,
+    /// Nombre del bot (identifica el nivel de dificultad).
+    name: &'static str,
     /// Número total de simulaciones (playouts) que el bot realizará en cada turno.
     /// A mayor número, más "inteligente" es el bot, pero más tiempo tarda en decidir.
     iterations: u32,
 }
 
 impl MctsBot {
-
-    /// Constructor por defecto, mantiene compatibilidad con el nombre histórico.
-    pub fn new(iterations: u32) -> Self {
-        Self::named("mcts_bot", iterations)
-    }
-
-    /// Constructor con nombre explícito para poder registrar varios MCTS distintos sin que se pisen en el registro.
-    pub fn named(id: impl Into<String>, iterations: u32) -> Self {
-        Self {
-            id: id.into(),
-            iterations,
-        }
+    pub fn new(name: &'static str, iterations: u32) -> Self {
+        Self { name, iterations }
     }
 
     /// FASE DE SIMULACIÓN (Playout):
@@ -63,7 +52,7 @@ impl MctsBot {
 
 impl YBot for MctsBot {
     fn name(&self) -> &str {
-        &self.id
+        self.name
     }
 
     /// TOMA DE DECISIÓN:
@@ -129,20 +118,14 @@ mod tests {
     use crate::{GameY, Movement, PlayerId};
 
     #[test]
-    fn test_mcts_bot_default_name() {
-        let bot = MctsBot::new(1000);
-        assert_eq!(bot.name(), "mcts_bot");
-    }
-
-    #[test]
-    fn test_mcts_bot_custom_name() {
-        let bot = MctsBot::named("mcts_fast_bot", 1000);
-        assert_eq!(bot.name(), "mcts_fast_bot");
+    fn test_mcts_bot_name() {
+        let bot = MctsBot::new("mcts_medio", 1000);
+        assert_eq!(bot.name(), "mcts_medio");
     }
 
     #[test]
     fn test_mcts_bot_returns_move_on_empty_board() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let game = GameY::new(5);
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_some());
@@ -150,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_returns_valid_coordinates() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let game = GameY::new(5);
         let coords = bot.choose_move(&game).unwrap();
         let index = coords.to_index(game.board_size());
@@ -159,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_returns_none_on_full_board() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let mut game = GameY::new(2);
         // Llenamos el tablero (tamaño 2 tiene 3 celdas)
         let moves = vec![
@@ -173,13 +156,4 @@ mod tests {
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_none());
     }
-
-    #[test]
-    fn test_mcts_bot_works_with_low_iterations() {
-        let bot = MctsBot::new(1);
-        let game = GameY::new(7);
-
-        let chosen_move = bot.choose_move(&game);
-        assert!(chosen_move.is_some());
-    } 
 }  

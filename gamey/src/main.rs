@@ -20,8 +20,8 @@
 //! ```
 
 use clap::Parser;
-//use gamey::{self, CliArgs, Mode, run_bot_server, run_cli_game};
-use gamey::{self, CliArgs, Mode, run_game_server, run_cli_game};
+use gamey::{self, CliArgs, Mode, run_cli_game};
+use gamey::game_server::{create_router, state::GameServerState};
 use tracing_subscriber::prelude::*;
 
 /// Main entry point for the GameY application.
@@ -34,7 +34,13 @@ async fn main() {
     let args = CliArgs::parse();
 
     if args.mode == Mode::Server {
-        if let Err(e) = run_game_server(args.port).await {
+    let state = GameServerState::new_default();
+        let app = create_router(state);
+        let addr = format!("0.0.0.0:{}", args.port);
+        let listener = tokio::net::TcpListener::bind(&addr).await
+            .expect("Failed to bind to address");
+        tracing::info!("game server listening on {}", addr);
+        if let Err(e) = axum::serve(listener, app).await {
             eprintln!("Error: {}", e);
             std::process::exit(1);
         }
