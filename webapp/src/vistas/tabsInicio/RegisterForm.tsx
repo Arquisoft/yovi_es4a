@@ -43,7 +43,7 @@ const RegisterForm: React.FC = () => {
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const apiEndpoint =
-    (window as any).REACT_APP_API_URI || "http://localhost:3000";
+    import.meta.env.VITE_API_URL || "http://localhost:8000/api/users";
 
   /**
    * Hook de efecto que monitoriza cambios en la contraseña para actualizar

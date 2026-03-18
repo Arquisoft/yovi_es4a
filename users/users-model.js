@@ -24,6 +24,14 @@ const userSchema = new mongoose.Schema({
         default: Date.now 
     },
 
+    isVerified: { 
+        type: Boolean, 
+        default: false 
+    },
+    verificationToken: { 
+        type: String 
+    },
+
     // Estadísticas de juego para el ranking
     stats: {
       gamesPlayed:  { type: Number, default: 0 },

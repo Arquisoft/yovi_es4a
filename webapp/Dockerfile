@@ -2,9 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install deps
-COPY package.json package-lock.json ./
-RUN npm ci --silent
+# Install deps (Cambiamos para que no falle si falta package-lock.json)
+COPY package*.json ./
+RUN npm install --silent
 
 # Copy sources
 COPY . .
