@@ -10,6 +10,31 @@ type Props = {
   onCellClick: (cellId: number) => void;
 };
 
+function playBop() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+
+    osc.onended = () => ctx.close();
+  } catch {
+    // Navegadores sin Web Audio API — silencioso
+  }
+}
+
 export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
@@ -119,7 +144,10 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (isClickable) onCellClick(cell.cellId);
+                    if (isClickable) {
+                      playBop();
+                      onCellClick(cell.cellId);
+                    }
                   }}
                   disabled={!isClickable}
                   style={{
