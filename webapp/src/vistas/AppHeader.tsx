@@ -6,10 +6,11 @@ import {
   LogoutOutlined,
   QuestionCircleOutlined,
   UserOutlined,
-  TrophyOutlined // 1. Importamos el icono del trofeo
+  TrophyOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
+import HelpModal from "./HelpModal";
 
 const { Title } = Typography;
 
@@ -31,6 +32,16 @@ export default function AppHeader({ title }: AppHeaderProps) {
     });
   }
 
+  function handleHelp() {
+    modal.info({
+      title: "Ayuda — Juego Y",
+      content: <HelpModal />,
+      okText: "Cerrar",
+      width: 640,
+      icon: <QuestionCircleOutlined />,
+    });
+  }
+
   function handleProfileMenuClick(key: string) {
     switch (key) {
       case "profile":
@@ -39,14 +50,14 @@ export default function AppHeader({ title }: AppHeaderProps) {
       case "stats":
         //navigate("/stats");
         break;
-      case "ranking":       // 2. Añadimos el caso para navegar al ranking
+      case "ranking":
         navigate("/ranking");
         break;
       case "home":
         navigate("/home");
         break;
       case "help":
-        //navigate("/help");
+        handleHelp();
         break;
       case "logout":
         handleLogout();
@@ -68,12 +79,12 @@ export default function AppHeader({ title }: AppHeaderProps) {
       label: "Ver Estadísticas",
     },
     {
-      key: "ranking",       // 3. Añadimos el botón visual al menú
+      key: "ranking",
       icon: <TrophyOutlined />,
       label: "Ranking Global",
     },
     {
-      type: "divider",      // (Opcional) Una pequeña línea para separar el menú principal
+      type: "divider",
     },
     {
       key: "home",
