@@ -6,12 +6,16 @@
 //! - [`YBot`] - A trait that defines the interface for all bots
 //! - [`YBotRegistry`] - A registry for managing multiple bot implementations
 //! - [`RandomBot`] - A simple bot that makes random valid moves
+//! - [`GreedyBot`] - A heuristic bot
+//! - [`MctsBot`] - A Monte Carlo Tree Search bot
 
+pub mod greedy;
 pub mod random;
 pub mod ybot;
 pub mod ybot_registry;
 pub mod mcts;
 
+pub use greedy::*;
 pub use random::*;
 pub use ybot::*;
 pub use ybot_registry::*;

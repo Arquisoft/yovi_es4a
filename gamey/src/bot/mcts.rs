@@ -5,14 +5,26 @@ use rand::prelude::IndexedRandom;
 /// Este bot "juega" miles de partidas
 /// aleatorias para determinar qué movimiento tiene la mayor probabilidad estadística de éxito.
 pub struct MctsBot {
+    // Identificador del bot para la API
+    id: String,
     /// Número total de simulaciones (playouts) que el bot realizará en cada turno.
     /// A mayor número, más "inteligente" es el bot, pero más tiempo tarda en decidir.
     iterations: u32,
 }
 
 impl MctsBot {
+
+    /// Constructor por defecto, mantiene compatibilidad con el nombre histórico.
     pub fn new(iterations: u32) -> Self {
-        Self { iterations }
+        Self::named("mcts_bot", iterations)
+    }
+
+    /// Constructor con nombre explícito para poder registrar varios MCTS distintos sin que se pisen en el registro.
+    pub fn named(id: impl Into<String>, iterations: u32) -> Self {
+        Self {
+            id: id.into(),
+            iterations,
+        }
     }
 
     /// FASE DE SIMULACIÓN (Playout):
@@ -51,7 +63,7 @@ impl MctsBot {
 
 impl YBot for MctsBot {
     fn name(&self) -> &str {
-        "mcts_bot"
+        &self.id
     }
 
     /// TOMA DE DECISIÓN:
@@ -69,12 +81,12 @@ impl YBot for MctsBot {
         let mut best_move = None;
         let mut max_wins = -1.0;
 
+        // Evita división por cero si iterations < available_cells.len()
+        let simulations_per_move = (self.iterations / (available_cells.len() as u32).max(1)).max(1);
+
         // BUCLE PRINCIPAL: Iteramos por cada casilla vacía disponible en el tablero actual.
         for &move_idx in available_cells.iter() {
-            let mut wins = 0;
-            
-            // Dividimos el presupuesto de iteraciones entre los movimientos posibles.
-            let simulations_per_move = self.iterations / (available_cells.len() as u32).max(1);
+            let mut wins = 0u32;
 
             // BUCLE DE SIMULACIONES: Ejecutamos múltiples playouts para este movimiento
             for _ in 0..simulations_per_move {
@@ -114,12 +126,18 @@ impl YBot for MctsBot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{GameY, PlayerId};
+    use crate::{GameY, Movement, PlayerId};
 
     #[test]
-    fn test_mcts_bot_name() {
+    fn test_mcts_bot_default_name() {
         let bot = MctsBot::new(1000);
         assert_eq!(bot.name(), "mcts_bot");
+    }
+
+    #[test]
+    fn test_mcts_bot_custom_name() {
+        let bot = MctsBot::named("mcts_fast_bot", 1000);
+        assert_eq!(bot.name(), "mcts_fast_bot");
     }
 
     #[test]
@@ -154,5 +172,14 @@ mod tests {
         }
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_none());
-    }   
+    }
+
+    #[test]
+    fn test_mcts_bot_works_with_low_iterations() {
+        let bot = MctsBot::new(1);
+        let game = GameY::new(7);
+
+        let chosen_move = bot.choose_move(&game);
+        assert!(chosen_move.is_some());
+    } 
 }  

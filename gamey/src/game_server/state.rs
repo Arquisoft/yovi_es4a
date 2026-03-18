@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use crate::{MctsBot, RandomBot, YBotRegistry};
+use crate::{GreedyBot, MctsBot, RandomBot, YBotRegistry};
 
 use self::config_store::ConfigStore;
 
@@ -83,8 +83,9 @@ impl GameServerState {
     pub fn new_default() -> Self {
         let bots = YBotRegistry::new()
             .with_bot(Arc::new(RandomBot))
-            .with_bot(Arc::new(MctsBot::new(5_000)))
-            .with_bot(Arc::new(MctsBot::new(20_000)));
+            .with_bot(Arc::new(GreedyBot))
+            .with_bot(Arc::new(MctsBot::named("mcts_fast_bot", 5_000)))
+            .with_bot(Arc::new(MctsBot::named("mcts_strong_bot", 20_000)));
 
         Self {
             bots: Arc::new(bots),
@@ -191,11 +192,14 @@ mod tests {
     }
 
     #[test]
-    fn new_default_creates_state_with_bots() {
+    fn new_default_creates_state_with_expected_bots() {
         let state = GameServerState::new_default();
         let names = state.bots.names();
 
         assert!(!names.is_empty());
         assert!(names.iter().any(|b| b == "random_bot"));
+        assert!(names.iter().any(|b| b == "greedy_bot"));
+        assert!(names.iter().any(|b| b == "mcts_fast_bot"));
+        assert!(names.iter().any(|b| b == "mcts_strong_bot"));
     }
 }
