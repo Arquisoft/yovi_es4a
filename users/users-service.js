@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 8001;
 const swaggerUi = require('swagger-ui-express');
 const fs = require('node:fs');
 const YAML = require('js-yaml');
@@ -29,6 +29,7 @@ try {
   console.log(e);
 }
 
+// Configuración de CORS
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
@@ -50,7 +51,7 @@ app.post('/createuser', async (req, res) => {
       username,
       password: hashedPassword,
       email,
-      profilePicture: profilePicture || 'default-avatar.png',
+      profilePicture: profilePicture || 'seniora.png',
       verificationToken
     });
     await user.save();
@@ -58,15 +59,17 @@ app.post('/createuser', async (req, res) => {
     console.log(`\n[SIMULADOR DE CORREO] 📧`);
     console.log(`Para: ${sanitize(email)}`);
     console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
-    console.log(`http://localhost:3000/verify?token=${verificationToken}\n`);
+    console.log(`http://localhost:${port}/verify?token=${verificationToken}\n`);
 
-    res.json({ message: `Bienvenido ${username}. Por favor, revisa tu correo para verificar tu cuenta.` });
+    // Devolvemos el mensaje de éxito. El frontend (antd message.success) lo mostrará.
+    res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
+    // Manejo de errores de duplicados (MongoDB Error 11000)
     if (err.code === 11000) {
       if (err.message.includes('email')) {
-        res.status(400).json({ error: 'El correo electrónico ya está en uso' });
+        res.status(400).json({ error: 'El correo electrónico ya está en uso.' });
       } else {
-        res.status(400).json({ error: 'El nombre de usuario ya existe' });
+        res.status(400).json({ error: 'El nombre de usuario ya está registrado.' });
       }
     } else {
       res.status(400).json({ error: err.message });
@@ -105,7 +108,8 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
-    res.json({ message: `Bienvenido ${username}` });
+    // En un futuro cercano, aquí generarías el JWT Token
+    res.json({ message: `Bienvenido ${username}`, username: user.username, profilePicture: user.profilePicture });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
