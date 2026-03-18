@@ -1,4 +1,3 @@
-import React from "react";
 import Bienvenida from "../vistas/Bienvenida.tsx";
 import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
