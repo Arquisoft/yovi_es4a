@@ -85,6 +85,16 @@ describe("GameHvB", () => {
         expect(props.turnConfig.turns.bot.label).toBe("mcts_bot");
     });
 
+    it("normaliza starter=random y muestra Aleatorio", () => {
+        mockSearchParams = new URLSearchParams("size=8&bot=random_bot&hvbstarter=RaNdOm");
+
+        render(<GameHvB />);
+
+        const props = sessionGamePageMock.mock.calls[0][0];
+        expect(props.deps).toEqual([8, "random_bot", "random"]);
+        expect(props.resultConfig.subtitle).toBe("Tamaño: 8 · Bot: random_bot · Empieza: Aleatorio");
+    });
+
     it("hace fallback a size=7 y starter=human si la query es inválida", () => {
         mockSearchParams = new URLSearchParams("size=1&bot=smart_bot&hvbstarter=alien");
 
@@ -108,7 +118,7 @@ describe("GameHvB", () => {
             mode: "hvb",
             yen: { size: 9, layout: "." },
             status: { state: "ongoing", next: "bot" },
-        });
+        } as any);
 
         mockSearchParams = new URLSearchParams("size=9&bot=mcts_bot&hvbstarter=bot");
 
@@ -138,13 +148,56 @@ describe("GameHvB", () => {
         });
     });
 
+    it("start guarda config y crea la partida HvB con starter random", async () => {
+        vi.mocked(putConfig).mockResolvedValue({
+            size: 10,
+            hvb_starter: "random",
+            hvh_starter: "player0",
+            bot_id: "random_bot",
+        } as any);
+
+        vi.mocked(createHvbGame).mockResolvedValue({
+            game_id: "g-random",
+            mode: "hvb",
+            yen: { size: 10, layout: "." },
+            status: { state: "ongoing", next: "human" },
+        } as any);
+
+        mockSearchParams = new URLSearchParams("size=10&bot=random_bot&hvbstarter=random");
+
+        render(<GameHvB />);
+
+        const props = sessionGamePageMock.mock.calls[0][0];
+        const result = await props.start();
+
+        expect(putConfig).toHaveBeenCalledWith({
+            size: 10,
+            hvb_starter: "random",
+            bot_id: "random_bot",
+            hvh_starter: "player0",
+        });
+
+        expect(createHvbGame).toHaveBeenCalledWith({
+            size: 10,
+            bot_id: "random_bot",
+            hvb_starter: "random",
+        });
+
+        expect(result).toEqual({
+            game_id: "g-random",
+            mode: "hvb",
+            yen: { size: 10, layout: "." },
+            status: { state: "ongoing", next: "human" },
+        });
+    });
+
     it("move delega en hvbHumanMove", async () => {
         vi.mocked(hvbHumanMove).mockResolvedValue({
             game_id: "g1",
             yen: { size: 7, layout: "." },
             human_move: { cell_id: 3, coords: { x: 1, y: 2, z: 3 } },
             status: { state: "ongoing", next: "bot" },
-        });
+        } as any);
 
         render(<GameHvB />);
 
@@ -160,7 +213,7 @@ describe("GameHvB", () => {
             yen: { size: 7, layout: "." },
             bot_move: { cell_id: 4, coords: { x: 1, y: 1, z: 2 } },
             status: { state: "ongoing", next: "human" },
-        });
+        } as any);
 
         render(<GameHvB />);
 

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { createHvhGame, hvhMove, putConfig, type YEN } from "../api/gamey";
 import SessionGamePage from "../game/SessionGamePage";
 
-type StarterHvH = "player0" | "player1";
+type StarterHvH = "player0" | "player1" | "random";
 
 function parseBoardSize(raw: string | null): number {
   const parsed = Number(raw ?? "7");
@@ -11,14 +11,28 @@ function parseBoardSize(raw: string | null): number {
 }
 
 function parseHvHStarter(raw: string | null): StarterHvH {
-  return (raw ?? "player0").toLowerCase() === "player1" ? "player1" : "player0";
+  const value = (raw ?? "player0").toLowerCase();
+  if (value === "player1") return "player1";
+  if (value === "random") return "random";
+  return "player0";
+}
+
+function getStarterLabel(hvh_starter: StarterHvH): string {
+  switch (hvh_starter) {
+    case "player0":
+      return "Player 0";
+    case "player1":
+      return "Player 1";
+    case "random":
+      return "Aleatorio";
+  }
 }
 
 export default function GameHvH() {
   const [searchParams] = useSearchParams();
 
   const size = parseBoardSize(searchParams.get("size"));
-  const starter = parseHvHStarter(searchParams.get("hvhstarter"));
+  const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
 
   const playerLabels = {
     player0: "Player 0",
@@ -27,24 +41,24 @@ export default function GameHvH() {
 
   return (
     <SessionGamePage<YEN>
-      deps={[size, starter]}
+      deps={[size, hvh_starter]}
       start={async () => {
         await putConfig({
           size,
           hvb_starter: "human",
           bot_id: null,
-          hvh_starter: starter,
+          hvh_starter: hvh_starter,
         });
 
         return createHvhGame({
           size,
-          hvh_starter: starter,
+          hvh_starter: hvh_starter,
         });
       }}
       move={(gameId, cellId) => hvhMove(gameId, cellId)}
       resultConfig={{
         title: "Juego Y — Human vs Human",
-        subtitle: `Tamaño: ${size} · Empieza: ${playerLabels[starter]}`,
+        subtitle: `Tamaño: ${size} · Empieza: ${getStarterLabel(hvh_starter)}`,
         abandonOkText: "Abandonar",
         getResultTitle: () => "Partida finalizada",
         getResultText: (winner) =>
