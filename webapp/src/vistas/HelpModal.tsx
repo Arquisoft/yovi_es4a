@@ -70,7 +70,7 @@ export default function HelpModal() {
                 Dos jugadores humanos se turnan en el mismo dispositivo.
                 Se identifica a los jugadores como{" "}
                 <Text strong>Player 0</Text> (fichas azules) y{" "}
-                <Text strong>Player 1</Text> (fichas rojas). Puedes elegir quién
+                <Text strong>Player 1</Text> (fichas naranjas). Puedes elegir quién
                 coloca la primera ficha.
               </Paragraph>
             </Typography>
