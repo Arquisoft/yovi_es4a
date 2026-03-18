@@ -10,6 +10,11 @@ export type YEN = {
 
 const API_URL = "";
 
+/**
+ * Devuelve un client_id estable. La idea es guardarlo en localStorage.
+ * - Si ya existe: lo devuelve
+ * - Si no: lo crea (UUID simple) y lo guarda
+ */
 export function getOrCreateClientId(): string {
   const key = "yovi_client_id";
   const existing = localStorage.getItem(key);
@@ -79,9 +84,9 @@ export async function getMeta(): Promise<MetaResponse> {
 // CONFIG
 // --------------------------------------------------------------------------------------
 
-export type HvBStarter = "human" | "bot";
+export type HvBStarter = "human" | "bot" | "random";
 
-export type HvHStarter = "player0" | "player1";
+export type HvHStarter = "player0" | "player1" | "random";
 
 export type GameConfig = {
   size: number;

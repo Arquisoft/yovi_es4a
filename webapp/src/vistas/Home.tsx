@@ -21,8 +21,8 @@ import DifficultySelect from "./Dificultyselect.tsx";
 
 const { Title, Text } = Typography;
 
-type StarterHvB = "human" | "bot";
-type StarterHvH = "player0" | "player1";
+type StarterHvB = "human" | "bot" | "random";
+type StarterHvH = "player0" | "player1" | "random";
 
 type LastConfigHvB = { size: number; botId: string; hvbstarter: StarterHvB };
 type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
@@ -37,7 +37,7 @@ function loadLastConfigHvB(): LastConfigHvB | null {
     const parsed = JSON.parse(raw) as Partial<LastConfigHvB>;
     if (typeof parsed.size !== "number") return null;
     if (typeof parsed.botId !== "string") return null;
-    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot") return null;
+    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot" && parsed.hvbstarter !== "random") return null;
     return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
@@ -56,7 +56,7 @@ function loadLastConfigHvH(): LastConfigHvH | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvH>;
     if (typeof parsed.size !== "number") return null;
-    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1") return null;
+    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1" && parsed.hvhstarter !== "random") return null;
     return { size: parsed.size, hvhstarter: parsed.hvhstarter };
   } catch {
     return null;
@@ -205,8 +205,9 @@ export default function Home() {
                       }}
                       style={{ width: 200 }}
                       options={[
-                        { value: "human", label: "Human" },
+                        { value: "human", label: "Humano" },
                         { value: "bot", label: "Bot" },
+                        { value: "random", label: "Aleatorio" },
                       ]}
                     />
                   </div>
@@ -246,6 +247,7 @@ export default function Home() {
                       options={[
                         { value: "player0", label: "Player 0" },
                         { value: "player1", label: "Player 1" },
+                        { value: "random", label: "Aleatorio" },
                       ]}
                     />
                   </div>

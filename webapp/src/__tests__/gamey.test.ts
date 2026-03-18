@@ -126,11 +126,33 @@ describe("gamey api client", () => {
         });
     });
 
+    it("putConfig acepta random en ambos starters", async () => {
+        const payload = {
+            size: 11,
+            hvb_starter: "random" as const,
+            hvh_starter: "random" as const,
+            bot_id: "random_bot",
+        };
+
+        const spy = mockFetchOk(payload);
+
+        const res = await putConfig(payload);
+
+        expect(res.hvb_starter).toBe("random");
+        expect(res.hvh_starter).toBe("random");
+
+        expectRequest(spy, {
+            path: "/api/v1/config",
+            method: "PUT",
+            body: JSON.stringify(payload),
+        });
+    });
+
     it("createHvbGame ok", async () => {
         const payload = {
             size: 7,
             bot_id: "random_bot",
-            hvb_starter: "human" as const,
+            starter: "human" as const,
         };
 
         const spy = mockFetchOk({
@@ -149,6 +171,33 @@ describe("gamey api client", () => {
         expectRequest(spy, {
             path: "/api/v1/hvb/games",
             method: "POST",
+            body: JSON.stringify(payload),
+        });
+    });
+
+    it("createHvbGame acepta starter=random", async () => {
+        const payload = {
+            size: 8,
+            bot_id: "mcts_bot",
+            starter: "random" as const,
+        };
+
+        const spy = mockFetchOk({
+            game_id: "g1r",
+            mode: "hvb",
+            yen: { size: 8, layout: "." },
+            status: { state: "ongoing", next: "bot" },
+        });
+
+        const res = await createHvbGame(payload);
+
+        expect(res.game_id).toBe("g1r");
+        expect(res.mode).toBe("hvb");
+
+        expectRequest(spy, {
+            path: "/api/v1/hvb/games",
+            method: "POST",
+            body: JSON.stringify(payload),
         });
     });
 
@@ -247,6 +296,32 @@ describe("gamey api client", () => {
         expectRequest(spy, {
             path: "/api/v1/hvh/games",
             method: "POST",
+            body: JSON.stringify(payload),
+        });
+    });
+
+    it("createHvhGame acepta hvh_starter=random", async () => {
+        const payload = {
+            size: 9,
+            hvh_starter: "random" as const,
+        };
+
+        const spy = mockFetchOk({
+            game_id: "g2r",
+            mode: "hvh",
+            yen: { size: 9, layout: "." },
+            status: { state: "ongoing", next: "player1" },
+        });
+
+        const res = await createHvhGame(payload);
+
+        expect(res.game_id).toBe("g2r");
+        expect(res.mode).toBe("hvh");
+
+        expectRequest(spy, {
+            path: "/api/v1/hvh/games",
+            method: "POST",
+            body: JSON.stringify(payload),
         });
     });
 
@@ -281,6 +356,7 @@ describe("gamey api client", () => {
 
         expect(res.game_id).toBe("g2");
         expect(res.applied_move.cell_id).toBe(2);
+        expect(res.status).toEqual({ state: "ongoing", next: "player1" });
 
         expectRequest(spy, {
             path: "/api/v1/hvh/games/g2/moves",
@@ -302,9 +378,15 @@ describe("gamey api client", () => {
         });
     });
 
-    it("lanza Error si la respuesta no es ok", async () => {
-        mockFetchError({ error: "boom" }, 500);
+    it("lanza el mensaje del backend si fetch falla con json", async () => {
+        mockFetchError({ message: "boom" }, 400);
 
-        await expect(getMeta()).rejects.toThrow();
+        await expect(getMeta()).rejects.toThrow("boom");
+    });
+
+    it("lanza HTTP status si fetch falla sin message", async () => {
+        mockFetchError({ code: "x" }, 503);
+
+        await expect(getConfig()).rejects.toThrow("HTTP 503");
     });
 });
