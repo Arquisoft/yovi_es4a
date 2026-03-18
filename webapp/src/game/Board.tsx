@@ -100,20 +100,21 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             {rowCells.map((cell) => {
               const isEmpty = cell.value === ".";
               const isClickable = isEmpty && !disabled;
+              const isHint = cell.hint === true;
 
               const bg =
-                cell.value === "B"
-                  ? "#28BBF5"
-                  : cell.value === "R"
-                    ? "#FF7B00"
-                    : "#f0f0f0";
-
-              const color = cell.value === "." ? "#111827" : "white";
+                isHint
+                  ? "#52c41a"
+                  : cell.value === "B"
+                    ? "#28BBF5"
+                    : cell.value === "R"
+                      ? "#FF7B00"
+                      : "#e8e8e8";
 
               return (
                 <Button
                   key={cell.cellId}
-                  className="hexBtn"
+                  className={`hexBtn${isHint ? " hexBtn--hint" : ""}`}
                   aria-label={`cell-${cell.cellId}`}
                   onClick={(e) => {
                     e.preventDefault();
@@ -127,11 +128,12 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                     height: cellSize,
                     padding: 0,
                     background: bg,
-                    color,
+                    color: isHint ? "white" : cell.value === "." ? "#111827" : "white",
                     fontWeight: 700,
                     fontSize: cellSize < 26 ? 10 : cellSize < 34 ? 12 : 14,
-                    opacity: disabled ? 0.65 : 1,
+                    opacity: disabled && !isHint ? 0.65 : 1,
                     border: "none",
+                    boxShadow: "none",
                   }}
                 >
                   <span className="hexBtn__content">

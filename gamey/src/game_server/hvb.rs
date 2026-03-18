@@ -328,3 +328,48 @@ pub async fn post_bot_move(
         bot_applied,
     )))
 }
+
+/// GET /api/v1/hvb/games/{game_id}/hint
+/// Consulta al bot qué movimiento elegiría dado el estado actual,
+/// sin aplicarlo ni modificar la sesión. Útil como pista para el jugador humano.
+pub async fn get_hint(
+    State(state): State<GameServerState>,
+    headers: HeaderMap,
+    Path(game_id): Path<String>,
+) -> Result<Json<serde_json::Value>, ApiErrorResponse> {
+    let principal = resolve_principal(&headers);
+    let game_id = parse_uuid(&game_id)?;
+
+    let session = load_owned_session(&state, &principal, &game_id).await?;
+    ensure_hvb_session(&session)?;
+
+    let next_is_human = session
+        .hvb_next_is_human
+        .ok_or_else(|| ApiErrorResponse::internal("HvB session invalid", "session_invalid"))?;
+
+    if !next_is_human {
+        return Err(ApiErrorResponse::conflict(
+            "It is not human turn",
+            "not_human_turn",
+        ));
+    }
+
+    let bot_id = session
+        .bot_id
+        .clone()
+        .ok_or_else(|| ApiErrorResponse::internal("Session missing bot_id", "session_invalid"))?;
+
+    let bot = state.bots.find(&bot_id).ok_or_else(|| {
+        ApiErrorResponse::not_found(format!("Unknown bot_id: {bot_id}"), "unknown_bot_id")
+    })?;
+
+    let size = session.game.board_size();
+
+    let coords = bot.choose_move(&session.game).ok_or_else(|| {
+        ApiErrorResponse::conflict("Bot could not suggest a move", "bot_no_move")
+    })?;
+
+    let cell_id = coords.to_index(size);
+
+    Ok(Json(serde_json::json!({ "hint_cell_id": cell_id })))
+}

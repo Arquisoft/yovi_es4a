@@ -1,18 +1,19 @@
-use crate::{Coordinates, GameY, YBot, Movement, GameStatus, PlayerId};
-use rand::prelude::IndexedRandom;
+use rand::seq::IndexedRandom;
 
-/// El Bot de Búsqueda de Árbol Monte Carlo (MCTS).
-/// Este bot "juega" miles de partidas
-/// aleatorias para determinar qué movimiento tiene la mayor probabilidad estadística de éxito.
+use crate::{Coordinates, GameY, GameStatus, Movement, PlayerId};
+use super::ybot::YBot;
+
 pub struct MctsBot {
+    /// Nombre del bot (identifica el nivel de dificultad).
+    name: &'static str,
     /// Número total de simulaciones (playouts) que el bot realizará en cada turno.
     /// A mayor número, más "inteligente" es el bot, pero más tiempo tarda en decidir.
     iterations: u32,
 }
 
 impl MctsBot {
-    pub fn new(iterations: u32) -> Self {
-        Self { iterations }
+    pub fn new(name: &'static str, iterations: u32) -> Self {
+        Self { name, iterations }
     }
 
     /// FASE DE SIMULACIÓN (Playout):
@@ -51,7 +52,7 @@ impl MctsBot {
 
 impl YBot for MctsBot {
     fn name(&self) -> &str {
-        "mcts_bot"
+        self.name
     }
 
     /// TOMA DE DECISIÓN:
@@ -118,13 +119,13 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_name() {
-        let bot = MctsBot::new(1000);
-        assert_eq!(bot.name(), "mcts_bot");
+        let bot = MctsBot::new("mcts_medio", 1000);
+        assert_eq!(bot.name(), "mcts_medio");
     }
 
     #[test]
     fn test_mcts_bot_returns_move_on_empty_board() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let game = GameY::new(5);
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_some());
@@ -132,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_returns_valid_coordinates() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let game = GameY::new(5);
         let coords = bot.choose_move(&game).unwrap();
         let index = coords.to_index(game.board_size());
@@ -141,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_mcts_bot_returns_none_on_full_board() {
-        let bot = MctsBot::new(1000);
+        let bot = MctsBot::new("mcts_medio", 1000);
         let mut game = GameY::new(2);
         // Llenamos el tablero (tamaño 2 tiene 3 celdas)
         let moves = vec![
@@ -155,4 +156,4 @@ mod tests {
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_none());
     }   
-}  
+}

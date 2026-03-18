@@ -8,18 +8,8 @@ export type YEN = {
   players?: string[];
 };
 
-/**
- * Al usar una ruta relativa ("/api/game"), el navegador enviará la petición 
- * al mismo dominio y puerto desde el que se sirve la aplicación (el Gateway).
- */
-// const API_URL = "/api/game";
-//const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const API_URL = "";
-/**
- * Devuelve un client_id estable. La idea es guardarlo en localStorage.
- * - Si ya existe: lo devuelve
- * - Si no: lo crea (UUID simple) y lo guarda
- */
+
 export function getOrCreateClientId(): string {
   const key = "yovi_client_id";
   const existing = localStorage.getItem(key);
@@ -86,7 +76,7 @@ export async function getMeta(): Promise<MetaResponse> {
 }
 
 // --------------------------------------------------------------------------------------
-// CONFIG (recordada por client_id / user en el futuro)
+// CONFIG
 // --------------------------------------------------------------------------------------
 
 export type HvBStarter = "human" | "bot";
@@ -199,6 +189,13 @@ export async function hvbHumanMove(gameId: string, cellId: number): Promise<HvbH
 export async function hvbBotMove(gameId: string): Promise<HvbBotMoveResponse> {
   return http<HvbBotMoveResponse>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/bot-move`, {
     method: "POST",
+    headers: buildHeaders(),
+  });
+}
+
+export async function hvbHint(gameId: string): Promise<{ hint_cell_id: number }> {
+  return http<{ hint_cell_id: number }>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/hint`, {
+    method: "GET",
     headers: buildHeaders(),
   });
 }
