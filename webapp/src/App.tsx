@@ -4,9 +4,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Bienvenida from "./vistas/Bienvenida";
 import Home from "./vistas/Home";
-import GameHvB from "./vistas/GameHvB";
+import GameHvB from "./vistas/game/GameHvB";
 import RegisterForm from "./vistas/registroLogin/RegisterForm";
-import GameHvH from "./vistas/GameHvH";
+import GameHvH from "./vistas/game/GameHvH";
 import Ranking from "./vistas/Ranking";
 import ValidacionEmail from "./vistas/registroLogin/ValidacionEmail";
 

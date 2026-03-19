@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 
-import { createHvhGame, hvhMove, putConfig, type YEN } from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+import { createHvhGame, hvhMove, putConfig, type YEN } from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
 
 type StarterHvH = "player0" | "player1";
 

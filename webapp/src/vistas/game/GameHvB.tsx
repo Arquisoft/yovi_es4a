@@ -1,7 +1,13 @@
 import { useSearchParams } from "react-router-dom";
 
-import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig, type YEN } from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+import {
+  createHvbGame,
+  hvbBotMove,
+  hvbHumanMove,
+  putConfig,
+  type YEN,
+} from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
 
 type StarterHvB = "human" | "bot";
 
