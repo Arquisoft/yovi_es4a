@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const sanitize = require('mongo-sanitize');
 const User = require('./users-model');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
@@ -40,6 +41,17 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// ─── CONFIGURACIÓN DE CORREO (NODEMAILER) ────────────────────────────────────
+// Para producción usa variables de entorno. Para probar con tu Gmail, 
+// necesitas generar una "Contraseña de aplicación" en los ajustes de seguridad de Google.
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Puedes cambiarlo por outlook, yahoo, etc.
+  auth: {
+    user: process.env.EMAIL_USER || 'tu_correo_de_prueba@gmail.com', 
+    pass: process.env.EMAIL_PASS || 'tu_contraseña_de_aplicacion'
+  }
+});
+
 // ─── REGISTRO ────────────────────────────────────────────────────────────────
 app.post('/createuser', async (req, res) => {
   const { username, password, email, profilePicture } = req.body;
@@ -56,12 +68,31 @@ app.post('/createuser', async (req, res) => {
     });
     await user.save();
 
-    console.log(`\n[SIMULADOR DE CORREO] 📧`);
-    console.log(`Para: ${sanitize(email)}`);
-    console.log(`Mensaje: Haz clic en el siguiente enlace para verificar tu cuenta:`);
-    console.log(`http://localhost:${port}/verify?token=${verificationToken}\n`);
+    // Enlace que apunta al FRONTEND de React
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const verificationLink = `${frontendUrl}/verify?token=${verificationToken}`;
 
-    // Devolvemos el mensaje de éxito. El frontend (antd message.success) lo mostrará.
+    // Configuración visual del correo electrónico
+    const mailOptions = {
+      from: '"Equipo YOVI" <noreply@yovi.com>',
+      to: email,
+      subject: 'Verifica tu cuenta de YOVI',
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4;">
+          <div style="background-color: white; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <h2 style="color: #1F2A30;">¡Bienvenido a YOVI, ${sanitize(username)}!</h2>
+            <p style="color: #555; font-size: 16px;">Gracias por registrarte. Para poder jugar y guardar tus estadísticas, necesitamos que verifiques tu dirección de correo electrónico.</p>
+            <a href="${verificationLink}" style="display: inline-block; padding: 14px 28px; margin: 25px 0; background-color: #FF7B00; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Verificar mi cuenta</a>
+            <p style="color: #999; font-size: 12px; margin-top: 20px;">Si no te has registrado en YOVI, puedes ignorar este correo de forma segura.</p>
+          </div>
+        </div>
+      `
+    };
+
+    // Enviamos el correo real
+    await transporter.sendMail(mailOptions);
+    console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
+
     res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
     // Manejo de errores de duplicados (MongoDB Error 11000)
@@ -88,7 +119,7 @@ app.get('/verify', async (req, res) => {
     user.isVerified = true;
     user.verificationToken = undefined;
     await user.save();
-    res.json({ message: 'Correo verificado con éxito. Ya puedes iniciar sesión.' });
+    res.json({ message: 'Correo verificado con éxito. Ya puedes iniciar sesión y jugar.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -102,13 +133,12 @@ app.post('/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     if (!user.isVerified) {
-      return res.status(403).json({ error: 'Por favor, verifica tu correo electrónico antes de iniciar sesión.' });
+      return res.status(403).json({ error: 'Por favor, verifica tu correo electrónico en tu bandeja de entrada antes de iniciar sesión.' });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
-    // En un futuro cercano, aquí generarías el JWT Token
     res.json({ message: `Bienvenido ${username}`, username: user.username, profilePicture: user.profilePicture });
   } catch (err) {
     res.status(500).json({ error: err.message });
