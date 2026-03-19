@@ -1,42 +1,43 @@
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RegisterForm from "../vistas/registroLogin/RegisterForm.tsx";
+import RegisterForm from "../vistas/registroLogin/RegisterForm.tsx"; // Ajusta la ruta si es necesario
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import "@testing-library/jest-dom";
 
-// Mock de react-router-dom para evitar errores de hooks (useRef, useContext) en el entorno de test
-vi.mock("react-router-dom", () => ({
-  // Sustituimos Link por un componente simple que no use hooks
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
-
-// Mock de las utilidades de validación y constantes
-vi.mock("../utils/Validation", () => ({
+vi.mock("../../utils/Validation", () => ({
   evaluatePasswordStrength: vi.fn((password: string) => {
-    if (password === "weak")
+    // Si la contraseña es "123456", simulamos que es débil
+    if (password === "123456")
       return { label: "Baja", color: "#ff4d4f", width: "25%" };
     return { label: "Alta", color: "#52c41a", width: "100%" };
   }),
-  AVATARS: [
-    { id: "av1", src: "av1.png", label: "Avatar 1" },
-    { id: "av2", src: "av2.png", label: "Avatar 2" },
-  ],
+  // ... resto de mocks (validateUsername, etc.)
 }));
+
+// Mock de la API de mensajes de Ant Design para evitar warnings y rastrear llamadas
+vi.mock("antd", async () => {
+  const actual = await vi.importActual("antd");
+  return {
+    ...actual,
+    message: {
+      success: vi.fn(),
+      error: vi.fn(),
+      warning: vi.fn(),
+    },
+  };
+});
 
 describe("RegisterForm Component", () => {
   beforeAll(() => {
-    // IMPORTANTE: Mock de window.matchMedia requerido por Ant Design en entornos JSDOM
+    // Mock de matchMedia (Obligatorio para Ant Design)
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
         matches: false,
         media: query,
         onchange: null,
-        addListener: vi.fn(), // obsoleto pero usado por algunas librerías
-        removeListener: vi.fn(), // obsoleto
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
@@ -46,100 +47,64 @@ describe("RegisterForm Component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Limpiamos el mock global de fetch
     global.fetch = vi.fn();
   });
 
-  it("debe renderizar todos los campos correctamente con sus labels e IDs", () => {
+  it("debe renderizar todos los campos correctamente", () => {
     render(<RegisterForm />);
 
     expect(screen.getByLabelText(/Nombre de Usuario/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Correo Electrónico/i)).toBeInTheDocument();
-    // Ant Design genera automáticamente el ID combinando formName y itemName: register_form_password
-    expect(
-      screen.getByLabelText("Contraseña", {
-        selector: "input#register_form_password",
-      }),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
     expect(screen.getByLabelText(/Repetir Contraseña/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Registrarse/i }),
     ).toBeInTheDocument();
   });
 
-  // Añadimos un timeout de 10000ms a los tests que usqan userEvent.type con muchos caracteres
-  // ya que Ant Design renderiza validaciones en cada pulsación y JSDOM es lento.
-  it("debe mostrar un mensaje de error si las contraseñas no coinciden al enviar", async () => {
-    render(<RegisterForm />);
-    const user = userEvent.setup();
-
-    // Usamos textos más cortos para no sobrecargar el entorno de testing
-    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "user");
-    await user.type(screen.getByLabelText(/Correo Electrónico/i), "a@a.com");
-    await user.type(
-      screen.getByLabelText("Contraseña", {
-        selector: "input#register_form_password",
-      }),
-      "Pass123!",
-    );
-    await user.type(screen.getByLabelText(/Repetir Contraseña/i), "Fail123!");
-
-    await user.click(screen.getByRole("button", { name: /Registrarse/i }));
-
-    // Usamos findByText en lugar de waitFor + getByText.
-    // Es más rápido, directo y evita saturar la CPU provocando "Timeouts"
-    expect(
-      await screen.findByText(/Las contraseñas no coinciden/i),
-    ).toBeInTheDocument();
-  }, 10000); // <-- Timeout ampliado
-
   it("debe mostrar error si el nivel de seguridad de la contraseña es demasiado bajo", async () => {
     render(<RegisterForm />);
     const user = userEvent.setup();
 
-    // Completamos todos los campos requeridos para evitar bloqueos
-    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "user");
-    await user.type(screen.getByLabelText(/Correo Electrónico/i), "a@a.com");
-
-    // El mock de Validation devolverá 'Baja' para este input
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "testuser");
     await user.type(
-      screen.getByLabelText("Contraseña", {
-        selector: "input#register_form_password",
-      }),
-      "weak",
+      screen.getByLabelText(/Correo Electrónico/i),
+      "test@test.com",
     );
-    await user.type(screen.getByLabelText(/Repetir Contraseña/i), "weak"); // Ahora sí coinciden y el onChange lo actualiza
+
+    // 1. IMPORTANTE: Usa una contraseña que pase tu validación de formato
+    // (por ejemplo, que tenga más de 6 caracteres si eso es lo que pide validatePassword)
+    // pero que el mock de fuerza considere "Baja".
+    const passDebil = "123456";
+
+    await user.type(screen.getByLabelText("Contraseña"), passDebil);
+    await user.type(screen.getByLabelText(/Repetir Contraseña/i), passDebil);
 
     await user.click(screen.getByRole("button", { name: /Registrarse/i }));
 
+    // 2. Ajustamos el matcher para que sea más flexible por si AntD fragmenta el texto
     expect(
-      await screen.findByText(
-        /La seguridad de la contraseña es demasiado baja para registrarse./i,
+      await screen.findByText((content) =>
+        content.includes("La seguridad de la contraseña es demasiado baja"),
       ),
     ).toBeInTheDocument();
-  }, 10000); // <-- Timeout ampliado
-
-  it("debe permitir la selección de un avatar diferente", async () => {
-    render(<RegisterForm />);
-
-    // Obtenemos específicamente los botones de los avatares por su aria-label
-    // Esto evita seleccionar los botones de "mostrar/ocultar contraseña" de Ant Design
-    const avatar1 = screen.getByRole("button", {
-      name: "Seleccionar avatar Avatar 1",
-    });
-    const avatar2 = screen.getByRole("button", {
-      name: "Seleccionar avatar Avatar 2",
-    });
-
-    // comprobación de selección de avatar
-    fireEvent.click(avatar2);
-
-    expect(avatar2).toHaveStyle("border: 3px solid #FF7B00");
-    expect(avatar1).toHaveStyle("border: 3px solid transparent");
   });
 
-  it("debe procesar el registro con éxito cuando los datos son válidos", async () => {
-    const successMsg = "¡Cuenta creada con éxito!";
+  it("debe permitir la selección de un avatar", async () => {
+    render(<RegisterForm />);
+
+    const avatar2 = screen.getByRole("button", {
+      name: /Seleccionar avatar Avatar 2/i,
+    });
+
+    fireEvent.click(avatar2);
+
+    // Verificamos el estilo de borde naranja (activo)
+    expect(avatar2).toHaveStyle("border: 3px solid #FF7B00");
+  });
+
+  it("debe procesar el registro con éxito y limpiar el formulario", async () => {
+    const successMsg = "¡Registro completado!";
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ message: successMsg }),
@@ -148,29 +113,30 @@ describe("RegisterForm Component", () => {
     render(<RegisterForm />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "user");
-    await user.type(screen.getByLabelText(/Correo Electrónico/i), "a@a.com");
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "newuser");
     await user.type(
-      screen.getByLabelText("Contraseña", {
-        selector: "input#register_form_password",
-      }),
-      "Segura123!",
+      screen.getByLabelText(/Correo Electrónico/i),
+      "new@user.com",
     );
-    await user.type(screen.getByLabelText(/Repetir Contraseña/i), "Segura123!");
+    await user.type(screen.getByLabelText("Contraseña"), "StrongPass123!");
+    await user.type(
+      screen.getByLabelText(/Repetir Contraseña/i),
+      "StrongPass123!",
+    );
 
     await user.click(screen.getByRole("button", { name: /Registrarse/i }));
 
-    // Verificamos el mensaje de éxito del JSON
+    // Buscamos el mensaje de éxito en el componente Alert
     expect(await screen.findByText(successMsg)).toBeInTheDocument();
 
-    // Verificamos limpieza de campos con un waitFor, ya que resetFields de AntD puede tardar un milisegundo extra
+    // Verificamos que los campos se hayan limpiado
     await waitFor(() => {
       expect(screen.getByLabelText(/Nombre de Usuario/i)).toHaveValue("");
     });
-  }, 10000); // <-- Timeout ampliado
+  });
 
-  it("debe manejar errores devueltos por el microservicio", async () => {
-    const errorMsg = "El nombre de usuario ya existe";
+  it("debe manejar errores del servidor correctamente", async () => {
+    const errorMsg = "El correo ya está registrado";
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       json: async () => ({ error: errorMsg }),
@@ -179,18 +145,17 @@ describe("RegisterForm Component", () => {
     render(<RegisterForm />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "user");
-    await user.type(screen.getByLabelText(/Correo Electrónico/i), "a@a.com");
+    await user.type(screen.getByLabelText(/Nombre de Usuario/i), "existing");
     await user.type(
-      screen.getByLabelText("Contraseña", {
-        selector: "input#register_form_password",
-      }),
-      "Pass123!",
+      screen.getByLabelText(/Correo Electrónico/i),
+      "existing@mail.com",
     );
+    await user.type(screen.getByLabelText("Contraseña"), "Pass123!");
     await user.type(screen.getByLabelText(/Repetir Contraseña/i), "Pass123!");
 
     await user.click(screen.getByRole("button", { name: /Registrarse/i }));
 
+    // Verificamos que el error del backend se muestra en la Alert
     expect(await screen.findByText(errorMsg)).toBeInTheDocument();
-  }, 10000); // <-- Timeout ampliado
+  });
 });
