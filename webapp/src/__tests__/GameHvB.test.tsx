@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 
 import GameHvB from "../vistas/GameHvB";
-import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig } from "../api/gamey";
+import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig, hvbHint } from "../api/gamey";
 
 const sessionGamePageMock = vi.fn();
 
@@ -17,11 +17,13 @@ vi.mock("react-router-dom", async () => {
     };
 });
 
+// Añadido hvbHint al mock de la API para evitar errores de undefined
 vi.mock("../api/gamey", () => ({
     createHvbGame: vi.fn(),
     hvbHumanMove: vi.fn(),
     hvbBotMove: vi.fn(),
     putConfig: vi.fn(),
+    hvbHint: vi.fn(), 
 }));
 
 vi.mock("../game/SessionGamePage", () => ({
@@ -38,6 +40,7 @@ describe("GameHvB", () => {
         vi.mocked(hvbHumanMove).mockReset();
         vi.mocked(hvbBotMove).mockReset();
         vi.mocked(putConfig).mockReset();
+        vi.mocked(hvbHint).mockReset();
 
         mockSearchParams = new URLSearchParams("size=7&bot=random_bot");
     });
@@ -72,6 +75,7 @@ describe("GameHvB", () => {
         });
 
         expect(typeof props.botMove).toBe("function");
+        expect(typeof props.onHint).toBe("function");
     });
 
     it("normaliza starter=bot y respeta bot/size de la query", () => {
@@ -221,6 +225,18 @@ describe("GameHvB", () => {
         await props.botMove("g1");
 
         expect(hvbBotMove).toHaveBeenCalledWith("g1");
+    });
+    
+    it("onHint delega en hvbHint", async () => {
+        vi.mocked(hvbHint).mockResolvedValue({ hint_cell_id: 42 } as any);
+
+        render(<GameHvB />);
+
+        const props = sessionGamePageMock.mock.calls[0][0];
+        const result = await props.onHint("g1");
+
+        expect(hvbHint).toHaveBeenCalledWith("g1");
+        expect(result).toBe(42);
     });
 
     it("genera textos de resultado correctos", () => {

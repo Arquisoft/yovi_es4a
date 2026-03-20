@@ -14,6 +14,12 @@
   );
 
   border-radius: 0 !important;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.hexBtn:not(:disabled):hover {
+  filter: brightness(1.15);
+  transform: scale(1.08);
 }
 
 .hexBtn__content {
@@ -23,4 +29,17 @@
   width: 100%;
   height: 100%;
   line-height: 1;
+}
+
+@keyframes hintPulse {
+  0%   { filter: brightness(1)   drop-shadow(0 0 4px #52c41acc); }
+  50%  { filter: brightness(1.2) drop-shadow(0 0 12px #52c41aff); }
+  100% { filter: brightness(1)   drop-shadow(0 0 4px #52c41acc); }
+}
+
+.hexBtn--hint {
+  animation: hintPulse 1.2s ease-in-out infinite;
+  transform: scale(1.12);
+  z-index: 1;
+  position: relative;
 }

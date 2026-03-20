@@ -10,6 +10,31 @@ type Props = {
   onCellClick: (cellId: number) => void;
 };
 
+function playBop() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+
+    osc.onended = () => ctx.close();
+  } catch {
+    // Navegadores sin Web Audio API — silencioso
+  }
+}
+
 export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
@@ -100,25 +125,29 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
             {rowCells.map((cell) => {
               const isEmpty = cell.value === ".";
               const isClickable = isEmpty && !disabled;
+              const isHint = cell.hint === true;
 
               const bg =
-                cell.value === "B"
-                  ? "#28BBF5"
-                  : cell.value === "R"
-                    ? "#FF7B00"
-                    : "#f0f0f0";
-
-              const color = cell.value === "." ? "#111827" : "white";
+                isHint
+                  ? "#52c41a"
+                  : cell.value === "B"
+                    ? "#28BBF5"
+                    : cell.value === "R"
+                      ? "#FF7B00"
+                      : "#e8e8e8";
 
               return (
                 <Button
                   key={cell.cellId}
-                  className="hexBtn"
+                  className={`hexBtn${isHint ? " hexBtn--hint" : ""}`}
                   aria-label={`cell-${cell.cellId}`}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (isClickable) onCellClick(cell.cellId);
+                    if (isClickable) {
+                      playBop();
+                      onCellClick(cell.cellId);
+                    }
                   }}
                   disabled={!isClickable}
                   style={{
@@ -127,11 +156,12 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
                     height: cellSize,
                     padding: 0,
                     background: bg,
-                    color,
+                    color: isHint ? "white" : cell.value === "." ? "#111827" : "white",
                     fontWeight: 700,
                     fontSize: cellSize < 26 ? 10 : cellSize < 34 ? 12 : 14,
-                    opacity: disabled ? 0.65 : 1,
+                    opacity: disabled && !isHint ? 0.65 : 1,
                     border: "none",
+                    boxShadow: "none",
                   }}
                 >
                   <span className="hexBtn__content">

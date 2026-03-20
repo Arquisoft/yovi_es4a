@@ -11,6 +11,7 @@ export type Cell = {
   value: CellValue;
   coords: Coords;
   touches: { a: boolean; b: boolean; c: boolean };
+  hint?: boolean;
 };
 
 /**
@@ -26,7 +27,6 @@ export function parseYenToCells(yen: YEN): Cell[] {
   const size = yen.size;
   const rows = yen.layout.split("/");
 
-  // Validación mínima defensiva (por si llega algo raro)
   if (rows.length !== size) {
     throw new Error(`Invalid YEN layout: expected ${size} rows, got ${rows.length}`);
   }
@@ -45,11 +45,6 @@ export function parseYenToCells(yen: YEN): Cell[] {
     for (let c = 0; c < expectedLen; c++) {
       const value = rowStr[c] as CellValue;
 
-      // Coordenadas baricéntricas consistentes con coord.rs:
-      // r = row, c = col
-      // x = size - 1 - r
-      // y = c
-      // z = (size - 1) - x - y
       const x = size - 1 - r;
       const y = c;
       const z = (size - 1) - x - y;
@@ -74,9 +69,6 @@ export function parseYenToCells(yen: YEN): Cell[] {
   return cells;
 }
 
-/**
- * Devuelve cuántas celdas tiene un tablero size.
- */
 export function totalCells(size: number): number {
   return (size * (size + 1)) / 2;
 }

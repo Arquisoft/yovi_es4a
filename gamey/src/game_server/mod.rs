@@ -82,12 +82,10 @@ mod tests {
     #[tokio::test]
     async fn router_exposes_status_endpoint() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(Request::builder().uri("/status").body(Body::empty()).unwrap())
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::OK);
     }
 
@@ -112,7 +110,6 @@ mod tests {
     #[tokio::test]
     async fn router_exposes_meta_endpoint() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(
                 Request::builder()
@@ -122,7 +119,6 @@ mod tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::OK);
     }
 
@@ -136,7 +132,6 @@ mod tests {
     #[tokio::test]
     async fn unknown_route_returns_not_found() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(
                 Request::builder()
@@ -146,14 +141,12 @@ mod tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
     async fn router_exposes_config_get_endpoint() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(
                 Request::builder()
@@ -164,14 +157,12 @@ mod tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn router_exposes_hvh_create_endpoint() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(
                 Request::builder()
@@ -184,14 +175,12 @@ mod tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
     async fn router_exposes_hvb_create_endpoint() {
         let app = create_router(GameServerState::new_default());
-
         let response = app
             .oneshot(
                 Request::builder()
@@ -204,7 +193,6 @@ mod tests {
             )
             .await
             .unwrap();
-
         assert_eq!(response.status(), StatusCode::OK);
     }
 }
