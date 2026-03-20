@@ -1,6 +1,6 @@
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import VerifyEmail from "../vistas/registroLogin/ValidacionEmail"; // Asegúrate de ajustar esta ruta
+import VerifyEmail from "../vistas/registroLogin/ValidacionEmail";
 import {
   describe,
   it,

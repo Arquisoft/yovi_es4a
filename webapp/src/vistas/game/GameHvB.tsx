@@ -7,8 +7,8 @@ import {
   hvbHint,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+} from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
 
 type StarterHvB = "human" | "bot" | "random";
 
