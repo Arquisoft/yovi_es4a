@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{GameY, Movement, PlayerId};
 
 use super::auth::{resolve_principal, Principal};
-use super::dto::{AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus};
+use super::dto::{AppliedMove, CellMoveRequest, GameMode, GameStateResponse, GameStatus, HvHStarter};
 use super::error::ApiErrorResponse;
 use super::sessions::GameSession;
 use super::state::GameServerState;
@@ -21,6 +21,16 @@ fn parse_uuid(id: &str) -> Result<String, ApiErrorResponse> {
     Uuid::parse_str(id)
         .map(|u| u.to_string())
         .map_err(|_| ApiErrorResponse::bad_request("Invalid game_id", "invalid_game_id"))
+}
+
+fn resolve_hvh_starting_player(starter: Option<HvHStarter>) -> u8 {
+    match starter {
+        Some(HvHStarter::Player1) => 1,
+        Some(HvHStarter::Random) => {
+            if rand::random::<bool>() { 1 } else { 0 }
+        }
+        _ => 0,
+    }
 }
 
 async fn load_owned_session(
@@ -81,10 +91,7 @@ pub async fn create_game(
     let principal = resolve_principal(&headers);
     let cfg = state.config_store.get_or_default(&principal).await;
 
-    let next_player = match cfg.hvh_starter {
-        Some(super::dto::HvHStarter::Player1) => 1,
-        _ => 0,
-    };
+    let next_player = resolve_hvh_starting_player(cfg.hvh_starter.clone());
 
     let game = GameY::new(cfg.size);
     let game_id = Uuid::new_v4().to_string();
@@ -275,6 +282,27 @@ mod tests {
         assert!(matches!(res.0.mode, GameMode::Hvh));
         match res.0.status {
             GameStatus::Ongoing { next } => assert!(matches!(next, NextTurn::Player1)),
+            _ => panic!("expected ongoing"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_game_with_random_returns_valid_starting_player() {
+        let state = GameServerState::new_default();
+        let headers = headers_with_client("hvh-create-random");
+        let principal = Principal::Guest {
+            client_id: "hvh-create-random".to_string(),
+        };
+
+        store_hvh_config(&state, &principal, 3, Some(HvHStarter::Random)).await;
+
+        let res = create_game(State(state), headers).await.unwrap();
+
+        assert!(matches!(res.0.mode, GameMode::Hvh));
+        match res.0.status {
+            GameStatus::Ongoing { next } => {
+                assert!(matches!(next, NextTurn::Player0 | NextTurn::Player1))
+            }
             _ => panic!("expected ongoing"),
         }
     }

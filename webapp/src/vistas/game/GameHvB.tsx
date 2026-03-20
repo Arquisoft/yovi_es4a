@@ -4,12 +4,13 @@ import {
   createHvbGame,
   hvbBotMove,
   hvbHumanMove,
+  hvbHint,
   putConfig,
   type YEN,
-} from "../../api/gamey";
-import SessionGamePage from "../../game/SessionGamePage";
+} from "../api/gamey";
+import SessionGamePage from "../game/SessionGamePage";
 
-type StarterHvB = "human" | "bot";
+type StarterHvB = "human" | "bot" | "random";
 
 function parseBoardSize(raw: string | null): number {
   const parsed = Number(raw ?? "7");
@@ -17,7 +18,21 @@ function parseBoardSize(raw: string | null): number {
 }
 
 function parseHvBStarter(raw: string | null): StarterHvB {
-  return (raw ?? "human").toLowerCase() === "bot" ? "bot" : "human";
+  const value = (raw ?? "human").toLowerCase();
+  if (value === "bot") return "bot";
+  if (value === "random") return "random";
+  return "human";
+}
+
+function getStarterLabel(hvb_starter: StarterHvB, botId: string): string {
+  switch (hvb_starter) {
+    case "human":
+      return "Humano";
+    case "bot":
+      return botId;
+    case "random":
+      return "Aleatorio";
+  }
 }
 
 export default function GameHvB() {
@@ -25,7 +40,7 @@ export default function GameHvB() {
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
-  const starter = parseHvBStarter(searchParams.get("hvbstarter"));
+  const hvb_starter = parseHvBStarter(searchParams.get("hvbstarter"));
 
   const participantLabels = {
     human: "Humano",
@@ -34,11 +49,11 @@ export default function GameHvB() {
 
   return (
     <SessionGamePage<YEN>
-      deps={[size, botId, starter]}
+      deps={[size, botId, hvb_starter]}
       start={async () => {
         await putConfig({
           size,
-          hvb_starter: starter,
+          hvb_starter: hvb_starter,
           bot_id: botId,
           hvh_starter: "player0",
         });
@@ -46,14 +61,15 @@ export default function GameHvB() {
         return createHvbGame({
           size,
           bot_id: botId,
-          hvb_starter: starter,
+          hvb_starter,
         });
       }}
       move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
       botMove={(gameId) => hvbBotMove(gameId)}
+      onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
       resultConfig={{
         title: "Juego Y — Human vs Bot",
-        subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${participantLabels[starter]}`,
+        subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(hvb_starter, participantLabels.bot)}`,
         abandonOkText: "Sí, abandonar",
         getResultTitle: (winner) =>
           winner === "human" ? "¡Felicidades!" : "Game Over",

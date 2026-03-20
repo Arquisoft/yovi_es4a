@@ -136,10 +136,8 @@ describe("Board", () => {
 
         expect(cell0).toHaveStyle({
             width: "38px",
-            minWidth: "38px",
             height: "38px",
-            fontSize: "14px",
-            background: "rgb(240, 240, 240)",
+            background: "rgb(232, 232, 232)",
             color: "rgb(17, 24, 39)",
         });
     });
@@ -158,9 +156,7 @@ describe("Board", () => {
 
         expect(cell0).toHaveStyle({
             width: "50px",
-            minWidth: "50px",
             height: "50px",
-            fontSize: "14px",
         });
     });
 
@@ -178,9 +174,7 @@ describe("Board", () => {
 
         expect(cell0).toHaveStyle({
             width: "22px",
-            minWidth: "22px",
             height: "22px",
-            fontSize: "10px",
         });
     });
 

@@ -12,17 +12,17 @@ import {
 import {
   BuildOutlined,
   PlayCircleOutlined,
-  RobotOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getMeta, type MetaResponse } from "../api/gamey";
 import AppHeader from "./AppHeader.tsx";
+import DifficultySelect from "./Dificultyselect.tsx";
 
 const { Title, Text } = Typography;
 
-type StarterHvB = "human" | "bot";
-type StarterHvH = "player0" | "player1";
+type StarterHvB = "human" | "bot" | "random";
+type StarterHvH = "player0" | "player1" | "random";
 
 type LastConfigHvB = { size: number; botId: string; hvbstarter: StarterHvB };
 type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
@@ -37,7 +37,7 @@ function loadLastConfigHvB(): LastConfigHvB | null {
     const parsed = JSON.parse(raw) as Partial<LastConfigHvB>;
     if (typeof parsed.size !== "number") return null;
     if (typeof parsed.botId !== "string") return null;
-    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot") return null;
+    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot" && parsed.hvbstarter !== "random") return null;
     return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
@@ -56,7 +56,7 @@ function loadLastConfigHvH(): LastConfigHvH | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvH>;
     if (typeof parsed.size !== "number") return null;
-    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1") return null;
+    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1" && parsed.hvhstarter !== "random") return null;
     return { size: parsed.size, hvhstarter: parsed.hvhstarter };
   } catch {
     return null;
@@ -87,6 +87,9 @@ export default function Home() {
 
   // HvH config
   const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
+
+  // Pantalla de dificultad HvB
+  const [showDifficulty, setShowDifficulty] = useState(false);
 
   useEffect(() => {
     getMeta()
@@ -123,7 +126,11 @@ export default function Home() {
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
 
-  function handlePlayHvB() {
+  function handleGoToDifficulty() {
+    setShowDifficulty(true);
+  }
+
+  function handleConfirmDifficulty() {
     const s = clampSize(size, meta);
     saveLastConfigHvB({ size: s, botId, hvbstarter });
     const params = new URLSearchParams();
@@ -140,6 +147,20 @@ export default function Home() {
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
     navigate(`/game-hvh?${params.toString()}`);
+  }
+
+  if (showDifficulty) {
+    return (
+      <DifficultySelect
+        bots={meta?.bots ?? ["random_bot", "mcts_bot"]}
+        selectedBot={botId}
+        onSelect={(next) => {
+          setBotId(next);
+          saveLastConfigHvB({ size, botId: next, hvbstarter });
+        }}
+        onConfirm={handleConfirmDifficulty}
+      />
+    );
   }
 
   return (
@@ -174,21 +195,6 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <Text type="secondary"><RobotOutlined /> Bot:</Text>
-                  <div>
-                    <Select
-                      value={botId}
-                      onChange={(next) => {
-                        setBotId(next);
-                        saveLastConfigHvB({ size, botId: next, hvbstarter });
-                      }}
-                      style={{ width: 240 }}
-                      options={(meta?.bots ?? ["random_bot"]).map((b) => ({ value: b, label: b }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
                   <Text type="secondary"><TeamOutlined /> Empieza:</Text>
                   <div>
                     <Select
@@ -199,14 +205,15 @@ export default function Home() {
                       }}
                       style={{ width: 200 }}
                       options={[
-                        { value: "human", label: "Human" },
+                        { value: "human", label: "Humano" },
                         { value: "bot", label: "Bot" },
+                        { value: "random", label: "Aleatorio" },
                       ]}
                     />
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvB}>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleGoToDifficulty}>
                   Jugar
                 </Button>
               </Flex>
@@ -240,6 +247,7 @@ export default function Home() {
                       options={[
                         { value: "player0", label: "Player 0" },
                         { value: "player1", label: "Player 1" },
+                        { value: "random", label: "Aleatorio" },
                       ]}
                     />
                   </div>

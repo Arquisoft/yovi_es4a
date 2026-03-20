@@ -80,6 +80,16 @@ describe("GameHvH", () => {
     expect(props.resultConfig.subtitle).toBe("Tamaño: 9 · Empieza: Player 1");
   });
 
+  it("normaliza starter=random y muestra Aleatorio", () => {
+    mockSearchParams = new URLSearchParams("size=8&hvhstarter=RaNdOm");
+
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls[0][0];
+    expect(props.deps).toEqual([8, "random"]);
+    expect(props.resultConfig.subtitle).toBe("Tamaño: 8 · Empieza: Aleatorio");
+  });
+
   it("hace fallback a size=7 y starter=player0", () => {
     mockSearchParams = new URLSearchParams("size=1&hvhstarter=alien");
 
@@ -103,7 +113,7 @@ describe("GameHvH", () => {
       mode: "hvh",
       yen: { size: 9, layout: "." },
       status: { state: "ongoing", next: "player1" },
-    });
+    } as any);
 
     mockSearchParams = new URLSearchParams("size=9&hvhstarter=player1");
 
@@ -132,13 +142,55 @@ describe("GameHvH", () => {
     });
   });
 
+  it("start guarda config y crea la partida HvH con starter random", async () => {
+    vi.mocked(putConfig).mockResolvedValue({
+      size: 10,
+      hvb_starter: "human",
+      hvh_starter: "random",
+      bot_id: null,
+    } as any);
+
+    vi.mocked(createHvhGame).mockResolvedValue({
+      game_id: "g-random",
+      mode: "hvh",
+      yen: { size: 10, layout: "." },
+      status: { state: "ongoing", next: "player0" },
+    } as any);
+
+    mockSearchParams = new URLSearchParams("size=10&hvhstarter=random");
+
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls[0][0];
+    const result = await props.start();
+
+    expect(putConfig).toHaveBeenCalledWith({
+      size: 10,
+      hvb_starter: "human",
+      bot_id: null,
+      hvh_starter: "random",
+    });
+
+    expect(createHvhGame).toHaveBeenCalledWith({
+      size: 10,
+      hvh_starter: "random",
+    });
+
+    expect(result).toEqual({
+      game_id: "g-random",
+      mode: "hvh",
+      yen: { size: 10, layout: "." },
+      status: { state: "ongoing", next: "player0" },
+    });
+  });
+
   it("move delega en hvhMove", async () => {
     vi.mocked(hvhMove).mockResolvedValue({
       game_id: "g2",
       yen: { size: 7, layout: "." },
       applied_move: { cell_id: 2, coords: { x: 1, y: 1, z: 2 } },
       status: { state: "ongoing", next: "player1" },
-    });
+    } as any);
 
     render(<GameHvH />);
 
