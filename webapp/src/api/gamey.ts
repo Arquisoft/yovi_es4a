@@ -204,6 +204,13 @@ export async function hvbBotMove(gameId: string): Promise<HvbBotMoveResponse> {
   });
 }
 
+export async function hvbHint(gameId: string): Promise<{ hint_cell_id: number }> {
+  return http<{ hint_cell_id: number }>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}/hint`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+}
+
 export async function deleteHvbGame(gameId: string): Promise<{ deleted: boolean }> {
   return http<{ deleted: boolean }>(`/api/v1/hvb/games/${encodeURIComponent(gameId)}`, {
     method: "DELETE",

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Flex, Space, Typography } from "antd";
+import { BulbOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-
 import Board from "./Board";
 import GameShell from "./GameShell";
 import { parseYenToCells } from "./yen";
@@ -44,6 +44,7 @@ type Props<TYen extends GameYEN> = {
   start: () => Promise<SessionGameStartResponse<TYen>>;
   move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<TYen>>;
   botMove?: (gameId: string) => Promise<SessionGameMoveResponse<TYen>>;
+  onHint?: (gameId: string) => Promise<number>;
   resultConfig: ResultConfig;
   winnerPalette: WinnerPalette;
   turnConfig: TurnConfig;
@@ -54,6 +55,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   start,
   move,
   botMove,
+  onHint,
   resultConfig,
   winnerPalette,
   turnConfig,
@@ -61,6 +63,10 @@ export default function SessionGamePage<TYen extends GameYEN>({
   const { modal } = App.useApp();
   const navigate = useNavigate();
   const botTurnInFlight = useRef(false);
+
+  const [hintCellId, setHintCellId] = useState<number | null>(null);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [hintLoading, setHintLoading] = useState(false);
 
   const {
     yen,
@@ -79,7 +85,13 @@ export default function SessionGamePage<TYen extends GameYEN>({
     botMove,
   });
 
-  const cells = useMemo(() => (yen ? parseYenToCells(yen) : []), [yen]);
+  const cells = useMemo(() => {
+    const base = yen ? parseYenToCells(yen) : [];
+    if (hintCellId === null) return base;
+    return base.map((c) =>
+      c.cellId === hintCellId ? { ...c, hint: true } : c
+    );
+  }, [yen, hintCellId]);
 
   function goHome() {
     navigate("/home", { replace: true });
@@ -95,6 +107,28 @@ export default function SessionGamePage<TYen extends GameYEN>({
     });
   }
 
+  async function handleHint() {
+    if (!onHint || !gameId || hintUsed) return;
+    setHintLoading(true);
+    try {
+      const cellId = await onHint(gameId);
+      setHintCellId(cellId);
+      setHintUsed(true);
+    } catch {
+      // silencioso — si falla simplemente no se muestra pista
+    } finally {
+      setHintLoading(false);
+    }
+  }
+
+  const prevYen = useRef(yen);
+  useEffect(() => {
+    if (prevYen.current !== yen) {
+      prevYen.current = yen;
+      setHintCellId(null);
+    }
+  }, [yen]);
+
   const activeTurn = nextTurn ? turnConfig.turns[nextTurn] : null;
 
   const boardCardStyle: React.CSSProperties = useMemo(() => {
@@ -105,20 +139,20 @@ export default function SessionGamePage<TYen extends GameYEN>({
         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
       };
     }
-
     if (gameOver && winner === winnerPalette.highlightedWinner) {
       return { background: winnerPalette.highlightedBackground };
     }
-
     if (gameOver && winner) {
       return { background: winnerPalette.otherWinnerBackground };
     }
-
     return {};
   }, [gameOver, activeTurn, winner, winnerPalette]);
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !activeTurn) return null;
+
+    const canHint =
+      !!onHint && !hintUsed && !loading && nextTurn !== "bot" && !!gameId;
 
     return (
       <Card
@@ -127,13 +161,27 @@ export default function SessionGamePage<TYen extends GameYEN>({
           borderLeft: `6px solid ${activeTurn.color}`,
         }}
       >
-        <Text strong>
-          {turnConfig.textPrefix ?? "Turno actual:"}{" "}
-          <span style={{ color: activeTurn.color }}>{activeTurn.label}</span>
-        </Text>
+        <Flex justify="space-between" align="center">
+          <Text strong>
+            {turnConfig.textPrefix ?? "Turno actual:"}{" "}
+            <span style={{ color: activeTurn.color }}>{activeTurn.label}</span>
+          </Text>
+          {onHint && (
+            <Button
+              icon={<BulbOutlined />}
+              size="small"
+              loading={hintLoading}
+              disabled={!canHint}
+              onClick={handleHint}
+              title={hintUsed ? "Ya usaste tu pista" : "Pedir pista (1 vez)"}
+            >
+              {hintUsed ? "Pista usada" : "Pista"}
+            </Button>
+          )}
+        </Flex>
       </Card>
     );
-  }, [gameOver, activeTurn, turnConfig]);
+  }, [gameOver, activeTurn, turnConfig, onHint, hintUsed, hintLoading, loading, nextTurn, gameId]);
 
   useEffect(() => {
     if (!botMove) return;
@@ -144,7 +192,6 @@ export default function SessionGamePage<TYen extends GameYEN>({
     if (botTurnInFlight.current) return;
 
     botTurnInFlight.current = true;
-
     void onBotTurn().finally(() => {
       botTurnInFlight.current = false;
     });
@@ -176,7 +223,10 @@ export default function SessionGamePage<TYen extends GameYEN>({
             size={yen?.size ?? 7}
             cells={cells}
             disabled={loading || gameOver || nextTurn === "bot"}
-            onCellClick={onCellClick}
+            onCellClick={(cellId) => {
+              setHintCellId(null);
+              onCellClick(cellId);
+            }}
           />
         </Card>
       }
@@ -189,13 +239,11 @@ export default function SessionGamePage<TYen extends GameYEN>({
                   {resultConfig.getResultTitle(winner)}
                 </Title>
               </Flex>
-
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={5} style={{ margin: 0 }}>
                   {resultConfig.getResultText(winner)}
                 </Title>
               </Flex>
-
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Button type="primary" onClick={goHome}>
                   Volver a Home

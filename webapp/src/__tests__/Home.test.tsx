@@ -25,6 +25,16 @@ vi.mock("../vistas/AppHeader.tsx", () => ({
     ),
 }));
 
+// Mockeamos la pantalla de dificultad intermedia introducida recientemente
+vi.mock("../vistas/Dificultyselect.tsx", () => ({
+    default: ({ selectedBot, onSelect, onConfirm }: any) => (
+        <div data-testid="difficulty-select" data-bot={selectedBot}>
+            <button aria-label="select-mcts_bot" onClick={() => onSelect("mcts_bot")}>mcts_bot</button>
+            <button aria-label="confirm-difficulty" onClick={onConfirm}>Confirmar</button>
+        </div>
+    )
+}));
+
 vi.mock("antd", () => ({
     Button: ({ children, onClick, disabled, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
@@ -62,13 +72,11 @@ vi.mock("antd", () => ({
         const values = (options ?? []).map((o: any) => o.value);
 
         const aria =
-            values.includes("random_bot") || values.includes("mcts_bot")
-                ? "bot-select"
-                : values.includes("human") || values.includes("bot")
-                    ? "hvb-starter-select"
-                    : values.includes("player0") || values.includes("player1")
-                        ? "hvh-starter-select"
-                        : "select";
+            values.includes("human") || values.includes("bot")
+                ? "hvb-starter-select"
+                : values.includes("player0") || values.includes("player1")
+                    ? "hvh-starter-select"
+                    : "select";
 
         return (
             <select aria-label={aria} value={value} onChange={(e) => onChange(e.target.value)}>
@@ -87,6 +95,8 @@ vi.mock("@ant-design/icons", () => ({
     PlayCircleOutlined: () => null,
     RobotOutlined: () => null,
     TeamOutlined: () => null,
+    ThunderboltOutlined: () => null,
+    FireOutlined: () => null,
 }));
 
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
@@ -123,13 +133,11 @@ describe("Home", () => {
         render(<Home />);
 
         const sizeInputs = await screen.findAllByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
         const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
 
         expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
         expect((sizeInputs[1] as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
         expect(hvbStarterSelect.value).toBe("human");
         expect(hvhStarterSelect.value).toBe("player0");
     });
@@ -145,13 +153,16 @@ describe("Home", () => {
         render(<Home />);
 
         const sizeInputs = await screen.findAllByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
 
         expect((sizeInputs[0] as HTMLInputElement).value).toBe("9");
-        expect((sizeInputs[1] as HTMLInputElement).value).toBe("9");
-        expect(botSelect.value).toBe("mcts_bot");
         expect(hvbStarterSelect.value).toBe("bot");
+
+        // Click Jugar para ver si cargó mcts_bot en DifficultySelect
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await userEvent.click(playButtons[0]);
+        const diffSelect = screen.getByTestId("difficulty-select");
+        expect(diffSelect).toHaveAttribute("data-bot", "mcts_bot");
     });
 
     it("carga la configuración previa de HvH desde localStorage", async () => {
@@ -202,11 +213,14 @@ describe("Home", () => {
 
         render(<Home />);
 
-        const botSelect = await screen.findByLabelText("bot-select");
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select");
-
-        await user.selectOptions(botSelect, "mcts_bot");
         await user.selectOptions(hvbStarterSelect, "bot");
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]); // Abre DifficultySelect
+
+        const botSelectButton = screen.getByLabelText("select-mcts_bot");
+        await user.click(botSelectButton);
 
         expect(setItemSpy).toHaveBeenCalledWith(
             LAST_CONFIG_KEY_HVB,
@@ -248,14 +262,17 @@ describe("Home", () => {
 
         render(<Home />);
 
-        const botSelect = await screen.findByLabelText("bot-select");
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select");
-
-        await user.selectOptions(botSelect, "mcts_bot");
         await user.selectOptions(hvbStarterSelect, "bot");
 
         const playButtons = screen.getAllByRole("button", { name: "Jugar" });
-        await user.click(playButtons[0]);
+        await user.click(playButtons[0]); // Abre DifficultySelect
+
+        const botSelectButton = screen.getByLabelText("select-mcts_bot");
+        await user.click(botSelectButton); // Selecciona bot
+
+        const confirmButton = screen.getByLabelText("confirm-difficulty");
+        await user.click(confirmButton); // Empezar
 
         expect(navigateMock).toHaveBeenCalledWith(
             "/game-hvb?size=5&bot=mcts_bot&hvbstarter=bot",
@@ -305,6 +322,9 @@ describe("Home", () => {
         const playButtons = screen.getAllByRole("button", { name: "Jugar" });
         await user.click(playButtons[0]);
 
+        const confirmButton = screen.getByLabelText("confirm-difficulty");
+        await user.click(confirmButton);
+
         expect(String(navigateMock.mock.calls[0][0])).toContain("size=7");
     });
 
@@ -324,10 +344,11 @@ describe("Home", () => {
         const user = userEvent.setup();
         render(<Home />);
 
-        await screen.findByLabelText("bot-select");
-
         const playButtons = screen.getAllByRole("button", { name: "Jugar" });
         await user.click(playButtons[0]);
+
+        const confirmButton = screen.getByLabelText("confirm-difficulty");
+        await user.click(confirmButton);
 
         expect(navigateMock).toHaveBeenCalledWith(
             "/game-hvb?size=4&bot=random_bot&hvbstarter=human",
@@ -353,12 +374,10 @@ describe("Home", () => {
         render(<Home />);
 
         const sizeInputs = await screen.findAllByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
         const hvhStarterSelect = screen.getByLabelText("hvh-starter-select") as HTMLSelectElement;
 
         expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
         expect(hvbStarterSelect.value).toBe("human");
         expect(hvhStarterSelect.value).toBe("player0");
     });
@@ -374,11 +393,9 @@ describe("Home", () => {
         render(<Home />);
 
         const sizeInputs = await screen.findAllByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
 
         expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
         expect(hvbStarterSelect.value).toBe("human");
     });
 
@@ -393,11 +410,9 @@ describe("Home", () => {
         render(<Home />);
 
         const sizeInputs = await screen.findAllByLabelText("size-input");
-        const botSelect = screen.getByLabelText("bot-select") as HTMLSelectElement;
         const hvbStarterSelect = screen.getByLabelText("hvb-starter-select") as HTMLSelectElement;
 
         expect((sizeInputs[0] as HTMLInputElement).value).toBe("7");
-        expect(botSelect.value).toBe("random_bot");
         expect(hvbStarterSelect.value).toBe("human");
     });
 
@@ -425,10 +440,11 @@ describe("Home", () => {
         const user = userEvent.setup();
         render(<Home />);
 
-        await screen.findByLabelText("bot-select");
-
         const playButtons = screen.getAllByRole("button", { name: "Jugar" });
         await user.click(playButtons[0]);
+
+        const confirmButton = screen.getByLabelText("confirm-difficulty");
+        await user.click(confirmButton);
 
         expect(navigateMock).toHaveBeenCalled();
     });

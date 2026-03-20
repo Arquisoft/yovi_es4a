@@ -12,12 +12,12 @@ import {
 import {
   BuildOutlined,
   PlayCircleOutlined,
-  RobotOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getMeta, type MetaResponse } from "../api/gamey";
 import AppHeader from "./AppHeader.tsx";
+import DifficultySelect from "./Dificultyselect.tsx";
 
 const { Title, Text } = Typography;
 
@@ -88,6 +88,9 @@ export default function Home() {
   // HvH config
   const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
 
+  // Pantalla de dificultad HvB
+  const [showDifficulty, setShowDifficulty] = useState(false);
+
   useEffect(() => {
     getMeta()
       .then((c) => setMeta(c))
@@ -123,7 +126,11 @@ export default function Home() {
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
 
-  function handlePlayHvB() {
+  function handleGoToDifficulty() {
+    setShowDifficulty(true);
+  }
+
+  function handleConfirmDifficulty() {
     const s = clampSize(size, meta);
     saveLastConfigHvB({ size: s, botId, hvbstarter });
     const params = new URLSearchParams();
@@ -140,6 +147,20 @@ export default function Home() {
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
     navigate(`/game-hvh?${params.toString()}`);
+  }
+
+  if (showDifficulty) {
+    return (
+      <DifficultySelect
+        bots={meta?.bots ?? ["random_bot", "mcts_bot"]}
+        selectedBot={botId}
+        onSelect={(next) => {
+          setBotId(next);
+          saveLastConfigHvB({ size, botId: next, hvbstarter });
+        }}
+        onConfirm={handleConfirmDifficulty}
+      />
+    );
   }
 
   return (
@@ -174,21 +195,6 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <Text type="secondary"><RobotOutlined /> Bot:</Text>
-                  <div>
-                    <Select
-                      value={botId}
-                      onChange={(next) => {
-                        setBotId(next);
-                        saveLastConfigHvB({ size, botId: next, hvbstarter });
-                      }}
-                      style={{ width: 240 }}
-                      options={(meta?.bots ?? ["random_bot"]).map((b) => ({ value: b, label: b }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
                   <Text type="secondary"><TeamOutlined /> Empieza:</Text>
                   <div>
                     <Select
@@ -207,7 +213,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvB}>
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleGoToDifficulty}>
                   Jugar
                 </Button>
               </Flex>
