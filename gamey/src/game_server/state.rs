@@ -198,8 +198,8 @@ mod tests {
 
         assert!(!names.is_empty());
         assert!(names.iter().any(|b| b == "random_bot"));
-        assert!(names.iter().any(|b| b == "greedy_bot"));
-        assert!(names.iter().any(|b| b == "mcts_fast_bot"));
-        assert!(names.iter().any(|b| b == "mcts_strong_bot"));
+        assert!(names.iter().any(|b| b == "mcts_medio"));
+        assert!(names.iter().any(|b| b == "mcts_dificil"));
+        assert!(names.iter().any(|b| b == "mcts_demencial"));
     }
 }

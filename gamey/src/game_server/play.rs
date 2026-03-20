@@ -158,7 +158,7 @@ mod tests {
     #[tokio::test]
     async fn play_returns_move_and_next_position() {
         let app = create_router(GameServerState::new_default());
-        let yen = YEN::new(3, 0, vec!['B', 'R'], ".../../.".to_string());
+        let yen = YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
 
         let uri = format!(
             "/play?position={}&bot_id=random_bot&api_version=v1",
@@ -182,7 +182,7 @@ mod tests {
     #[tokio::test]
     async fn play_uses_default_bot_when_bot_id_is_missing() {
         let app = create_router(GameServerState::new_default());
-        let yen = YEN::new(3, 0, vec!['B', 'R'], ".../../.".to_string());
+        let yen = YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
 
         let uri = format!("/play?position={}", build_position_query(&yen));
 
@@ -203,7 +203,7 @@ mod tests {
     #[tokio::test]
     async fn play_rejects_unsupported_api_version() {
         let app = create_router(GameServerState::new_default());
-        let yen = YEN::new(3, 0, vec!['B', 'R'], ".../../.".to_string());
+        let yen = YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
 
         let uri = format!(
             "/play?position={}&api_version=v2",
@@ -227,7 +227,7 @@ mod tests {
     #[tokio::test]
     async fn play_rejects_unknown_bot() {
         let app = create_router(GameServerState::new_default());
-        let yen = YEN::new(3, 0, vec!['B', 'R'], ".../../.".to_string());
+        let yen = YEN::new(3, 0, vec!['B', 'R'], "B/../...".to_string());
 
         let uri = format!(
             "/play?position={}&bot_id=ghost_bot",
