@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getRanking,
   getUserHistory,
+  getUserStats,
   loginUser,
   recordUserGame,
   registerUser,
@@ -138,6 +139,31 @@ describe("api/users", () => {
         }),
       },
     );
+  });
+
+  it("getUserStats hace GET correcto", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "marcelo",
+        profilePicture: "avatar.png",
+        stats: {
+          gamesPlayed: 4,
+          gamesWon: 2,
+          gamesLost: 1,
+          gamesAbandoned: 1,
+          totalMoves: 18,
+          winRate: 50,
+        },
+      }),
+    });
+
+    const result = await getUserStats("marcelo diez");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo%20diez/stats"
+    );
+    expect(result.stats.gamesWon).toBe(2);
   });
 
   it("lanza el error del backend cuando response.ok es false", async () => {

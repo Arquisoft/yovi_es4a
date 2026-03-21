@@ -19,6 +19,17 @@ vi.mock("../vistas/AppHeader", () => ({
     default: ({ title }: any) => <div>{title}</div>,
 }));
 
+vi.mock("../vistas/UserStats", () => ({
+    default: ({ title, stats }: any) => (
+        <div data-testid="user-stats-summary">
+            <div>{title}</div>
+            <div>{`W:${stats.gamesWon}`}</div>
+            <div>{`L:${stats.gamesLost}`}</div>
+            <div>{`A:${stats.gamesAbandoned}`}</div>
+        </div>
+    ),
+}));
+
 vi.mock("antd", () => {
     const ListComponent = ({ dataSource, renderItem }: any) => (
         <div data-testid="history-list">
@@ -41,7 +52,6 @@ vi.mock("antd", () => {
         ),
         Avatar: ({ children }: any) => <div>{children}</div>,
         Card: ({ children }: any) => <div>{children}</div>,
-        Col: ({ children }: any) => <div>{children}</div>,
         Empty: ({ description }: any) => <div>{description}</div>,
         Flex: ({ children }: any) => <div>{children}</div>,
         List: ListComponent,
@@ -53,10 +63,8 @@ vi.mock("antd", () => {
                 </button>
             </div>
         ),
-        Row: ({ children }: any) => <div>{children}</div>,
         Space: ({ children }: any) => <div>{children}</div>,
         Spin: () => <div>Cargando...</div>,
-        Statistic: ({ title, value }: any) => <div>{`${title}: ${value}`}</div>,
         Tag: ({ children }: any) => <span>{children}</span>,
         Typography: {
             Title: ({ children }: any) => <div>{children}</div>,
@@ -131,9 +139,12 @@ describe("UserHistory", () => {
 
         expect(await screen.findByText("marcelo")).toBeInTheDocument();
         expect(screen.getByText("3 partidas registradas")).toBeInTheDocument();
-        expect(screen.getByText("Partidas Ganadas: 1")).toBeInTheDocument();
-        expect(screen.getByText("Partidas Perdidas: 1")).toBeInTheDocument();
-        expect(screen.getByText("Partidas Abandonadas: 1")).toBeInTheDocument();
+
+        expect(screen.getByTestId("user-stats-summary")).toBeInTheDocument();
+        expect(screen.getByText("Estadísticas")).toBeInTheDocument();
+        expect(screen.getByText("W:1")).toBeInTheDocument();
+        expect(screen.getByText("L:1")).toBeInTheDocument();
+        expect(screen.getByText("A:1")).toBeInTheDocument();
 
         expect(screen.getByText("Humano vs Bot · 7x")).toBeInTheDocument();
         expect(screen.getByText("Humano vs Humano · 9x")).toBeInTheDocument();

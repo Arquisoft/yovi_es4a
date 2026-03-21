@@ -3,15 +3,12 @@ import {
   Alert,
   Avatar,
   Card,
-  Col,
   Empty,
   Flex,
   List,
   Pagination,
-  Row,
   Space,
   Spin,
-  Statistic,
   Tag,
   Typography,
 } from "antd";
@@ -22,7 +19,12 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import AppHeader from "./AppHeader";
-import { getUserHistory, type HistoryGame, type UserHistoryResponse } from "../api/users";
+import UserStatsSummary from "./UserStats";
+import {
+  getUserHistory,
+  type HistoryGame,
+  type UserHistoryResponse,
+} from "../api/users";
 import { getUserSession } from "../utils/session";
 
 const { Title, Text } = Typography;
@@ -111,45 +113,7 @@ export default function UserHistory() {
                 </Flex>
               </Card>
 
-              <Card>
-                <Space direction="vertical" size={20} style={{ width: "100%" }}>
-                  <Title level={2} style={{ margin: 0, textAlign: "center" }}>
-                    Estadísticas
-                  </Title>
-
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} md={8}>
-                      <Card>
-                        <Statistic
-                          title="Partidas Ganadas"
-                          value={data.stats.gamesWon}
-                          valueStyle={{ color: "#389e0d" }}
-                        />
-                      </Card>
-                    </Col>
-
-                    <Col xs={24} md={8}>
-                      <Card>
-                        <Statistic
-                          title="Partidas Perdidas"
-                          value={data.stats.gamesLost}
-                          valueStyle={{ color: "#cf1322" }}
-                        />
-                      </Card>
-                    </Col>
-
-                    <Col xs={24} md={8}>
-                      <Card>
-                        <Statistic
-                          title="Partidas Abandonadas"
-                          value={data.stats.gamesAbandoned}
-                          valueStyle={{ color: "#595959" }}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-                </Space>
-              </Card>
+              <UserStatsSummary stats={data.stats} title="Estadísticas" />
 
               <Card>
                 <Space direction="vertical" size={20} style={{ width: "100%" }}>

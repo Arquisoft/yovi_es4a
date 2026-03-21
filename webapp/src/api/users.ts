@@ -127,3 +127,15 @@ export async function recordUserGame(username: string, body: RecordUserGameReque
         savedGame: HistoryGame;
     }>(response);
 }
+
+export async function getUserStats(username: string) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/stats`
+  );
+
+  return parseJson<{
+    username: string;
+    profilePicture?: string;
+    stats: UserStats;
+  }>(response);
+}
