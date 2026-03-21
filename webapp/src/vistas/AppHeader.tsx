@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, Dropdown, Flex, Space, Typography } from "antd";
+import { Button, Card, Dropdown, Flex, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   HomeOutlined,
@@ -125,7 +125,6 @@ export default function AppHeader({ title }: AppHeaderProps) {
         <Space size={12}>
           {session ? (
             <Space size={8}>
-              <Avatar src={session.profilePicture} icon={<UserOutlined />} />
               <Text strong>{session.username}</Text>
             </Space>
           ) : (
