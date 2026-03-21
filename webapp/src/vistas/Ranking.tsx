@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
-import { Select, Typography, Alert, Avatar, Tag, Tooltip, Card, Flex, Space, Table, Progress } from "antd";
-import { TrophyOutlined, RiseOutlined, PlayCircleOutlined } from "@ant-design/icons";
-import AppHeader from "./AppHeader"; // <-- Importamos tu nuevo Header
+import {
+  Select,
+  Typography,
+  Alert,
+  Avatar,
+  Tag,
+  Tooltip,
+  Card,
+  Flex,
+  Space,
+  Table,
+  Progress,
+} from "antd";
+import {
+  TrophyOutlined,
+  RiseOutlined,
+  PlayCircleOutlined,
+} from "@ant-design/icons";
+import AppHeader from "./AppHeader";
 import { getRanking } from "../api/users";
 
 const { Title, Text } = Typography;
@@ -157,15 +173,15 @@ export default function Ranking() {
 
               <Flex justify="center">
                 <Text type="secondary" style={{ fontSize: 13, textAlign: "center" }}>
-                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.{" "}<br/>
+                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.
+                  <br />
                   <strong>Movimientos</strong> — total de movimientos realizados en todas las partidas registradas.
-                  <br/>
-                  <strong>A</strong> - partidas abandonadas.
+                  <br />
+                  <strong>A</strong> — partidas abandonadas.
                 </Text>
               </Flex>
             </Space>
           </Card>
-
         </Space>
       </div>
     </Flex>

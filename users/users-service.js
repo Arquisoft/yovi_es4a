@@ -392,7 +392,7 @@ app.get('/ranking', async (req, res) => {
         username:       u.username,
         profilePicture: u.profilePicture,
         gamesPlayed:    stats.gamesPlayed,
-        gamesWon:       stats.gamesLost,
+        gamesWon:       stats.gamesWon,
         gamesLost:      stats.gamesLost,
         gamesAbandoned: stats.gamesAbandoned,
         totalMoves:     stats.totalMoves,
