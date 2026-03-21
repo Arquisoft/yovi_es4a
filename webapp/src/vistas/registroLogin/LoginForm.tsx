@@ -7,6 +7,8 @@ import {
   EyeTwoTone,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "../../api/users";
+import { saveUserSession } from "../../utils/session";
 
 const LoginForm: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -19,34 +21,17 @@ const LoginForm: React.FC = () => {
 
   const onFinish = async (values: any) => {
     setLoading(true);
+
     try {
-      const response = await fetch(`${apiEndpoint}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: values.username,
-          password: values.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al iniciar sesión");
-      }
+      const data = await loginUser(values.username, values.password);
 
       message.success(data.message);
 
-      // Guardamos la sesión en el navegador
-      localStorage.setItem(
-        "userSession",
-        JSON.stringify({
-          username: data.username,
-          profilePicture: data.profilePicture,
-        }),
-      );
+      saveUserSession({
+        username: data.username,
+        profilePicture: data.profilePicture,
+      });
 
-      // Redirigimos al Home
       navigate("/home");
     } catch (err: any) {
       message.error(err.message);

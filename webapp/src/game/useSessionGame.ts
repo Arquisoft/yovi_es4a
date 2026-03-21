@@ -23,7 +23,12 @@ type UseSessionGameArgs<YEN> = {
     botMove?: (gameId: string) => Promise<SessionGameMoveResponse<YEN>>;
 };
 
-export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGameArgs<YEN>) {
+export function useSessionGame<YEN>({
+    deps,
+    start,
+    move,
+    botMove
+}: UseSessionGameArgs<YEN>) {
     const [yen, setYen] = useState<YEN | null>(null);
     const [gameId, setGameId] = useState<string | null>(null);
     const [winner, setWinner] = useState<string | null>(null);
@@ -31,6 +36,7 @@ export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGa
     const [error, setError] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [gameOver, setGameOver] = useState(false);
+    const [moveCount, setMoveCount] = useState(0);
 
     // Start game (re-run when deps change)
     useEffect(() => {
@@ -44,6 +50,7 @@ export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGa
             setWinner(null);
             setNextTurn(null);
             setGameOver(false);
+            setMoveCount(0);
 
             try {
                 const r = await start();
@@ -84,6 +91,7 @@ export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGa
             try {
                 const r = await move(gameId, cellId);
                 setYen(r.yen);
+                setMoveCount((prev) => prev + 1);
 
                 if (r.status.state === "finished") {
                     setGameOver(true);
@@ -112,6 +120,7 @@ export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGa
         try {
             const r = await botMove(gameId);
             setYen(r.yen);
+            setMoveCount((prev) => prev + 1);
 
             if (r.status.state === "finished") {
                 setGameOver(true);
@@ -138,9 +147,10 @@ export function useSessionGame<YEN>({ deps, start, move, botMove }: UseSessionGa
             error,
             loading,
             gameOver,
+            moveCount,
             setError,
         }),
-        [yen, gameId, winner, nextTurn, error, loading, gameOver],
+        [yen, gameId, winner, nextTurn, error, loading, gameOver, moveCount],
     );
 
     return { ...resetState, onCellClick, onBotTurn };

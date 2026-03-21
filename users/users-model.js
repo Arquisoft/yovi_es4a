@@ -1,5 +1,48 @@
 const mongoose = require('mongoose');
 
+const gameHistorySchema = new mongoose.Schema(
+    {
+        gameId: {
+            type: String,
+            required: true,
+        },
+        mode: {
+            type: String,
+            enum: ["HvB", "HvH"],
+            required: true,
+        },
+        result: {
+            type: String,
+            enum: ["won", "lost", "abandoned"],
+            required: true,
+        },
+        boardSize: {
+            type: Number,
+            required: true,
+            min: 1,
+        },
+        totalMoves: {
+            type: Number,
+            required: true,
+            min: 0,
+            default: 0,
+        },
+        opponent: {
+            type: String,
+            default: "",
+        },
+        startedBy: {
+            type: String,
+            default: "",
+        }, 
+        finishedAt: {
+            type: Date,
+            default: Date.now,
+        },
+    },
+    { _id: false}
+)
+
 const userSchema = new mongoose.Schema({
     username: { 
         type: String, 
@@ -32,16 +75,20 @@ const userSchema = new mongoose.Schema({
         type: String 
     },
 
-    // Estadísticas de juego para el ranking
+    // Estadísticas de juego
     stats: {
-      gamesPlayed:  { type: Number, default: 0 },
-      gamesWon:     { type: Number, default: 0 },
-      gamesLost:    { type: Number, default: 0 },
-      // Movimientos totales realizados (en partidas ganadas)
-      totalMoves:   { type: Number, default: 0 },
+      gamesPlayed:    { type: Number, default: 0 },
+      gamesWon:       { type: Number, default: 0 },
+      gamesLost:      { type: Number, default: 0 },
+      gamesAbandoned: { type: Number, default: 0 },
+      totalMoves:     { type: Number, default: 0 },
+    },
+
+    // Historial de partidas
+    gameHistory: {
+        type: [gameHistorySchema],
+        default: [],
     }
 });
 
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

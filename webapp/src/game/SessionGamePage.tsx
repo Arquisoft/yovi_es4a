@@ -39,12 +39,25 @@ type TurnConfig = {
   turns: Record<string, TurnPresentation>;
 };
 
+type FinishedGamePayload = {
+  gameId: string;
+  winner: string | null;
+  totalMoves: number;
+};
+
+type AbandonedGamePayload = {
+  gameId: string;
+  totalMoves: number;
+};
+
 type Props<TYen extends GameYEN> = {
   deps: readonly unknown[];
   start: () => Promise<SessionGameStartResponse<TYen>>;
   move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<TYen>>;
   botMove?: (gameId: string) => Promise<SessionGameMoveResponse<TYen>>;
   onHint?: (gameId: string) => Promise<number>;
+  onGameFinished?: (payload: FinishedGamePayload) => Promise<void> | void;
+  onGameAbandoned?: (payload: AbandonedGamePayload) => Promise<void> | void;
   resultConfig: ResultConfig;
   winnerPalette: WinnerPalette;
   turnConfig: TurnConfig;
@@ -56,6 +69,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
   move,
   botMove,
   onHint,
+  onGameFinished,
+  onGameAbandoned,
   resultConfig,
   winnerPalette,
   turnConfig,
@@ -63,10 +78,12 @@ export default function SessionGamePage<TYen extends GameYEN>({
   const { modal } = App.useApp();
   const navigate = useNavigate();
   const botTurnInFlight = useRef(false);
+  const finishedGameNotifiedRef = useRef<string | null>(null);
 
   const [hintCellId, setHintCellId] = useState<number | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
   const [hintLoading, setHintLoading] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
 
   const {
     yen,
@@ -76,6 +93,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     error,
     loading,
     gameOver,
+    moveCount,
     onCellClick,
     onBotTurn,
   } = useSessionGame<TYen>({
@@ -97,13 +115,33 @@ export default function SessionGamePage<TYen extends GameYEN>({
     navigate("/home", { replace: true });
   }
 
+  async function handleConfirmedAbandon() {
+    if (!gameId) {
+      goHome();
+      return;
+    }
+
+    try {
+      setAbandoning(true);
+      if (onGameAbandoned) {
+        await onGameAbandoned({
+          gameId,
+          totalMoves: moveCount,
+        });
+      }
+    } finally {
+      setAbandoning(false);
+      goHome();
+    }
+  }
+
   function handleAbandonGame() {
     modal.confirm({
       title: "Abandonar",
       content: "¿Seguro que quieres abandonar la partida?",
       okText: resultConfig.abandonOkText ?? "Abandonar",
       cancelText: "Cancelar",
-      onOk: goHome,
+      onOk: handleConfirmedAbandon,
     });
   }
 
@@ -128,6 +166,19 @@ export default function SessionGamePage<TYen extends GameYEN>({
       setHintCellId(null);
     }
   }, [yen]);
+
+  useEffect(() => {
+    if (!gameOver || !gameId) return;
+    if (finishedGameNotifiedRef.current === gameId) return;
+
+    finishedGameNotifiedRef.current = gameId;
+
+    void onGameFinished?.({
+      gameId,
+      winner,
+      totalMoves: moveCount,
+    });
+  }, [gameOver, gameId, winner, moveCount, onGameFinished]);
 
   const activeTurn = nextTurn ? turnConfig.turns[nextTurn] : null;
 
@@ -206,7 +257,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
       hasBoard={!!yen}
       emptyText={resultConfig.emptyText ?? "No se pudo crear la partida."}
       onAbandon={handleAbandonGame}
-      abandonDisabled={loading || gameOver}
+      abandonDisabled={loading || abandoning || gameOver}
       turnIndicator={turnIndicator}
       board={
         <Card
@@ -222,7 +273,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
           <Board
             size={yen?.size ?? 7}
             cells={cells}
-            disabled={loading || gameOver || nextTurn === "bot"}
+            disabled={loading || abandoning || gameOver || nextTurn === "bot"}
             onCellClick={(cellId) => {
               setHintCellId(null);
               onCellClick(cellId);
