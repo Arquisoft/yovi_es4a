@@ -15,10 +15,6 @@ const LoginForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Asegúrate de que apunte al gateway o microservicio correcto
-  const apiEndpoint =
-    import.meta.env.VITE_API_URL || "http://localhost:8001/api/users";
-
   const onFinish = async (values: any) => {
     setLoading(true);
 

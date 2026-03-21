@@ -43,9 +43,6 @@ const RegisterForm: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
-  const apiEndpoint =
-    import.meta.env.VITE_API_URL || "http://localhost:8000/api/users";
-
   /**
    * Hook de efecto que monitoriza cambios en la contraseña para actualizar
    * dinámicamente el medidor de fuerza.
