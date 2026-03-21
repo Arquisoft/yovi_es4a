@@ -31,12 +31,12 @@ describe("Ranking Component", () => {
     vi.clearAllMocks();
     // Restaurar matchMedia tras el reset
     window.matchMedia = matchMediaMock;
-    Object.defineProperty(window, 'getComputedStyle', {
+    Object.defineProperty(window, "getComputedStyle", {
       value: () => ({
         getPropertyValue: () => {
-          return '';
-        }
-      })
+          return "";
+        },
+      }),
     });
   });
 
@@ -75,11 +75,11 @@ describe("Ranking Component", () => {
         <App>
           <Ranking />
         </App>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/ranking?sortBy=winRate&limit=20"
+      "/api/users/ranking?sortBy=winRate&limit=20",
     );
 
     await waitFor(() => {
@@ -101,12 +101,12 @@ describe("Ranking Component", () => {
         <App>
           <Ranking />
         </App>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await waitFor(() => {
       expect(
-        screen.getByText("No se pudo cargar el ranking")
+        screen.getByText("No se pudo cargar el ranking"),
       ).toBeInTheDocument();
       expect(screen.getByText("Error 500")).toBeInTheDocument();
     });

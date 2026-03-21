@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 
-import GameHvB from "../vistas/GameHvB";
+import GameHvB from "../vistas/game/GameHvB";
 import { createHvbGame, hvbBotMove, hvbHumanMove, putConfig, hvbHint } from "../api/gamey";
 
 const sessionGamePageMock = vi.fn();

@@ -1,7 +1,14 @@
 import { useSearchParams } from "react-router-dom";
 
-import { createHvbGame, hvbBotMove, hvbHumanMove, hvbHint, putConfig, type YEN } from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+import {
+  createHvbGame,
+  hvbBotMove,
+  hvbHumanMove,
+  hvbHint,
+  putConfig,
+  type YEN,
+} from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
 
 type StarterHvB = "human" | "bot" | "random";
 
@@ -33,7 +40,7 @@ export default function GameHvB() {
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
-  const hvb_starter  = parseHvBStarter(searchParams.get("hvbstarter"));
+  const hvb_starter = parseHvBStarter(searchParams.get("hvbstarter"));
 
   const participantLabels = {
     human: "Humano",
