@@ -69,17 +69,17 @@ function validateRecordGame(body) {
   const allowedModes = ["HvB", "HvH"];
   const allowedResults = ["won", "lost", "abandoned"];
 
-  const gameId = typeof body.gameId === "string" ? body.gameId.trim() : "";
+  const gameIdValidation = validateGameId(body.gameId);
+  if (gameIdValidation.error) {
+    return { error: gameIdValidation.error };
+  }
+
   const mode = typeof body.mode === "string" ? body.mode.trim() : "";
   const result = typeof body.result === "string" ? body.result.trim() : "";
   const opponent = typeof body.opponent === "string" ? body.opponent.trim() : "";
   const startedBy = typeof body.startedBy === "string" ? body.startedBy.trim() : "";
   const boardSize = Number(body.boardSize);
   const totalMoves = Number(body.totalMoves);
-
-  if (!gameId) {
-    return { error: "'gameId' es obligatorio" };
-  }
 
   if (!allowedModes.includes(mode)) {
     return { error: "'mode' debe ser 'HvB' o 'HvH'" };
@@ -99,7 +99,7 @@ function validateRecordGame(body) {
 
   return {
     value: {
-      gameId,
+      gameId: gameIdValidation.value,
       mode,
       result,
       opponent,
@@ -109,7 +109,50 @@ function validateRecordGame(body) {
       finishedAt: new Date(),
     },
   };
+}
 
+function validateUsername(value) {
+  const username = typeof value === "string" ? value.trim() : "";
+
+  if (!username) {
+    return { error: "El nombre de usuario es obligatorio." };
+  }
+
+  if (username.length < 3) {
+    return { error: "El nombre de usuario debe tener al menos 3 caracteres." };
+  }
+
+  if (username.length > 20) {
+    return { error: "El nombre de usuario no puede exceder los 20 caracteres." };
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+    return {
+      error: "El usuario solo puede contener letras, números y los caracteres _ . -",
+    };
+  }
+
+  if (/^[._-]/.test(username) || /[._-]$/.test(username)) {
+    return {
+      error: "El nombre de usuario no puede empezar ni terminar con puntos o guiones.",
+    };
+  }
+
+  return { value: username };
+}
+
+function validateGameId(value) {
+  const gameId = typeof value === "string" ? value.trim() : "";
+
+  if (!gameId) {
+    return { error: "'gameId' es obligatorio" };
+  }
+
+  if (gameId.length > 100) {
+    return { error: "'gameId' no puede exceder los 100 caracteres" };
+  }
+
+  return { value: gameId };
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -119,13 +162,14 @@ function validateRecordGame(body) {
 function createMailTransporter() {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
-  const emailService = process.env.EMAIL_SERVICE || "gmail";
 
   if (!emailUser || !emailPass)
     return null;
 
   return nodemailer.createTransport({
-    service: emailService,
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port: Number(process.env.EMAIL_PORT || 465),
+    secure: true,
     auth: {
       user: emailUser,
       pass: emailPass,
@@ -136,7 +180,13 @@ function createMailTransporter() {
 // ───────────────────────────────────────────────────────────────────────────────
 // REGISTRO
 app.post('/createuser', async (req, res) => {
-  const { username, password, email, profilePicture } = req.body;
+  const usernameValidation = validateUsername(req.body.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  const username = usernameValidation.value;
+  const { password, email, profilePicture } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(20).toString('hex');
@@ -162,7 +212,7 @@ app.post('/createuser', async (req, res) => {
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4;">
           <div style="background-color: white; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-            <h2 style="color: #1F2A30;">¡Bienvenido a YOVI, ${sanitize(username)}!</h2>
+            <h2 style="color: #1F2A30;">¡Bienvenido a YOVI, ${username}!</h2>
             <p style="color: #555; font-size: 16px;">Gracias por registrarte. Para poder jugar y guardar tus estadísticas, necesitamos que verifiques tu dirección de correo electrónico.</p>
             <a href="${verificationLink}" style="display: inline-block; padding: 14px 28px; margin: 25px 0; background-color: #FF7B00; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Verificar mi cuenta</a>
             <p style="color: #999; font-size: 12px; margin-top: 20px;">Si no te has registrado en YOVI, puedes ignorar este correo de forma segura.</p>
@@ -176,11 +226,8 @@ app.post('/createuser', async (req, res) => {
 
     if (transporter) {
       await transporter.sendMail(mailOptions);
-      console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
-    } else {
-      console.warn(
-        `[CORREO NO ENVIADO] EMAIL_USER/EMAIL_PASS no configurados. Link de verificación: ${verificationLink}`
-      );
+      // Se quita el correo del log, ya que no está validado ni neutralizado, por lo que podría romper el formato del log
+      console.log("[CORREO ENVIADO] 📧 Correo de verificación enviado correctamente.");
     }
 
     res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
@@ -219,9 +266,21 @@ app.get('/verify', async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────────
 // LOGIN
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const usernameValidation = validateUsername(req.body.username);
+  const password = req.body.password;
+
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  if (typeof password !== "string" || !password) {
+    return res.status(400).json({ error: "La contraseña es obligatoria." });
+  }
+
+  const username = usernameValidation.value;
+
   try {
-    const user = await User.findOne({ username: sanitize(username) });
+    const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     if (!user.isVerified) {
@@ -231,7 +290,7 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
-    res.json({ message: `Bienvenido ${username}`, username: user.username, profilePicture: user.profilePicture });
+    res.json({ message: `Bienvenido ${user.username}`, username: user.username, profilePicture: user.profilePicture });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -240,24 +299,36 @@ app.post('/login', async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────────
 // REGISTRAR PARTIDA + ACTUALIZAR ESTADÍSTICAS
 app.post("/users/:username/games", async (req, res) => {
-  const username = sanitize(req.params.username);
-  const validation = validateRecordGame(req.body);
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
 
+  const validation = validateRecordGame(req.body);
   if (validation.error)
     return res.status(400).json({ error: validation.error });
 
+  const username = usernameValidation.value;
   const game = validation.value;
 
   try {
-    const existingUser = await User.findOne(
-      { username, "gameHistory.gameId": game.gameId },
-      { username: 1, _id: 0 }
+    const user = await User.findOne(
+      { username },
+      { username: 1, stats: 1, gameHistory: 1, _id: 1 }
     );
 
-    if (existingUser)
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const alreadyExists = Array.isArray(user.gameHistory)
+      && user.gameHistory.some((savedGame) => savedGame.gameId === game.gameId);
+
+    if (alreadyExists) {
       return res.status(409).json({
         error: "Esta partida ya fue registrada para este usuario.",
       });
+    }
 
     const inc = {
       "stats.gamesPlayed": 1,
@@ -272,8 +343,8 @@ app.post("/users/:username/games", async (req, res) => {
       inc["stats.gamesAbandoned"] = 1;
     }
 
-    const user = await User.findOneAndUpdate(
-      { username },
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
       {
         $inc: inc,
         $push: {
@@ -285,16 +356,13 @@ app.post("/users/:username/games", async (req, res) => {
       },
       {
         new: true,
+        runValidators: true,
       }
     );
 
-    if (!user) {
-      return res.status(404).json({ error: "Usuario no encontrado" });
-    }
-
     res.status(201).json({
-      username: user.username,
-      stats: buildUserStats(user.stats),
+      username: updatedUser.username,
+      stats: buildUserStats(updatedUser.stats),
       savedGame: game,
     });
   } catch (err) {
@@ -305,7 +373,11 @@ app.post("/users/:username/games", async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────────
 // HISTORIAL PAGINADO
 app.get("/users/:username/history", async (req, res) => {
-  const username = sanitize(req.params.username);
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
@@ -345,7 +417,11 @@ app.get("/users/:username/history", async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────────
 // ENDPOINT LEGACY DE STATS
 app.patch('/users/:username/stats', async (req, res) => {
-  const { username } = req.params;
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
   const { won, totalMoves } = req.body;
 
   if (typeof won !== 'boolean') {
@@ -367,7 +443,7 @@ app.patch('/users/:username/stats', async (req, res) => {
     }
 
     const user = await User.findOneAndUpdate(
-      { username: sanitize(username) },
+      { username },
       { $inc: inc },
       { new: true }
     );
@@ -428,11 +504,14 @@ app.get('/ranking', async (req, res) => {
 // ───────────────────────────────────────────────────────────────────────────────
 // STATS INDIVIDUALES
 app.get('/users/:username/stats', async (req, res) => {
-  const { username } = req.params;
-
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
   try {
     const user = await User.findOne(
-      { username: sanitize(username) },
+      { username },
       { username: 1, profilePicture: 1, stats: 1, _id: 0 }
     );
     if (!user)
