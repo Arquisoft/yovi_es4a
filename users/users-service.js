@@ -116,13 +116,22 @@ function validateRecordGame(body) {
 // CONFIGURACIÓN DE CORREO (NODEMAILER) 
 // Para producción usa variables de entorno. Para probar con tu Gmail, 
 // necesitas generar una "Contraseña de aplicación" en los ajustes de seguridad de Google.
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes cambiarlo por outlook, yahoo, etc.
-  auth: {
-    user: process.env.EMAIL_USER || 'tu_correo_de_prueba@gmail.com', 
-    pass: process.env.EMAIL_PASS || 'tu_contraseña_de_aplicacion'
-  }
-});
+function createMailTransporter() {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  const emailService = process.env.EMAIL_SERVICE || "gmail";
+
+  if (!emailUser || !emailPass)
+    return null;
+
+  return nodemailer.createTransport({
+    service: emailService,
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
+}
 
 // ───────────────────────────────────────────────────────────────────────────────
 // REGISTRO
@@ -163,8 +172,16 @@ app.post('/createuser', async (req, res) => {
     };
 
     // Enviamos el correo real
-    await transporter.sendMail(mailOptions);
-    console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
+    const transporter = createMailTransporter();
+
+    if (transporter) {
+      await transporter.sendMail(mailOptions);
+      console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
+    } else {
+      console.warn(
+        `[CORREO NO ENVIADO] EMAIL_USER/EMAIL_PASS no configurados. Link de verificación: ${verificationLink}`
+      );
+    }
 
     res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
