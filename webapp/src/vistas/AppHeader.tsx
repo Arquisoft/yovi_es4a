@@ -11,6 +11,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
 import { clearUserSession, getUserSession } from "../utils/session";
+import HelpModal from "./HelpModal";
+
 
 const { Title, Text } = Typography;
 
@@ -36,6 +38,16 @@ export default function AppHeader({ title }: AppHeaderProps) {
     });
   }
 
+  function handleHelp() {
+    modal.info({
+      title: "Ayuda — Juego Y",
+      content: <HelpModal />,
+      okText: "Cerrar",
+      width: 640,
+      icon: <QuestionCircleOutlined />,
+    });
+  }
+
   function handleProfileMenuClick(key: string) {
     switch (key) {
       case "profile":
@@ -51,7 +63,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
         navigate("/home");
         break;
       case "help":
-        //navigate("/help");
+        handleHelp();
         break;
       case "logout":
         handleLogout();
@@ -79,7 +91,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
       label: "Ranking Global",
     },
     {
-      type: "divider",      // (Opcional) Una pequeña línea para separar el menú principal
+      type: "divider",
     },
     {
       key: "home",

@@ -6,8 +6,12 @@ import AppHeader from "../vistas/AppHeader";
 
 const navigateMock = vi.fn();
 const confirmMock = vi.fn();
+
 const clearUserSessionMock = vi.fn();
 const getUserSessionMock = vi.fn();
+
+const infoMock = vi.fn();
+
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -25,7 +29,7 @@ vi.mock("../utils/session", () => ({
 vi.mock("antd", () => ({
     App: {
         useApp: () => ({
-            modal: { confirm: confirmMock },
+            modal: { confirm: confirmMock, info: infoMock },
         }),
     },
     Button: ({ children, onClick, disabled, icon, ...props }: any) => (
@@ -173,5 +177,19 @@ describe("AppHeader", () => {
 
         expect(navigateMock).not.toHaveBeenCalled();
         expect(confirmMock).not.toHaveBeenCalled();
+    });
+
+    it("al pulsar 'Ayuda' abre modal.info con el título correcto", async () => {
+        const user = userEvent.setup();
+
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Ayuda" }));
+
+        expect(infoMock).toHaveBeenCalledTimes(1);
+
+        const args = infoMock.mock.calls[0][0];
+        expect(args.title).toBe("Ayuda — Juego Y");
+        expect(args.okText).toBe("Cerrar");
     });
 });
