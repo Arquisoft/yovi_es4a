@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { App } from "antd";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -10,9 +11,15 @@ import {
   putConfig,
   type YEN,
 } from "../../api/gamey";
-import { recordUserGame } from "../../api/users";
-import SessionGamePage from "../../game/SessionGamePage";
+import {
+  recordUserGame,
+  type RecordUserGameRequest,
+} from "../../api/users";
+import SessionGamePage, {
+  type FinishedGamePayload,
+} from "../../game/SessionGamePage";
 import { getUserSession } from "../../utils/session";
+import AuthModal from "../registroLogin/AuthModal";
 
 type StarterHvB = "human" | "bot" | "random";
 
@@ -40,8 +47,13 @@ function getStarterLabel(hvb_starter: StarterHvB, botId: string): string {
 }
 
 export default function GameHvB() {
+  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
   const savedGameIdsRef = useRef<Set<string>>(new Set());
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [savingPendingGame, setSavingPendingGame] = useState(false);
+  const [pendingFinishedGame, setPendingFinishedGame] = useState<RecordUserGameRequest | null>(null);
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
@@ -52,15 +64,25 @@ export default function GameHvB() {
     bot: botId,
   } as const;
 
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
+  async function saveGameForCurrentSession(payload: RecordUserGameRequest) {
     const session = getUserSession();
-    if (!session) return;
+    if (!session)
+      throw new Error("No hay ninguna sesión iniciada.");
+
+    if (savedGameIdsRef.current.has(payload.gameId))
+      return;
+
+    await recordUserGame(session.username, payload);
+    savedGameIdsRef.current.add(payload.gameId);
+  }
+
+  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     if (!winner) return;
     if (savedGameIdsRef.current.has(gameId)) return;
 
     const result = winner === "human" ? "won" : "lost";
 
-    await recordUserGame(session.username, {
+    const payload: RecordUserGameRequest = {
       gameId,
       mode: "HvB",
       result,
@@ -68,9 +90,16 @@ export default function GameHvB() {
       totalMoves,
       opponent: botId,
       startedBy: hvb_starter,
-    });
+    };
 
-    savedGameIdsRef.current.add(gameId);
+    const session = getUserSession();
+
+    if (session) {
+      await saveGameForCurrentSession(payload);
+      return;
+    }
+
+    setPendingFinishedGame(payload);
   }
 
   async function registerAbandonedGame(gameId: string, totalMoves: number) {
@@ -93,61 +122,98 @@ export default function GameHvB() {
     await deleteHvbGame(gameId);
   }
 
-  return (
-    <SessionGamePage<YEN>
-      deps={[size, botId, hvb_starter]}
-      start={async () => {
-        await putConfig({
-          size,
-          hvb_starter: hvb_starter,
-          bot_id: botId,
-          hvh_starter: "player0",
-        });
+  function handleGuestSaveRequested(_payload: FinishedGamePayload) {
+    if (!pendingFinishedGame) return;
+    setAuthModalOpen(true);
+  }
 
-        return createHvbGame({
-          size,
-          bot_id: botId,
-          hvb_starter,
-        });
-      }}
-      move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
-      botMove={(gameId) => hvbBotMove(gameId)}
-      onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
-      onGameFinished={async ({gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves)
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={{
-        title: "Juego Y — Human vs Bot",
-        subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(hvb_starter, participantLabels.bot)}`,
-        abandonOkText: "Sí, abandonar",
-        getResultTitle: (winner) =>
-          winner === "human" ? "¡Felicidades!" : "Game Over",
-        getResultText: (winner) =>
-          winner === "human"
-            ? "Has ganado la partida."
-            : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
-      }}
-      winnerPalette={{
-        highlightedWinner: "human",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
-      turnConfig={{
-        textPrefix: "Turno actual:",
-        turns: {
-          human: {
-            label: participantLabels.human,
-            color: "#28BBF5",
+  async function handleLoginSuccess() {
+    if (!pendingFinishedGame) return;
+
+    try {
+      setSavingPendingGame(true);
+      await saveGameForCurrentSession(pendingFinishedGame);
+      message.success("La partida se ha guardado correctamente en tu cuenta.");
+      setPendingFinishedGame(null);
+      setAuthModalOpen(false);
+    } catch (err: any) {
+      message.error(
+        err?.message ?? "No se pudo guardar la partida en tu cuenta."
+      );
+    } finally {
+      setSavingPendingGame(false);
+    }
+  }
+
+  return (
+    <>
+      <SessionGamePage<YEN>
+        deps={[size, botId, hvb_starter]}
+        start={async () => {
+          await putConfig({
+            size,
+            hvb_starter: hvb_starter,
+            bot_id: botId,
+            hvh_starter: "player0",
+          });
+
+          return createHvbGame({
+            size,
+            bot_id: botId,
+            hvb_starter,
+          });
+        }}
+        move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
+        botMove={(gameId) => hvbBotMove(gameId)}
+        onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          await registerFinishedGame(gameId, winner, totalMoves);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={!getUserSession() && !!pendingFinishedGame}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={{
+          title: "Juego Y — Human vs Bot",
+          subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(
+            hvb_starter,
+            participantLabels.bot
+          )}`,
+          abandonOkText: "Sí, abandonar",
+          getResultTitle: (winner) =>
+            winner === "human" ? "¡Felicidades!" : "Game Over",
+          getResultText: (winner) =>
+            winner === "human"
+              ? "Has ganado la partida."
+              : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
+        }}
+        winnerPalette={{
+          highlightedWinner: "human",
+          highlightedBackground: "#28bbf532",
+          otherWinnerBackground: "#ff7b0033",
+        }}
+        turnConfig={{
+          textPrefix: "Turno actual:",
+          turns: {
+            human: {
+              label: participantLabels.human,
+              color: "#28BBF5",
+            },
+            bot: {
+              label: participantLabels.bot,
+              color: "#FF7B00",
+            },
           },
-          bot: {
-            label: participantLabels.bot,
-            color: "#FF7B00",
-          },
-        },
-      }}
-    />
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }
