@@ -104,6 +104,7 @@ describe("SessionGamePage", () => {
   const onHintMock = vi.fn();
   const onGameFinishedMock = vi.fn();
   const onGameAbandonedMock = vi.fn();
+  const onGuestSaveRequestedMock = vi.fn();
   const onCellClickMock = vi.fn();
   const onBotTurnMock = vi.fn().mockResolvedValue(undefined);
 
@@ -335,5 +336,37 @@ describe("SessionGamePage", () => {
     expect(screen.getByText("¡Felicidades!")).toBeInTheDocument();
     expect(screen.getByText("Has ganado.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Volver a Home" })).toBeInTheDocument();
+  });
+
+  it("muestra el botón de guardar partida para invitados y lo dispara con el payload correcto", async () => {
+    useSessionGameMock.mockReturnValueOnce({
+      yen: { size: 7, layout: "." },
+      gameId: "g77",
+      winner: "human",
+      nextTurn: null,
+      error: "",
+      loading: false,
+      gameOver: true,
+      moveCount: 9,
+      onCellClick: onCellClickMock,
+      onBotTurn: onBotTurnMock,
+    });
+
+    const user = userEvent.setup();
+    render(
+      <SessionGamePage
+        {...baseProps}
+        canOfferGuestSave
+        onGuestSaveRequested={onGuestSaveRequestedMock}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Guardar esta partida" }));
+
+    expect(onGuestSaveRequestedMock).toHaveBeenCalledWith({
+      gameId: "g77",
+      winner: "human",
+      totalMoves: 9,
+    });
   });
 });
