@@ -1084,4 +1084,3 @@ pub async fn get_hint(
 
     Ok(Json(serde_json::json!({ "hint_cell_id": cell_id })))
 }
-
