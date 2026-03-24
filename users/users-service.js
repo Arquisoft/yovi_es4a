@@ -41,20 +41,152 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ─── CONFIGURACIÓN DE CORREO (NODEMAILER) ────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────
+// HELPERS
+function buildUserStats(stats = {}) {
+  const gamesPlayed    = stats.gamesPlayed    || 0;
+  const gamesWon       = stats.gamesWon       || 0;
+  const gamesLost      = stats.gamesLost      || 0;
+  const gamesAbandoned = stats.gamesAbandoned || 0;
+  const totalMoves     = stats.totalMoves     || 0;
+
+  return {
+    gamesPlayed,
+    gamesWon,
+    gamesLost,
+    gamesAbandoned,
+    totalMoves,
+    winRate: gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0,
+  };
+}
+
+function normalizePositiveInteger(value, fallback) {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function validateRecordGame(body) {
+  const allowedModes = ["HvB", "HvH"];
+  const allowedResults = ["won", "lost", "abandoned"];
+
+  const gameIdValidation = validateGameId(body.gameId);
+  if (gameIdValidation.error) {
+    return { error: gameIdValidation.error };
+  }
+
+  const mode = typeof body.mode === "string" ? body.mode.trim() : "";
+  const result = typeof body.result === "string" ? body.result.trim() : "";
+  const opponent = typeof body.opponent === "string" ? body.opponent.trim() : "";
+  const startedBy = typeof body.startedBy === "string" ? body.startedBy.trim() : "";
+  const boardSize = Number(body.boardSize);
+  const totalMoves = Number(body.totalMoves);
+
+  if (!allowedModes.includes(mode)) {
+    return { error: "'mode' debe ser 'HvB' o 'HvH'" };
+  }
+
+  if (!allowedResults.includes(result)) {
+    return { error: "'result' debe ser 'won', 'lost' o 'abandoned'" };
+  }
+
+  if (!Number.isFinite(boardSize) || boardSize <= 0) {
+    return { error: "'boardSize' debe ser un número positivo" };
+  }
+
+  if (!Number.isFinite(totalMoves) || totalMoves < 0) {
+    return { error: "'totalMoves' debe ser un número no negativo" };
+  }
+
+  return {
+    value: {
+      gameId: gameIdValidation.value,
+      mode,
+      result,
+      opponent,
+      startedBy,
+      boardSize,
+      totalMoves,
+      finishedAt: new Date(),
+    },
+  };
+}
+
+function validateUsername(value) {
+  const username = typeof value === "string" ? value.trim() : "";
+
+  if (!username) {
+    return { error: "El nombre de usuario es obligatorio." };
+  }
+
+  if (username.length < 3) {
+    return { error: "El nombre de usuario debe tener al menos 3 caracteres." };
+  }
+
+  if (username.length > 20) {
+    return { error: "El nombre de usuario no puede exceder los 20 caracteres." };
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(username)) {
+    return {
+      error: "El usuario solo puede contener letras, números y los caracteres _ . -",
+    };
+  }
+
+  if (/^[._-]/.test(username) || /[._-]$/.test(username)) {
+    return {
+      error: "El nombre de usuario no puede empezar ni terminar con puntos o guiones.",
+    };
+  }
+
+  return { value: username };
+}
+
+function validateGameId(value) {
+  const gameId = typeof value === "string" ? value.trim() : "";
+
+  if (!gameId) {
+    return { error: "'gameId' es obligatorio" };
+  }
+
+  if (gameId.length > 100) {
+    return { error: "'gameId' no puede exceder los 100 caracteres" };
+  }
+
+  return { value: gameId };
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CONFIGURACIÓN DE CORREO (NODEMAILER) 
 // Para producción usa variables de entorno. Para probar con tu Gmail, 
 // necesitas generar una "Contraseña de aplicación" en los ajustes de seguridad de Google.
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes cambiarlo por outlook, yahoo, etc.
-  auth: {
-    user: process.env.EMAIL_USER || 'tu_correo_de_prueba@gmail.com', 
-    pass: process.env.EMAIL_PASS || 'tu_contraseña_de_aplicacion'
-  }
-});
+function createMailTransporter() {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
 
-// ─── REGISTRO ────────────────────────────────────────────────────────────────
+  if (!emailUser || !emailPass)
+    return null;
+
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port: Number(process.env.EMAIL_PORT || 465),
+    secure: true,
+    auth: {
+      user: emailUser,
+      pass: emailPass,
+    },
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// REGISTRO
 app.post('/createuser', async (req, res) => {
-  const { username, password, email, profilePicture } = req.body;
+  const usernameValidation = validateUsername(req.body.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  const username = usernameValidation.value;
+  const { password, email, profilePicture } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(20).toString('hex');
@@ -80,7 +212,7 @@ app.post('/createuser', async (req, res) => {
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4;">
           <div style="background-color: white; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-            <h2 style="color: #1F2A30;">¡Bienvenido a YOVI, ${sanitize(username)}!</h2>
+            <h2 style="color: #1F2A30;">¡Bienvenido a YOVI, ${username}!</h2>
             <p style="color: #555; font-size: 16px;">Gracias por registrarte. Para poder jugar y guardar tus estadísticas, necesitamos que verifiques tu dirección de correo electrónico.</p>
             <a href="${verificationLink}" style="display: inline-block; padding: 14px 28px; margin: 25px 0; background-color: #FF7B00; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Verificar mi cuenta</a>
             <p style="color: #999; font-size: 12px; margin-top: 20px;">Si no te has registrado en YOVI, puedes ignorar este correo de forma segura.</p>
@@ -90,8 +222,13 @@ app.post('/createuser', async (req, res) => {
     };
 
     // Enviamos el correo real
-    await transporter.sendMail(mailOptions);
-    console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
+    const transporter = createMailTransporter();
+
+    if (transporter) {
+      await transporter.sendMail(mailOptions);
+      // Se quita el correo del log, ya que no está validado ni neutralizado, por lo que podría romper el formato del log
+      console.log("[CORREO ENVIADO] 📧 Correo de verificación enviado correctamente.");
+    }
 
     res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
   } catch (err) {
@@ -108,7 +245,8 @@ app.post('/createuser', async (req, res) => {
   }
 });
 
-// ─── VERIFICACIÓN DE CORREO ───────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// VERIFICACIÓN DE CORREO
 app.get('/verify', async (req, res) => {
   const { token } = req.query;
   try {
@@ -125,11 +263,24 @@ app.get('/verify', async (req, res) => {
   }
 });
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// LOGIN
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const usernameValidation = validateUsername(req.body.username);
+  const password = req.body.password;
+
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  if (typeof password !== "string" || !password) {
+    return res.status(400).json({ error: "La contraseña es obligatoria." });
+  }
+
+  const username = usernameValidation.value;
+
   try {
-    const user = await User.findOne({ username: sanitize(username) });
+    const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     if (!user.isVerified) {
@@ -139,21 +290,138 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
-    res.json({ message: `Bienvenido ${username}`, username: user.username, profilePicture: user.profilePicture });
+    res.json({ message: `Bienvenido ${user.username}`, username: user.username, profilePicture: user.profilePicture });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── ACTUALIZAR ESTADÍSTICAS DE JUEGO ────────────────────────────────────────
-/**
- * PATCH /users/:username/stats
- * Body: { won: boolean, totalMoves: number }
- * Incrementa las estadísticas del usuario tras una partida.
- * totalMoves solo se acumula en partidas ganadas.
- */
+// ───────────────────────────────────────────────────────────────────────────────
+// REGISTRAR PARTIDA + ACTUALIZAR ESTADÍSTICAS
+app.post("/users/:username/games", async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  const validation = validateRecordGame(req.body);
+  if (validation.error)
+    return res.status(400).json({ error: validation.error });
+
+  const username = usernameValidation.value;
+  const game = validation.value;
+
+  try {
+    const user = await User.findOne(
+      { username },
+      { username: 1, stats: 1, gameHistory: 1, _id: 1 }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const alreadyExists = Array.isArray(user.gameHistory)
+      && user.gameHistory.some((savedGame) => savedGame.gameId === game.gameId);
+
+    if (alreadyExists) {
+      return res.status(409).json({
+        error: "Esta partida ya fue registrada para este usuario.",
+      });
+    }
+
+    const inc = {
+      "stats.gamesPlayed": 1,
+      "stats.totalMoves": game.totalMoves,
+    };
+
+    if (game.result === "won") {
+      inc["stats.gamesWon"] = 1;
+    } else if (game.result === "lost") {
+      inc["stats.gamesLost"] = 1;
+    } else if (game.result === "abandoned") {
+      inc["stats.gamesAbandoned"] = 1;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        $inc: inc,
+        $push: {
+          gameHistory: {
+            $each: [game],
+            $position: 0,
+          },
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    res.status(201).json({
+      username: updatedUser.username,
+      stats: buildUserStats(updatedUser.stats),
+      savedGame: game,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// HISTORIAL PAGINADO
+app.get("/users/:username/history", async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  const page = normalizePositiveInteger(req.query.page, 1);
+  const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
+
+  try {
+    const user = await User.findOne(
+      { username },
+      { username: 1, profilePicture: 1, stats: 1, gameHistory: 1, _id: 0 }
+    );
+
+    if (!user)
+      return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const history = Array.isArray(user.gameHistory) ? user.gameHistory : [];
+    const totalGames = history.length;
+    const totalPages = totalGames === 0 ? 1 : Math.ceil(totalGames / pageSize);
+    const safePage = Math.min(page, totalPages);
+    const startIndex = (safePage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    res.json({
+      username: user.username,
+      profilePicture: user.profilePicture,
+      stats: buildUserStats(user.stats),
+      pagination: {
+        page: safePage,
+        pageSize,
+        totalGames,
+        totalPages,
+      },
+      games: history.slice(startIndex, endIndex),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// ENDPOINT LEGACY DE STATS
 app.patch('/users/:username/stats', async (req, res) => {
-  const { username } = req.params;
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
   const { won, totalMoves } = req.body;
 
   if (typeof won !== 'boolean') {
@@ -164,39 +432,35 @@ app.patch('/users/:username/stats', async (req, res) => {
   }
 
   try {
-    const inc = { 'stats.gamesPlayed': 1 };
+    const inc = {
+      "stats.gamesPlayed": 1,
+      "stats.totalMoves": totalMoves,
+    };
     if (won) {
       inc['stats.gamesWon']   = 1;
-      inc['stats.totalMoves'] = totalMoves; // solo se acumula al ganar
     } else {
       inc['stats.gamesLost'] = 1;
     }
 
     const user = await User.findOneAndUpdate(
-      { username: sanitize(username) },
+      { username },
       { $inc: inc },
       { new: true }
     );
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const s = user.stats;
     res.json({
       username: user.username,
-      stats: {
-        gamesPlayed: s.gamesPlayed,
-        gamesWon:    s.gamesWon,
-        gamesLost:   s.gamesLost,
-        totalMoves:  s.totalMoves,
-        winRate:     s.gamesPlayed > 0 ? Math.round((s.gamesWon / s.gamesPlayed) * 100) : 0,
-      }
+      stats: buildUserStats(user.stats),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── RANKING ──────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
+// RANKING
 /**
  * GET /ranking?sortBy=winRate|gamesWon|gamesPlayed&limit=20
  * Devuelve la lista de usuarios ordenada por la métrica solicitada.
@@ -206,7 +470,7 @@ app.patch('/users/:username/stats', async (req, res) => {
 app.get('/ranking', async (req, res) => {
   const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed'];
   const sortBy = validSortFields.includes(req.query.sortBy) ? req.query.sortBy : 'winRate';
-  const limit  = Math.min(parseInt(req.query.limit) || 20, 100);
+  const limit  = Math.min(parseInt(req.query.limit, 10) || 20, 100);
 
   try {
     const users = await User.find(
@@ -215,19 +479,17 @@ app.get('/ranking', async (req, res) => {
     );
 
     const ranked = users.map(u => {
-      const s = u.stats;
-      const gamesPlayed = s.gamesPlayed || 0;
-      const gamesWon    = s.gamesWon    || 0;
-      const winRate     = gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0;
+      const stats = buildUserStats(u.stats);
 
       return {
         username:       u.username,
         profilePicture: u.profilePicture,
-        gamesPlayed,
-        gamesWon,
-        gamesLost:  s.gamesLost  || 0,
-        totalMoves: s.totalMoves || 0,
-        winRate,
+        gamesPlayed:    stats.gamesPlayed,
+        gamesWon:       stats.gamesWon,
+        gamesLost:      stats.gamesLost,
+        gamesAbandoned: stats.gamesAbandoned,
+        totalMoves:     stats.totalMoves,
+        winRate:        stats.winRate,
       };
     });
 
@@ -239,34 +501,26 @@ app.get('/ranking', async (req, res) => {
   }
 });
 
-// ─── PERFIL DE USUARIO ────────────────────────────────────────────────────────
-/**
- * GET /users/:username/stats
- * Devuelve las estadísticas individuales de un usuario.
- */
+// ───────────────────────────────────────────────────────────────────────────────
+// STATS INDIVIDUALES
 app.get('/users/:username/stats', async (req, res) => {
-  const { username } = req.params;
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
   try {
     const user = await User.findOne(
-      { username: sanitize(username) },
+      { username },
       { username: 1, profilePicture: 1, stats: 1, _id: 0 }
     );
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-    const s = user.stats;
-    const gamesPlayed = s.gamesPlayed || 0;
-    const gamesWon    = s.gamesWon    || 0;
+    if (!user)
+      return res.status(404).json({ error: 'Usuario no encontrado' });
 
     res.json({
       username: user.username,
       profilePicture: user.profilePicture,
-      stats: {
-        gamesPlayed,
-        gamesWon,
-        gamesLost:  s.gamesLost  || 0,
-        totalMoves: s.totalMoves || 0,
-        winRate:    gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0,
-      }
+      stats: buildUserStats(user.stats),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

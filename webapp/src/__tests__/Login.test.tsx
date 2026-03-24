@@ -1,18 +1,27 @@
+import "@testing-library/jest-dom";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LoginForm from "../vistas/registroLogin/LoginForm"; // Ajusta esta ruta según tu estructura
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
-import "@testing-library/jest-dom";
+import LoginForm from "../vistas/registroLogin/LoginForm";
 
-// 1. Mock de react-router-dom para espiar la función navigate()
 const mockNavigate = vi.fn();
+const loginUserMock = vi.fn();
+const saveUserSessionMock = vi.fn();
+
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// 2. Mock de los mensajes de Ant Design para evitar errores de renderizado y poder afirmar llamadas
+vi.mock("../api/users", () => ({
+  loginUser: (...args: any[]) => loginUserMock(...args),
+}));
+
+vi.mock("../utils/session", () => ({
+  saveUserSession: (...args: any[]) => saveUserSessionMock(...args),
+}));
+
 vi.mock("antd", async () => {
-  const actual = await vi.importActual("antd");
+  const actual = await vi.importActual<any>("antd");
   return {
     ...actual,
     message: {
@@ -23,9 +32,8 @@ vi.mock("antd", async () => {
   };
 });
 
-describe("LoginForm Component", () => {
+describe("LoginForm", () => {
   beforeAll(() => {
-    // Mock obligatorio de window.matchMedia para Ant Design
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
@@ -42,13 +50,10 @@ describe("LoginForm Component", () => {
   });
 
   beforeEach(() => {
-    // Limpiamos todos los mocks antes de cada test para evitar contaminación
     vi.clearAllMocks();
-    global.fetch = vi.fn();
-    localStorage.clear(); // Limpiamos el Storage
   });
 
-  it("debe renderizar correctamente los campos y el botón", () => {
+  it("renderiza campos y botón", () => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/Nombre de usuario/i)).toBeInTheDocument();
@@ -59,14 +64,12 @@ describe("LoginForm Component", () => {
     ).toBeInTheDocument();
   });
 
-  it("debe mostrar errores de validación si se intenta enviar vacío", async () => {
-    render(<LoginForm />);
+  it("muestra errores de validación si se envía vacío", async () => {
     const user = userEvent.setup();
+    render(<LoginForm />);
 
-    // Hacemos click en enviar sin rellenar nada
     await user.click(screen.getByRole("button", { name: /Iniciar Sesión/i }));
 
-    // Esperamos a que Ant Design muestre los mensajes requeridos
     expect(
       await screen.findByText(/Por favor, ingresa tu usuario./i),
     ).toBeInTheDocument();
@@ -74,91 +77,51 @@ describe("LoginForm Component", () => {
       await screen.findByText(/Por favor, ingresa tu contraseña./i),
     ).toBeInTheDocument();
 
-    // Asegurarnos de que NO se llamó a la API
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(loginUserMock).not.toHaveBeenCalled();
   });
 
-  it("debe iniciar sesión con éxito, guardar en localStorage y redirigir", async () => {
-    // 1. Preparamos el mock de la respuesta exitosa
-    const mockResponseData = {
+  it("inicia sesión, guarda la sesión y navega a home", async () => {
+    const { message } = await import("antd");
+    loginUserMock.mockResolvedValueOnce({
       message: "Login exitoso",
-      username: "testuser",
-      profilePicture: "avatar1.png",
-    };
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockResponseData,
+      username: "marcelo",
+      profilePicture: "avatar-1.png",
     });
 
-    // 2. Espiamos el localStorage
-    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
-
-    render(<LoginForm />);
     const user = userEvent.setup();
+    render(<LoginForm />);
 
-    // 3. Rellenamos el formulario
-    await user.type(screen.getByLabelText(/Nombre de usuario/i), "testuser");
+    await user.type(screen.getByLabelText(/Nombre de usuario/i), "marcelo");
     await user.type(screen.getByLabelText(/Contraseña/i), "Password123!");
-
-    // 4. Enviamos el formulario
     await user.click(screen.getByRole("button", { name: /Iniciar Sesión/i }));
 
-    // 5. Afirmaciones
     await waitFor(() => {
-      // Verifica que fetch fue llamado con los datos correctos
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/login"),
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({
-            username: "testuser",
-            password: "Password123!",
-          }),
-        }),
-      );
-
-      // Verifica que los datos se guardaron en el localStorage
-      expect(setItemSpy).toHaveBeenCalledWith(
-        "userSession",
-        JSON.stringify({
-          username: "testuser",
-          profilePicture: "avatar1.png",
-        }),
-      );
-
-      // Verifica que se ejecutó la redirección a /home
+      expect(loginUserMock).toHaveBeenCalledWith("marcelo", "Password123!");
+      expect(saveUserSessionMock).toHaveBeenCalledWith({
+        username: "marcelo",
+        profilePicture: "avatar-1.png",
+      });
+      expect(message.success).toHaveBeenCalledWith("Login exitoso");
       expect(mockNavigate).toHaveBeenCalledWith("/home");
     });
   });
 
-  it("debe manejar un error del servidor correctamente y mostrar un mensaje", async () => {
-    // Importamos dinámicamente el message para comprobar sus llamadas
+  it("muestra error si el login falla", async () => {
     const { message } = await import("antd");
+    loginUserMock.mockRejectedValueOnce(new Error("Credenciales incorrectas"));
 
-    // Preparamos el mock para un error 401/400
-    const errorMsg = "Credenciales incorrectas";
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: errorMsg }),
-    });
-
-    render(<LoginForm />);
     const user = userEvent.setup();
+    render(<LoginForm />);
 
-    await user.type(screen.getByLabelText(/Nombre de usuario/i), "wronguser");
+    await user.type(screen.getByLabelText(/Nombre de usuario/i), "wrong");
     await user.type(screen.getByLabelText(/Contraseña/i), "wrongpass");
-
     await user.click(screen.getByRole("button", { name: /Iniciar Sesión/i }));
 
     await waitFor(() => {
-      // Verifica que no se navegó a ninguna parte
+      expect(loginUserMock).toHaveBeenCalledWith("wrong", "wrongpass");
+      expect(saveUserSessionMock).not.toHaveBeenCalled();
       expect(mockNavigate).not.toHaveBeenCalled();
-
-      // Verifica que no se guardó nada en localStorage
-      expect(localStorage.getItem("userSession")).toBeNull();
-
-      // Verifica que se llamó al pop-up de error de Ant Design con el mensaje del servidor
-      expect(message.error).toHaveBeenCalledWith(errorMsg);
+      expect(message.error).toHaveBeenCalledWith("Credenciales incorrectas");
     });
   });
 });

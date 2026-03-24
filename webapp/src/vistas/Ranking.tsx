@@ -1,10 +1,26 @@
 import { useEffect, useState } from "react";
-import { Select, Typography, Alert, Avatar, Tag, Tooltip, Card, Flex, Space, Table, Progress } from "antd";
-import { TrophyOutlined, RiseOutlined, PlayCircleOutlined } from "@ant-design/icons";
-import AppHeader from "./AppHeader"; // <-- Importamos tu nuevo Header
+import {
+  Select,
+  Typography,
+  Alert,
+  Avatar,
+  Tag,
+  Tooltip,
+  Card,
+  Flex,
+  Space,
+  Table,
+  Progress,
+} from "antd";
+import {
+  TrophyOutlined,
+  RiseOutlined,
+  PlayCircleOutlined,
+} from "@ant-design/icons";
+import AppHeader from "./AppHeader";
+import { getRanking } from "../api/users";
 
 const { Title, Text } = Typography;
-const USERS_URL = "/api/users";
 type SortBy = "winRate" | "gamesWon" | "gamesPlayed";
 
 type RankingEntry = {
@@ -13,6 +29,7 @@ type RankingEntry = {
   gamesPlayed: number;
   gamesWon: number;
   gamesLost: number;
+  gamesAbandoned: number;
   totalMoves: number;
   winRate: number;
 };
@@ -34,12 +51,12 @@ export default function Ranking() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${USERS_URL}/ranking?sortBy=${sortBy}&limit=20`)
-      .then(r => { if (!r.ok) throw new Error(`Error ${r.status}`); return r.json(); })
-      .then(data => {
+
+    getRanking(sortBy, 20)
+      .then((data) => {
         setEntries(Array.isArray(data.ranking) ? data.ranking : []);
       })
-      .catch(e => setError(e.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [sortBy]);
 
@@ -64,7 +81,7 @@ export default function Ranking() {
           <Space direction="vertical" size={0}>
             <Text strong>{record.username}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.gamesWon}V · {record.gamesLost}D
+              {record.gamesWon}V · {record.gamesLost}D · {record.gamesAbandoned}A
             </Text>
           </Space>
         </Space>
@@ -105,7 +122,7 @@ export default function Ranking() {
       key: 'totalMoves',
       align: 'center' as const,
       render: (val: number) => (
-        <Tooltip title="Movimientos realizados en partidas ganadas">
+        <Tooltip title="Movimientos realizados en partidas registradas">
           <Text type="secondary">{val}</Text>
         </Tooltip>
       ),
@@ -156,13 +173,15 @@ export default function Ranking() {
 
               <Flex justify="center">
                 <Text type="secondary" style={{ fontSize: 13, textAlign: "center" }}>
-                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.{" "}<br/>
-                  <strong>Movimientos</strong> — total de movimientos realizados únicamente en partidas ganadas.
+                  <strong>% Victoria</strong> — partidas ganadas / total jugadas.
+                  <br />
+                  <strong>Movimientos</strong> — total de movimientos realizados en todas las partidas registradas.
+                  <br />
+                  <strong>A</strong> — partidas abandonadas.
                 </Text>
               </Flex>
             </Space>
           </Card>
-
         </Space>
       </div>
     </Flex>

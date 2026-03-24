@@ -1,7 +1,16 @@
+import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { createHvhGame, hvhMove, putConfig, type YEN } from "../../api/gamey";
+import {
+  createHvhGame,
+  deleteHvhGame,
+  hvhMove,
+  putConfig,
+  type YEN,
+} from "../../api/gamey";
+import { recordUserGame } from "../../api/users";
 import SessionGamePage from "../../game/SessionGamePage";
+import { getUserSession } from "../../utils/session";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -30,6 +39,7 @@ function getStarterLabel(hvh_starter: StarterHvH): string {
 
 export default function GameHvH() {
   const [searchParams] = useSearchParams();
+  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
@@ -38,6 +48,47 @@ export default function GameHvH() {
     player0: "Player 0",
     player1: "Player 1",
   } as const;
+
+  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
+    const session = getUserSession();
+    if (!session) return;
+    if (!winner) return;
+    if (savedGameIdsRef.current.has(gameId)) return;
+
+    const result = winner === "player0" ? "won" : "lost";
+
+    await recordUserGame(session.username, {
+      gameId,
+      mode: "HvH",
+      result,
+      boardSize: size,
+      totalMoves,
+      opponent: "Jugador local",
+      startedBy: hvh_starter,
+    });
+
+    savedGameIdsRef.current.add(gameId);
+  }
+
+  async function registerAbandonedGame(gameId: string, totalMoves: number) {
+    const session = getUserSession();
+
+    if (session && !savedGameIdsRef.current.has(gameId)) {
+      await recordUserGame(session.username, {
+        gameId,
+        mode: "HvH",
+        result: "abandoned",
+        boardSize: size,
+        totalMoves,
+        opponent: "Jugador local",
+        startedBy: hvh_starter,
+      });
+
+      savedGameIdsRef.current.add(gameId);
+    }
+
+    await deleteHvhGame(gameId);
+  }
 
   return (
     <SessionGamePage<YEN>
@@ -56,6 +107,12 @@ export default function GameHvH() {
         });
       }}
       move={(gameId, cellId) => hvhMove(gameId, cellId)}
+      onGameFinished={async ({ gameId, winner, totalMoves }) => {
+        await registerFinishedGame(gameId, winner, totalMoves);
+      }}
+      onGameAbandoned={async ({ gameId, totalMoves }) => {
+        await registerAbandonedGame(gameId, totalMoves);
+      }}
       resultConfig={{
         title: "Juego Y — Human vs Human",
         subtitle: `Tamaño: ${size} · Empieza: ${getStarterLabel(hvh_starter)}`,

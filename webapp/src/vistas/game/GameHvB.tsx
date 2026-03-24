@@ -1,14 +1,18 @@
+import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
   createHvbGame,
+  deleteHvbGame,
   hvbBotMove,
   hvbHumanMove,
   hvbHint,
   putConfig,
   type YEN,
 } from "../../api/gamey";
+import { recordUserGame } from "../../api/users";
 import SessionGamePage from "../../game/SessionGamePage";
+import { getUserSession } from "../../utils/session";
 
 type StarterHvB = "human" | "bot" | "random";
 
@@ -37,6 +41,7 @@ function getStarterLabel(hvb_starter: StarterHvB, botId: string): string {
 
 export default function GameHvB() {
   const [searchParams] = useSearchParams();
+  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
@@ -46,6 +51,47 @@ export default function GameHvB() {
     human: "Humano",
     bot: botId,
   } as const;
+
+  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
+    const session = getUserSession();
+    if (!session) return;
+    if (!winner) return;
+    if (savedGameIdsRef.current.has(gameId)) return;
+
+    const result = winner === "human" ? "won" : "lost";
+
+    await recordUserGame(session.username, {
+      gameId,
+      mode: "HvB",
+      result,
+      boardSize: size,
+      totalMoves,
+      opponent: botId,
+      startedBy: hvb_starter,
+    });
+
+    savedGameIdsRef.current.add(gameId);
+  }
+
+  async function registerAbandonedGame(gameId: string, totalMoves: number) {
+    const session = getUserSession();
+
+    if (session && !savedGameIdsRef.current.has(gameId)) {
+      await recordUserGame(session.username, {
+        gameId,
+        mode: "HvB",
+        result: "abandoned",
+        boardSize: size,
+        totalMoves,
+        opponent: botId,
+        startedBy: hvb_starter,
+      });
+
+      savedGameIdsRef.current.add(gameId);
+    }
+
+    await deleteHvbGame(gameId);
+  }
 
   return (
     <SessionGamePage<YEN>
@@ -67,6 +113,12 @@ export default function GameHvB() {
       move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
       botMove={(gameId) => hvbBotMove(gameId)}
       onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
+      onGameFinished={async ({gameId, winner, totalMoves }) => {
+        await registerFinishedGame(gameId, winner, totalMoves)
+      }}
+      onGameAbandoned={async ({ gameId, totalMoves }) => {
+        await registerAbandonedGame(gameId, totalMoves);
+      }}
       resultConfig={{
         title: "Juego Y — Human vs Bot",
         subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(hvb_starter, participantLabels.bot)}`,
