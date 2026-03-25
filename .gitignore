@@ -8,3 +8,4 @@ webapp/.env
 .vscode/
 
 .DS_Store
+repomix-output.xml

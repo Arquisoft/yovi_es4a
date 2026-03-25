@@ -61,6 +61,7 @@ type Props<TYen extends GameYEN> = {
   resultConfig: ResultConfig;
   winnerPalette: WinnerPalette;
   turnConfig: TurnConfig;
+  disabledCells?: Set<number>; //Agujeros en el tablero, para variantes que los tengan
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
