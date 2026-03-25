@@ -69,7 +69,7 @@ export default function GameHoley() {
 
   // Los agujeros se generan una vez al montar el componente
   const holesRef = useRef<Set<number>>(generateHoles(totalCells));
-  const [holes] = useState<Set<number>>(holesRef.current);
+  const [holes, setHoles] = useState<Set<number>>(holesRef.current);
 
   async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     const session = getUserSession();
@@ -108,18 +108,12 @@ export default function GameHoley() {
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
     // Regenerar agujeros al iniciar nueva partida
-    holesRef.current = generateHoles(totalCells);
-    // Forzar re-render con los nuevos agujeros no es necesario porque
-    // el estado `holes` ya contiene los iniciales; para regenerar entre partidas
-    // usamos deps=[size, hvh_starter] que desmontarán y remontarán el componente.
+    const newHoles = generateHoles(totalCells);
+    holesRef.current = newHoles;
+    setHoles(newHoles); // <-- ESTO FORZARÁ A RENDERIZAR LOS NUEVOS AGUJEROS
 
     await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvh_starter });
-    const game = await createHvhGame({ size, hvh_starter: hvh_starter });
-
-    // Modificar el YEN para marcar los agujeros como ocupados por un símbolo especial.
-    // El backend no conoce los agujeros, así que los gestionamos visualmente
-    // deshabilitando esas celdas en el Board.
-    return game;
+    return createHvhGame({ size, hvh_starter: hvh_starter });
   }, [size, hvh_starter, totalCells]);
 
   return (

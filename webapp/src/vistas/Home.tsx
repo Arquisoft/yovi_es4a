@@ -103,8 +103,7 @@ function gameRouteForVariant(variantId: VariantId): string {
 
 // Variantes que NO tienen modo HvB (el bot no puede respetar sus reglas extra)
 // Variantes que solo tienen modo HvH (o autopartida sin bot)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y"];
-// Variantes propias sin backend Y (tablero distinto)
+const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu"];// Variantes propias sin backend Y (tablero distinto)
 const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -208,22 +207,18 @@ export default function Home({ variant, onChangeVariant }: Props) {
     navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
   }
 
-  function handlePlayHvH() {
+ function handlePlayHvH() {
     const s = clampSize(size, meta);
     saveLastConfigHvH({ size: s, hvhstarter: hvhStarter });
     const params = new URLSearchParams();
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
     params.set("variant", variant.id);
-    // HvH siempre en /game-hvh salvo variantes standalone
-    const route = STANDALONE_VARIANTS.includes(variant.id)
-      ? gameRouteForVariant(variant.id)
-      : HVH_ONLY_VARIANTS.includes(variant.id)
-      ? gameRouteForVariant(variant.id)
-      : "/game-hvh";
+    
+    // Obtener la ruta correcta basada en la variante actual
+    const route = gameRouteForVariant(variant.id);
     navigate(`${route}?${params.toString()}`);
   }
-
   function handlePlayStandalone() {
     const s = clampSize(size, meta);
     const params = new URLSearchParams();
