@@ -1,5 +1,3 @@
-import { useRef, useState } from "react";
-import { App } from "antd";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -9,13 +7,9 @@ import {
   putConfig,
   type YEN,
 } from "../../api/gamey";
-import {
-  recordUserGame,
-  type RecordUserGameRequest,
-} from "../../api/users";
-import SessionGamePage, {
-  type FinishedGamePayload,
-} from "../../game/SessionGamePage";
+import type { RecordUserGameRequest } from "../../api/users";
+import SessionGamePage from "../../game/SessionGamePage";
+import useDeferredGameSave from "../../game/useDeferredGameSave";
 import { getUserSession } from "../../utils/session";
 import AuthModal from "../registroLogin/AuthModal";
 
@@ -45,13 +39,7 @@ function getStarterLabel(hvh_starter: StarterHvH): string {
 }
 
 export default function GameHvH() {
-  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
-
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [savingPendingGame, setSavingPendingGame] = useState(false);
-  const [pendingFinishedGame, setPendingFinishedGame] = useState<RecordUserGameRequest | null>(null);
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
@@ -61,49 +49,22 @@ export default function GameHvH() {
     player1: "Player 1",
   } as const;
 
-  async function saveGameForCurrentSession(payload: RecordUserGameRequest) {
-    const session = getUserSession();
-    if (!session)
-      throw new Error("No hay ninguna sesión iniciada.");
-
-    if (savedGameIdsRef.current.has(payload.gameId))
-      return;
-
-    await recordUserGame(session.username, payload);
-    savedGameIdsRef.current.add(payload.gameId);
-  }
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    if (!winner) return;
-    if (savedGameIdsRef.current.has(gameId)) return;
-
-    const result = winner === "player0" ? "won" : "lost";
-
-    const payload: RecordUserGameRequest = {
-      gameId,
-      mode: "HvH",
-      result,
-      boardSize: size,
-      totalMoves,
-      opponent: "Jugador local",
-      startedBy: hvh_starter,
-    };
-
-    const session = getUserSession();
-
-    if (session) {
-      await saveGameForCurrentSession(payload);
-      return;
-    }
-
-    setPendingFinishedGame(payload);
-  }
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    saveGameForCurrentSession,
+    registerFinishedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useDeferredGameSave();
 
   async function registerAbandonedGame(gameId: string, totalMoves: number) {
     const session = getUserSession();
 
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
+    if (session) {
+      await saveGameForCurrentSession({
         gameId,
         mode: "HvH",
         result: "abandoned",
@@ -112,34 +73,9 @@ export default function GameHvH() {
         opponent: "Jugador local",
         startedBy: hvh_starter,
       });
-
-      savedGameIdsRef.current.add(gameId);
     }
 
     await deleteHvhGame(gameId);
-  }
-
-  function handleGuestSaveRequested(_payload: FinishedGamePayload) {
-    if (!pendingFinishedGame) return;
-    setAuthModalOpen(true);
-  }
-
-  async function handleLoginSuccess() {
-    if (!pendingFinishedGame) return;
-
-    try {
-      setSavingPendingGame(true);
-      await saveGameForCurrentSession(pendingFinishedGame);
-      message.success("La partida se ha guardado correctamente en tu cuenta.");
-      setPendingFinishedGame(null);
-      setAuthModalOpen(false);
-    } catch (err: any) {
-      message.error(
-        err?.message ?? "No se pudo guardar la partida en tu cuenta."
-      );
-    } finally {
-      setSavingPendingGame(false);
-    }
   }
 
   return (
@@ -161,12 +97,25 @@ export default function GameHvH() {
         }}
         move={(gameId, cellId) => hvhMove(gameId, cellId)}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          await registerFinishedGame(gameId, winner, totalMoves);
+          if (!winner)
+            return;
+
+          const payload: RecordUserGameRequest = {
+            gameId,
+            mode: "HvH",
+            result: winner === "player0" ? "won" : "lost",
+            boardSize: size,
+            totalMoves,
+            opponent: "Jugador local",
+            startedBy: hvh_starter,
+          };
+
+          await registerFinishedGame(payload);
         }}
         onGameAbandoned={async ({ gameId, totalMoves }) => {
           await registerAbandonedGame(gameId, totalMoves);
         }}
-        canOfferGuestSave={!getUserSession() && !!pendingFinishedGame}
+        canOfferGuestSave={canOfferGuestSave}
         onGuestSaveRequested={handleGuestSaveRequested}
         guestSaveLoading={savingPendingGame}
         resultConfig={{
@@ -201,7 +150,7 @@ export default function GameHvH() {
 
       <AuthModal
         open={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={closeAuthModal}
         onLoginSuccess={handleLoginSuccess}
       />
     </>

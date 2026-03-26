@@ -1,5 +1,3 @@
-import { useRef, useState } from "react";
-import { App } from "antd";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -11,13 +9,9 @@ import {
   putConfig,
   type YEN,
 } from "../../api/gamey";
-import {
-  recordUserGame,
-  type RecordUserGameRequest,
-} from "../../api/users";
-import SessionGamePage, {
-  type FinishedGamePayload,
-} from "../../game/SessionGamePage";
+import type { RecordUserGameRequest } from "../../api/users";
+import SessionGamePage from "../../game/SessionGamePage";
+import useDeferredGameSave from "../../game/useDeferredGameSave";
 import { getUserSession } from "../../utils/session";
 import AuthModal from "../registroLogin/AuthModal";
 
@@ -47,13 +41,7 @@ function getStarterLabel(hvb_starter: StarterHvB, botId: string): string {
 }
 
 export default function GameHvB() {
-  const { message } = App.useApp();
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
-
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [savingPendingGame, setSavingPendingGame] = useState(false);
-  const [pendingFinishedGame, setPendingFinishedGame] = useState<RecordUserGameRequest | null>(null);
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
@@ -64,49 +52,22 @@ export default function GameHvB() {
     bot: botId,
   } as const;
 
-  async function saveGameForCurrentSession(payload: RecordUserGameRequest) {
-    const session = getUserSession();
-    if (!session)
-      throw new Error("No hay ninguna sesión iniciada.");
-
-    if (savedGameIdsRef.current.has(payload.gameId))
-      return;
-
-    await recordUserGame(session.username, payload);
-    savedGameIdsRef.current.add(payload.gameId);
-  }
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    if (!winner) return;
-    if (savedGameIdsRef.current.has(gameId)) return;
-
-    const result = winner === "human" ? "won" : "lost";
-
-    const payload: RecordUserGameRequest = {
-      gameId,
-      mode: "HvB",
-      result,
-      boardSize: size,
-      totalMoves,
-      opponent: botId,
-      startedBy: hvb_starter,
-    };
-
-    const session = getUserSession();
-
-    if (session) {
-      await saveGameForCurrentSession(payload);
-      return;
-    }
-
-    setPendingFinishedGame(payload);
-  }
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    saveGameForCurrentSession,
+    registerFinishedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useDeferredGameSave();
 
   async function registerAbandonedGame(gameId: string, totalMoves: number) {
     const session = getUserSession();
 
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
+    if (session) {
+      await saveGameForCurrentSession({
         gameId,
         mode: "HvB",
         result: "abandoned",
@@ -115,34 +76,9 @@ export default function GameHvB() {
         opponent: botId,
         startedBy: hvb_starter,
       });
-
-      savedGameIdsRef.current.add(gameId);
     }
 
     await deleteHvbGame(gameId);
-  }
-
-  function handleGuestSaveRequested(_payload: FinishedGamePayload) {
-    if (!pendingFinishedGame) return;
-    setAuthModalOpen(true);
-  }
-
-  async function handleLoginSuccess() {
-    if (!pendingFinishedGame) return;
-
-    try {
-      setSavingPendingGame(true);
-      await saveGameForCurrentSession(pendingFinishedGame);
-      message.success("La partida se ha guardado correctamente en tu cuenta.");
-      setPendingFinishedGame(null);
-      setAuthModalOpen(false);
-    } catch (err: any) {
-      message.error(
-        err?.message ?? "No se pudo guardar la partida en tu cuenta."
-      );
-    } finally {
-      setSavingPendingGame(false);
-    }
   }
 
   return (
@@ -152,7 +88,7 @@ export default function GameHvB() {
         start={async () => {
           await putConfig({
             size,
-            hvb_starter: hvb_starter,
+            hvb_starter,
             bot_id: botId,
             hvh_starter: "player0",
           });
@@ -167,12 +103,25 @@ export default function GameHvB() {
         botMove={(gameId) => hvbBotMove(gameId)}
         onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          await registerFinishedGame(gameId, winner, totalMoves);
+          if (!winner)
+            return;
+
+          const payload: RecordUserGameRequest = {
+            gameId,
+            mode: "HvB",
+            result: winner === "human" ? "won" : "lost",
+            boardSize: size,
+            totalMoves,
+            opponent: botId,
+            startedBy: hvb_starter,
+          };
+
+          await registerFinishedGame(payload);
         }}
         onGameAbandoned={async ({ gameId, totalMoves }) => {
           await registerAbandonedGame(gameId, totalMoves);
         }}
-        canOfferGuestSave={!getUserSession() && !!pendingFinishedGame}
+        canOfferGuestSave={canOfferGuestSave}
         onGuestSaveRequested={handleGuestSaveRequested}
         guestSaveLoading={savingPendingGame}
         resultConfig={{
@@ -211,7 +160,7 @@ export default function GameHvB() {
 
       <AuthModal
         open={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={closeAuthModal}
         onLoginSuccess={handleLoginSuccess}
       />
     </>
