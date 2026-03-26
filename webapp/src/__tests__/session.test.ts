@@ -37,6 +37,16 @@ describe("utils/session", () => {
     expect(getUserSession()).toBeNull();
   });
 
+  it("getUserSession devuelve null si username está vacío", () => {
+    localStorage.setItem(
+      "userSession",
+      JSON.stringify({ username: "   ", profilePicture: "avatar.png" })
+    );
+
+    expect(getUserSession()).toBeNull();
+    expect(localStorage.getItem("userSession")).toBeNull();
+  });
+
   it("clearUserSession elimina la sesión", () => {
     saveUserSession({ username: "marcelo" });
     clearUserSession();

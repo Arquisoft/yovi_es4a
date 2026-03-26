@@ -7,6 +7,7 @@ import userEvent from "@testing-library/user-event";
 vi.mock("../assets/yovi-logo.svg", () => ({ default: "yovi-logo-mock.svg" }));
 
 const navigateMock = vi.fn();
+const clearUserSessionMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -15,6 +16,10 @@ vi.mock("react-router-dom", async () => {
         useNavigate: () => navigateMock,
     };
 });
+
+vi.mock("../utils/session", () => ({
+    clearUserSession: (...args: any[]) => clearUserSessionMock(...args),
+}));
 
 vi.mock("antd", () => ({
     Button: ({ children, disabled, onClick, ...props }: any) => (
@@ -35,19 +40,23 @@ vi.mock("antd", () => ({
     Tabs: ({ items }: any) => (
         <div>
             {items.map((item: any) => (
-                <button key={item.key} role="tab">{item.label}</button>
+                <div key={item.key}>
+                    <button role="tab">{item.label}</button>
+                    <div>{item.children}</div>
+                </div>
             ))}
         </div>
     )
 }));
 
 // Mockeamos los subcomponentes de las pestañas para no arrastrar toda su lógica a este test
-vi.mock("../vistas/tabsInicio/LoginForm", () => ({ default: () => <div>Login Mock</div> }));
-vi.mock("../vistas/tabsInicio/RegisterForm", () => ({ default: () => <div>Register Mock</div> }));
+vi.mock("../vistas/registroLogin/LoginForm", () => ({ default: () => <div>Login Mock</div> }));
+vi.mock("../vistas/registroLogin/RegisterForm", () => ({ default: () => <div>Register Mock</div> }));
 
 describe("Bienvenida", () => {
     beforeEach(() => {
         navigateMock.mockReset();
+        clearUserSessionMock.mockReset();
     });
 
     it("renderiza logo, título, enlace y las pestañas", () => {
@@ -66,11 +75,18 @@ describe("Bienvenida", () => {
         expect(screen.getByRole("button", { name: "Continuar sin cuenta" })).toBeEnabled();
     });
 
-    it("navega a /home al pulsar 'Continuar sin cuenta'", async () => {
+    it("limpia la sesión al montar el componente", () => {
+        render(<Bienvenida />);
+        expect(clearUserSessionMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("navega a /home al pulsar 'Continuar sin cuenta' y vuelve a limpiar la sesión", async () => {
         const user = userEvent.setup();
         render(<Bienvenida />);
 
         await user.click(screen.getByRole("button", { name: "Continuar sin cuenta" }));
-        expect(navigateMock).toHaveBeenCalledWith("/home");
+
+        expect(clearUserSessionMock).toHaveBeenCalledTimes(2);
+        expect(navigateMock).toHaveBeenCalledWith("/home", { replace: true });
     });
 });
