@@ -39,7 +39,7 @@ type TurnConfig = {
   turns: Record<string, TurnPresentation>;
 };
 
-type FinishedGamePayload = {
+export type FinishedGamePayload = {
   gameId: string;
   winner: string | null;
   totalMoves: number;
@@ -61,6 +61,10 @@ type Props<TYen extends GameYEN> = {
   resultConfig: ResultConfig;
   winnerPalette: WinnerPalette;
   turnConfig: TurnConfig;
+
+  canOfferGuestSave?: boolean;
+  onGuestSaveRequested?: (payload: FinishedGamePayload) => void;
+  guestSaveLoading?: boolean;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -74,6 +78,9 @@ export default function SessionGamePage<TYen extends GameYEN>({
   resultConfig,
   winnerPalette,
   turnConfig,
+  canOfferGuestSave = false,
+  onGuestSaveRequested,
+  guestSaveLoading = false,
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -157,6 +164,16 @@ export default function SessionGamePage<TYen extends GameYEN>({
     } finally {
       setHintLoading(false);
     }
+  }
+
+  function handleGuestSaveRequest() {
+    if (!gameId || !gameOver) return;
+
+    onGuestSaveRequested?.({
+      gameId,
+      winner,
+      totalMoves: moveCount,
+    });
   }
 
   const prevYen = useRef(yen);
@@ -290,15 +307,25 @@ export default function SessionGamePage<TYen extends GameYEN>({
                   {resultConfig.getResultTitle(winner)}
                 </Title>
               </Flex>
+
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={5} style={{ margin: 0 }}>
                   {resultConfig.getResultText(winner)}
                 </Title>
               </Flex>
+
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Button type="primary" onClick={goHome}>
-                  Volver a Home
-                </Button>
+                {canOfferGuestSave && onGuestSaveRequested && (
+                  <Button
+                    type="primary"
+                    onClick={handleGuestSaveRequest}
+                    loading={guestSaveLoading}
+                  >
+                    Guardar esta partida
+                  </Button>
+                )}
+
+                <Button onClick={goHome}>Volver a Home</Button>
               </Flex>
             </Space>
           </Card>

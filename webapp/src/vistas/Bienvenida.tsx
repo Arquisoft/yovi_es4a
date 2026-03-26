@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Button, Space, Typography, Tabs, Card, Grid, Flex } from "antd";
 import { useNavigate } from "react-router-dom";
 import yoviLogo from "../assets/yovi-logo.svg";
 import LoginForm from "./registroLogin/LoginForm";
 import RegisterForm from "./registroLogin/RegisterForm";
+import { clearUserSession } from "../utils/session";
 
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -10,6 +12,15 @@ const { useBreakpoint } = Grid;
 export default function Bienvenida() {
   const navigate = useNavigate();
   const screens = useBreakpoint();
+
+  useEffect(() => {
+    clearUserSession();
+  }, []);
+
+  function handleContinueAsGuest() {
+    clearUserSession();
+    navigate("/home", { replace: true });
+  }
 
   return (
     <div className="App home">
@@ -101,7 +112,7 @@ export default function Bienvenida() {
               <Button
                 color="default"
                 variant="link"
-                onClick={() => navigate("/home")}
+                onClick={handleContinueAsGuest}
               >
                 <u>Continuar sin cuenta</u>
               </Button>
