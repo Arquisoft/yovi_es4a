@@ -29,6 +29,7 @@ import {
   type UserHistoryResponse,
 } from "../api/users";
 import { getUserSession } from "../utils/session";
+import { resolveAvatarSrc } from "../utils/avatar";
 
 const { Title, Text } = Typography;
 
@@ -163,7 +164,7 @@ export default function UserHistory() {
                   <Space size={12}>
                     <Avatar
                       size={56}
-                      src={data.profilePicture}
+                      src={resolveAvatarSrc(data.profilePicture)}
                       icon={<UserOutlined />}
                     />
                     <Space direction="vertical" size={0}>

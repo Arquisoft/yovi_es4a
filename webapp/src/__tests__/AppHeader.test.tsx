@@ -12,6 +12,7 @@ const getUserSessionMock = vi.fn();
 
 const infoMock = vi.fn();
 
+const resolveAvatarSrcMock = vi.fn((value?: string | null) => `/avatars/${value}`);
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -22,8 +23,12 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("../utils/session", () => ({
-  clearUserSession: (...args: any[]) => clearUserSessionMock(...args),
-  getUserSession: (...args: any[]) => getUserSessionMock(...args),
+    clearUserSession: (...args: any[]) => clearUserSessionMock(...args),
+    getUserSession: (...args: any[]) => getUserSessionMock(...args),
+}));
+
+vi.mock("../utils/avatar", () => ({
+    resolveAvatarSrc: (profilePicture?: string | null) => resolveAvatarSrcMock(profilePicture),
 }));
 
 vi.mock("antd", () => ({
@@ -32,6 +37,13 @@ vi.mock("antd", () => ({
             modal: { confirm: confirmMock, info: infoMock },
         }),
     },
+    Avatar: ({ src, icon }: any) => (
+        <div
+            data-testid="avatar"
+            data-src={typeof src === "string" ? src : ""}
+            data-has-icon={icon ? "true" : "false"}
+        />
+    ),
     Button: ({ children, onClick, disabled, icon, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
             {icon}
@@ -99,6 +111,35 @@ describe("AppHeader", () => {
         render(<AppHeader title="YOVI" />);
 
         expect(screen.getByText("marcelo")).toBeInTheDocument();
+    });
+
+    it("usa icono de usuario y no imagen cuando no hay sesión", () => {
+        getUserSessionMock.mockReturnValue(null);
+
+        render(<AppHeader title="YOVI" />);
+
+        const avatars = screen.getAllByTestId("avatar");
+        const headerAvatar = avatars[avatars.length - 1];
+
+        expect(resolveAvatarSrcMock).not.toHaveBeenCalled();
+        expect(headerAvatar).toHaveAttribute("data-src", "");
+        expect(headerAvatar).toHaveAttribute("data-has-icon", "true");
+    });
+
+    it("usa la foto de perfil cuando hay sesión", () => {
+        getUserSessionMock.mockReturnValue({
+            username: "marcelo",
+            profilePicture: "avatar.png",
+        });
+
+        render(<AppHeader title="YOVI" />);
+
+        const avatars = screen.getAllByTestId("avatar");
+        const headerAvatar = avatars[avatars.length - 1];
+
+        expect(resolveAvatarSrcMock).toHaveBeenCalledWith("avatar.png");
+        expect(headerAvatar).toHaveAttribute("data-src", "/avatars/avatar.png");
+        expect(headerAvatar).toHaveAttribute("data-has-icon", "true");
     });
 
     it("deshabilita Mi Historial si no hay sesión", () => {
@@ -173,13 +214,15 @@ describe("AppHeader", () => {
         render(<AppHeader title="YOVI" />);
 
         await user.click(screen.getByRole("button", { name: "Ver Perfil" }));
-        await user.click(screen.getByRole("button", { name: "Ayuda" }));
-
         expect(navigateMock).not.toHaveBeenCalled();
-        expect(confirmMock).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Ayuda" }));
+        expect(infoMock).toHaveBeenCalledTimes(1);
     });
 
     it("al pulsar 'Ayuda' abre modal.info con el título correcto", async () => {
+        getUserSessionMock.mockReturnValue(null);
+
         const user = userEvent.setup();
 
         render(<AppHeader title="YOVI" />);
