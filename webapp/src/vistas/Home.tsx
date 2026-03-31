@@ -103,7 +103,7 @@ function gameRouteForVariant(variantId: VariantId): string {
 
 // Variantes que NO tienen modo HvB (el bot no puede respetar sus reglas extra)
 // Variantes que solo tienen modo HvH (o autopartida sin bot)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu"];// Variantes propias sin backend Y (tablero distinto)
+const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
 const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 // ─── Props ───────────────────────────────────────────────────────────────────

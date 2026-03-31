@@ -76,6 +76,8 @@ function App() {
         <Route path="/game-holey" element={<GameHoley />} />
         <Route path="/game-poly-y" element={<GamePolyY />} />
         <Route path="/game-hex" element={<GameHex />} />
+        <Route path="/game-why-not" element={<GameHex />} />
+        <Route path="/game-pastel" element={<GameHex />} />
 
         {/* Usuarios */}
         <Route path="/registro" element={<RegisterForm />} />

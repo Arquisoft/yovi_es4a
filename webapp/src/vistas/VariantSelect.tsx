@@ -59,7 +59,7 @@ export const VARIANTS: Variant[] = [
     description: "Un jugador coloca la primera pieza, el otro elige bando.",
     detail:
       "El Jugador 1 elige dónde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posición (intercambiar bandos) o ceder el turno. Elimina la ventaja de salir primero.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "master",
@@ -70,7 +70,7 @@ export const VARIANTS: Variant[] = [
     description: "Igual que el clásico, pero cada turno se colocan 2 fichas.",
     detail:
       "Las reglas son idénticas al Y estándar salvo que en cada turno el jugador activo coloca exactamente 2 piezas en casillas libres. La estrategia cambia radicalmente al poder avanzar el doble cada vez.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "fortune_coin",
@@ -81,7 +81,7 @@ export const VARIANTS: Variant[] = [
     description: "Antes de cada turno se lanza una moneda para decidir quién mueve.",
     detail:
       "Al inicio de cada turno se lanza una moneda: cara o cruz determina qué jugador coloca ficha ese turno. Un mismo jugador puede mover varias veces seguidas. El primero en conectar los tres lados gana.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "fortune_dice",
@@ -92,7 +92,7 @@ export const VARIANTS: Variant[] = [
     description: "El dado indica cuántas piezas puede colocar el jugador activo.",
     detail:
       "En cada turno se lanza un dado de 6 caras. El resultado indica cuántas piezas puede colocar ese turno el jugador activo. Luego el turno pasa al oponente. La volatilidad es alta y las remontadas son frecuentes.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "tabu",
@@ -125,7 +125,7 @@ export const VARIANTS: Variant[] = [
     description: "Gana el primero en conectar los tres lados... ¡en conectar pierde!",
     detail:
       "Las reglas son idénticas al Y clásico, pero el objetivo se invierte: el primer jugador que forme una conexión de los tres lados del tablero con sus piezas ¡pierde la partida! Hay que conectar al adversario sin conectarse uno mismo.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "poly_y",
@@ -136,7 +136,7 @@ export const VARIANTS: Variant[] = [
     description: "Tablero de 5+ lados. Gana quien conquiste más esquinas.",
     detail:
       "Se juega en un tablero poligonal con un número impar de lados (mínimo 5). Un jugador «posee» una esquina si tiene un grupo de piezas que toca los dos lados que forman dicha esquina. Gana quien consiga poseer más esquinas al final.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "hex",
@@ -147,7 +147,7 @@ export const VARIANTS: Variant[] = [
     description: "Juego relacionado con Y pero en tablero rómbico de 11×11.",
     detail:
       "Jugado en un tablero rómbico (habitualmente 11×11). Cada jugador intenta conectar sus dos lados opuestos del tablero. No hay empates posibles. Comparte ADN matemático con el juego Y y es un clásico de la teoría de juegos.",
-    implemented: true,
+    implemented: false,
   },
 ];
 
@@ -197,11 +197,16 @@ export default function VariantSelect({ onSelect }: Props) {
                   return (
                     <Card
                       key={variant.id}
-                      hoverable
+                      hoverable={variant.implemented}
                       size="small"
-                      onClick={() => setSelected(variant.id)}
+                      onClick={() => {
+                        if (variant.implemented) {
+                          setSelected(variant.id);
+                        }
+                      }}
                       style={{
-                        cursor: "pointer",
+                        cursor: variant.implemented ? "pointer" : "not-allowed",
+                        opacity: variant.implemented ? 1 : 0.6,
                         border: isSelected
                           ? "2px solid #1677ff"
                           : "2px solid transparent",
@@ -210,6 +215,7 @@ export default function VariantSelect({ onSelect }: Props) {
                           : undefined,
                         transition: "all 0.18s ease",
                         background: isSelected ? "#f0f7ff" : undefined,
+                        backgroundColor: !variant.implemented ? "#fafafa" : undefined,
                       }}
                     >
                       <Flex align="center" justify="space-between" gap={12}>
@@ -220,6 +226,7 @@ export default function VariantSelect({ onSelect }: Props) {
                               fontSize: 26,
                               lineHeight: 1,
                               flexShrink: 0,
+                              filter: !variant.implemented ? "grayscale(100%)" : "none",
                             }}
                           >
                             {variant.emoji}
@@ -229,9 +236,14 @@ export default function VariantSelect({ onSelect }: Props) {
                               <Text strong style={{ fontSize: 14 }}>
                                 {variant.label}
                               </Text>
-                              <Tag color={variant.tagColor}>
+                              <Tag color={variant.implemented ? variant.tagColor : "default"}>
                                 {variant.tagLabel}
                               </Tag>
+                              {!variant.implemented && (
+                                <Tag color="default" style={{ margin: 0 }}>
+                                  Próximamente
+                                </Tag>
+                              )}
                             </Flex>
                             <Text
                               type="secondary"
