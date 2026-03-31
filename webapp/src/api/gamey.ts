@@ -165,6 +165,39 @@ export type HvhMoveResponse = {
 };
 
 // --------------------------------------------------------------------------------------
+// API EXTERNA DE BOTS
+// --------------------------------------------------------------------------------------
+
+export type PlayBotResponse = {
+  api_version: string;
+  bot_id: string;
+  coords: MoveCoords;
+  position: YEN;
+};
+
+export async function playBot(
+  position: YEN,
+  botId?: string | null,
+  apiVersion = "v1",
+): Promise<PlayBotResponse> {
+  const params = new URLSearchParams();
+  params.set("position", JSON.stringify(position));
+
+  if (botId) {
+    params.set("bot_id", botId);
+  }
+
+  if (apiVersion) {
+    params.set("api_version", apiVersion);
+  }
+
+  return http<PlayBotResponse>(`/play?${params.toString()}`, {
+    method: "GET",
+    headers: buildHeaders(),
+  });
+}
+
+// --------------------------------------------------------------------------------------
 // HvB
 // --------------------------------------------------------------------------------------
 
