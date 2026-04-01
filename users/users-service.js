@@ -55,10 +55,18 @@ const transporter = nodemailer.createTransport({
 // ─── REGISTRO ────────────────────────────────────────────────────────────────
 app.post('/createuser', async (req, res) => {
   const { username, password, email, profilePicture } = req.body;
+  
+  // 1. Verificamos si el usuario ya existe antes de hacer nada
+  const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+  if (existingUser) {
+    return res.status(400).json({ error: 'El usuario o el correo ya están en uso.' });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(20).toString('hex');
 
+    // 2. Preparamos el usuario
     const user = new User({
       username,
       password: hashedPassword,
@@ -66,16 +74,17 @@ app.post('/createuser', async (req, res) => {
       profilePicture: profilePicture || 'seniora.png',
       verificationToken
     });
+    
+    // Lo guardamos temporalmente en la base de datos
     await user.save();
 
-    // Enlace que apunta al FRONTEND de React
+    // 3. Preparamos el correo
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const verificationLink = `${frontendUrl}/verify?token=${verificationToken}`;
 
-    // Configuración visual del correo electrónico
     const mailOptions = {
-      from: '"Equipo YOVI" <noreply@yovi.com>',
-      to: email,
+      from: `"Equipo YOVI" <${process.env.EMAIL_USER}>`,
+      to: email, // El correo que el usuario escribió en el formulario
       subject: 'Verifica tu cuenta de YOVI',
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4;">
@@ -89,22 +98,20 @@ app.post('/createuser', async (req, res) => {
       `
     };
 
-    // Enviamos el correo real
-    await transporter.sendMail(mailOptions);
-    console.log(`[CORREO ENVIADO] 📧 Para: ${email}`);
-
-    res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
-  } catch (err) {
-    // Manejo de errores de duplicados (MongoDB Error 11000)
-    if (err.code === 11000) {
-      if (err.message.includes('email')) {
-        res.status(400).json({ error: 'El correo electrónico ya está en uso.' });
-      } else {
-        res.status(400).json({ error: 'El nombre de usuario ya está registrado.' });
-      }
-    } else {
-      res.status(400).json({ error: err.message });
+    // 4. Intentamos enviar el correo
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`[CORREO ENVIADO] Para: ${email}`);
+      res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
+    } catch (mailError) {
+      // 5. SI FALLA EL CORREO: Borramos al usuario para que pueda volver a intentarlo
+      await User.findByIdAndDelete(user._id);
+      console.error("Error enviando correo:", mailError);
+      res.status(500).json({ error: 'Hubo un problema al enviar el correo de verificación. Por favor, asegúrate de que tu correo es válido e inténtalo de nuevo.' });
     }
+
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
