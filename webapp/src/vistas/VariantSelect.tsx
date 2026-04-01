@@ -313,6 +313,7 @@ export default function VariantSelect({ onSelect }: Props) {
                   size="large"
                   icon={<PlayCircleOutlined />}
                   onClick={handleConfirm}
+                  data-testid="variant-confirm-btn" 
                 >
                   Continuar con «{selectedVariant.label}»
                 </Button>

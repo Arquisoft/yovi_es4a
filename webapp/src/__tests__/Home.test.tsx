@@ -372,7 +372,7 @@ describe("Home", () => {
         await user.click(confirmButton);
 
         expect(navigateMock).toHaveBeenCalledWith(
-            "/game-hvb?size=5&bot=mcts_bot&hvbstarter=bot",
+            "/game-hvb?size=5&bot=mcts_bot&hvbstarter=bot&variant=classic",
         );
         expect(setItemSpy).toHaveBeenCalledWith(
             LAST_CONFIG_KEY_HVB,
@@ -394,7 +394,7 @@ describe("Home", () => {
         const playButtons = screen.getAllByRole("button", { name: "Jugar" });
         await user.click(playButtons[1]);
 
-        expect(navigateMock).toHaveBeenCalledWith("/game-hvh?size=7&hvhstarter=player1");
+        expect(navigateMock).toHaveBeenCalledWith("/game-hvh?size=7&hvhstarter=player1&variant=classic");
         expect(setItemSpy).toHaveBeenCalledWith(
             LAST_CONFIG_KEY_HVH,
             expect.stringContaining('"hvhstarter":"player1"'),
@@ -449,7 +449,7 @@ describe("Home", () => {
         await user.click(confirmButton);
 
         expect(navigateMock).toHaveBeenCalledWith(
-            "/game-hvb?size=4&bot=random_bot&hvbstarter=human",
+            "/game-hvb?size=4&bot=random_bot&hvbstarter=human&variant=classic",
         );
     });
 

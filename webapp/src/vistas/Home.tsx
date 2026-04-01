@@ -83,7 +83,7 @@ function clampSize(n: number, meta: MetaResponse | null) {
   return Math.min(Math.max(n, min), max);
 }
 
-// ─── Ruta de juego por variante ───────────────────────────────────────────────
+// ─── Rutas de juego por variante ─────────────────────────────────────────────
 
 function gameRouteForVariant(variantId: VariantId): string {
   const map: Record<VariantId, string> = {
@@ -101,8 +101,13 @@ function gameRouteForVariant(variantId: VariantId): string {
   return map[variantId] ?? "/game-hvb";
 }
 
-// Variantes que NO tienen modo HvB (el bot no puede respetar sus reglas extra)
-// Variantes que solo tienen modo HvH (o autopartida sin bot)
+/** Ruta HvH: classic tiene su propia ruta /game-hvh; el resto usa la ruta de variante. */
+function hvhRouteForVariant(variantId: VariantId): string {
+  if (variantId === "classic") return "/game-hvh";
+  return gameRouteForVariant(variantId);
+}
+
+// Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
 const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
 const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
@@ -207,18 +212,16 @@ export default function Home({ variant, onChangeVariant }: Props) {
     navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
   }
 
- function handlePlayHvH() {
+  function handlePlayHvH() {
     const s = clampSize(size, meta);
     saveLastConfigHvH({ size: s, hvhstarter: hvhStarter });
     const params = new URLSearchParams();
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
     params.set("variant", variant.id);
-    
-    // Obtener la ruta correcta basada en la variante actual
-    const route = gameRouteForVariant(variant.id);
-    navigate(`${route}?${params.toString()}`);
+    navigate(`${hvhRouteForVariant(variant.id)}?${params.toString()}`);
   }
+
   function handlePlayStandalone() {
     const s = clampSize(size, meta);
     const params = new URLSearchParams();
@@ -243,7 +246,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
     );
   }
 
-  // ─── Variante standalone (Hex, Poly-Y) ───────────────────────────────────
+  // ─── Variante standalone (Hex) ────────────────────────────────────────────
 
   if (STANDALONE_VARIANTS.includes(variant.id)) {
     return (
@@ -270,7 +273,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
     );
   }
 
-  // ─── Variantes solo HvH (fortune_coin, fortune_dice) ─────────────────────
+  // ─── Variantes solo HvH ───────────────────────────────────────────────────
 
   if (HVH_ONLY_VARIANTS.includes(variant.id)) {
     return (
@@ -395,6 +398,7 @@ function VariantHeader({
         size="small"
         icon={<ArrowLeftOutlined />}
         onClick={onChangeVariant}
+        data-testid="change-variant-btn"
       >
         Cambiar variante
       </Button>
