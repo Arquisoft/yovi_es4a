@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -10,9 +9,11 @@ import {
   putConfig,
   type YEN,
 } from "../../api/gamey";
-import { recordUserGame } from "../../api/users";
+import type { RecordUserGameRequest } from "../../api/users";
 import SessionGamePage from "../../game/SessionGamePage";
+import useDeferredGameSave from "../../game/useDeferredGameSave";
 import { getUserSession } from "../../utils/session";
+import AuthModal from "../registroLogin/AuthModal";
 
 type StarterHvB = "human" | "bot" | "random";
 
@@ -41,7 +42,6 @@ function getStarterLabel(hvb_starter: StarterHvB, botId: string): string {
 
 export default function GameHvB() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const botId = searchParams.get("bot") ?? "random_bot";
@@ -52,32 +52,22 @@ export default function GameHvB() {
     bot: botId,
   } as const;
 
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session) return;
-    if (!winner) return;
-    if (savedGameIdsRef.current.has(gameId)) return;
-
-    const result = winner === "human" ? "won" : "lost";
-
-    await recordUserGame(session.username, {
-      gameId,
-      mode: "HvB",
-      result,
-      boardSize: size,
-      totalMoves,
-      opponent: botId,
-      startedBy: hvb_starter,
-    });
-
-    savedGameIdsRef.current.add(gameId);
-  }
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    saveGameForCurrentSession,
+    registerFinishedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useDeferredGameSave();
 
   async function registerAbandonedGame(gameId: string, totalMoves: number) {
     const session = getUserSession();
 
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
+    if (session) {
+      await saveGameForCurrentSession({
         gameId,
         mode: "HvB",
         result: "abandoned",
@@ -86,68 +76,93 @@ export default function GameHvB() {
         opponent: botId,
         startedBy: hvb_starter,
       });
-
-      savedGameIdsRef.current.add(gameId);
     }
 
     await deleteHvbGame(gameId);
   }
 
   return (
-    <SessionGamePage<YEN>
-      deps={[size, botId, hvb_starter]}
-      start={async () => {
-        await putConfig({
-          size,
-          hvb_starter: hvb_starter,
-          bot_id: botId,
-          hvh_starter: "player0",
-        });
+    <>
+      <SessionGamePage<YEN>
+        deps={[size, botId, hvb_starter]}
+        start={async () => {
+          await putConfig({
+            size,
+            hvb_starter,
+            bot_id: botId,
+            hvh_starter: "player0",
+          });
 
-        return createHvbGame({
-          size,
-          bot_id: botId,
-          hvb_starter,
-        });
-      }}
-      move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
-      botMove={(gameId) => hvbBotMove(gameId)}
-      onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
-      onGameFinished={async ({gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves)
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={{
-        title: "Juego Y — Human vs Bot",
-        subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(hvb_starter, participantLabels.bot)}`,
-        abandonOkText: "Sí, abandonar",
-        getResultTitle: (winner) =>
-          winner === "human" ? "¡Felicidades!" : "Game Over",
-        getResultText: (winner) =>
-          winner === "human"
-            ? "Has ganado la partida."
-            : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
-      }}
-      winnerPalette={{
-        highlightedWinner: "human",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
-      turnConfig={{
-        textPrefix: "Turno actual:",
-        turns: {
-          human: {
-            label: participantLabels.human,
-            color: "#28BBF5",
+          return createHvbGame({
+            size,
+            bot_id: botId,
+            hvb_starter,
+          });
+        }}
+        move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
+        botMove={(gameId) => hvbBotMove(gameId)}
+        onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          if (!winner)
+            return;
+
+          const payload: RecordUserGameRequest = {
+            gameId,
+            mode: "HvB",
+            result: winner === "human" ? "won" : "lost",
+            boardSize: size,
+            totalMoves,
+            opponent: botId,
+            startedBy: hvb_starter,
+          };
+
+          await registerFinishedGame(payload);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={{
+          title: "Juego Y — Human vs Bot",
+          subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(
+            hvb_starter,
+            participantLabels.bot
+          )}`,
+          abandonOkText: "Sí, abandonar",
+          getResultTitle: (winner) =>
+            winner === "human" ? "¡Felicidades!" : "Game Over",
+          getResultText: (winner) =>
+            winner === "human"
+              ? "Has ganado la partida."
+              : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
+        }}
+        winnerPalette={{
+          highlightedWinner: "human",
+          highlightedBackground: "#28bbf532",
+          otherWinnerBackground: "#ff7b0033",
+        }}
+        turnConfig={{
+          textPrefix: "Turno actual:",
+          turns: {
+            human: {
+              label: participantLabels.human,
+              color: "#28BBF5",
+            },
+            bot: {
+              label: participantLabels.bot,
+              color: "#FF7B00",
+            },
           },
-          bot: {
-            label: participantLabels.bot,
-            color: "#FF7B00",
-          },
-        },
-      }}
-    />
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

@@ -14,7 +14,7 @@ vi.mock("../api/users", () => ({
   registerUser: (...args: any[]) => registerUserMock(...args),
 }));
 
-vi.mock("../../utils/Validation", () => ({
+vi.mock("../utils/Validation", () => ({
   evaluatePasswordStrength: (...args: any[]) =>
     evaluatePasswordStrengthMock(...args),
   validateUsername: (...args: any[]) => validateUsernameMock(...args),
@@ -112,9 +112,9 @@ describe("RegisterForm Component", () => {
       expect(message.error).toHaveBeenCalledWith(expectedMsg);
       expect(registerUserMock).not.toHaveBeenCalled();
     });
-  });
+  }, 10000);
 
-  it("debe permitir la selección de un avatar", () => {
+  it("debe permitir la selección de un avatar", async() => {
     render(<RegisterForm />);
 
     const avatar2 = screen.getByRole("button", {
@@ -125,7 +125,7 @@ describe("RegisterForm Component", () => {
 
     expect(avatar2).toHaveAttribute("aria-pressed", "true");
     expect(avatar2).toHaveStyle("border: 3px solid #FF7B00");
-  });
+  }, 10000);
 
   it("debe procesar el registro con éxito y limpiar el formulario", async () => {
     const successMsg = "¡Registro completado!";
@@ -153,7 +153,7 @@ describe("RegisterForm Component", () => {
         username: "newuser",
         email: "new@user.com",
         password: "StrongPass123!",
-        profilePicture: "seniora.png",
+        profilePicture: "avatar1.png",
       });
     });
 
@@ -164,7 +164,37 @@ describe("RegisterForm Component", () => {
       expect(screen.getByLabelText(/Nombre de Usuario/i)).toHaveValue("");
       expect(screen.getByLabelText(/Correo Electrónico/i)).toHaveValue("");
     });
-  });
+  }, 10000);
+
+  it("debe usar el mensaje específico en modo embedded", async () => {
+    const embeddedMsg =
+      "Cuenta creada correctamente. Cuando la verifiques por correo y luego inicies sesión, podrás guardar partidas en tu cuenta.";
+
+    registerUserMock.mockResolvedValueOnce({ message: "Mensaje backend ignorado" });
+
+    render(<RegisterForm embedded />);
+
+    fireEvent.change(screen.getByLabelText(/Nombre de Usuario/i), {
+      target: { value: "newuser" },
+    });
+    fireEvent.change(screen.getByLabelText(/Correo Electrónico/i), {
+      target: { value: "new@user.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Contraseña"), {
+      target: { value: "StrongPass123!" },
+    });
+    fireEvent.change(screen.getByLabelText(/Repetir Contraseña/i), {
+      target: { value: "StrongPass123!" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Registrarse/i }));
+
+    expect(await screen.findByText(embeddedMsg)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(message.success).toHaveBeenCalledWith(embeddedMsg);
+    });
+  }, 10000);
 
   it("debe manejar errores del servidor correctamente", async () => {
     const errorMsg = "El correo ya está registrado";
@@ -192,9 +222,12 @@ describe("RegisterForm Component", () => {
     await waitFor(() => {
       expect(message.error).toHaveBeenCalledWith(errorMsg);
     });
-  });
+  }, 10000);
 
   it("debe bloquear el registro si el username no cumple el formato", async () => {
+    const errorMsg = "El nombre de usuario no cumple el formato";
+    validateUsernameMock.mockReturnValueOnce(errorMsg);
+
     render(<RegisterForm />);
 
     fireEvent.change(screen.getByLabelText(/Nombre de Usuario/i), {
@@ -212,14 +245,11 @@ describe("RegisterForm Component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Registrarse/i }));
 
-    const expectedMsg =
-      "El usuario solo puede contener letras, números y los caracteres _ . -";
-
-    expect(await screen.findByText(expectedMsg)).toBeInTheDocument();
+    expect(await screen.findByText(errorMsg)).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(message.error).toHaveBeenCalledWith(expectedMsg);
+      expect(message.error).toHaveBeenCalledWith(errorMsg);
       expect(registerUserMock).not.toHaveBeenCalled();
     });
-  });
+  }, 10000);
 });

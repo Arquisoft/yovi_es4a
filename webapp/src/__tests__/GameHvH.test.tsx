@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 
 import GameHvH from "../vistas/game/GameHvH";
 import { createHvhGame, deleteHvhGame, hvhMove, putConfig } from "../api/gamey";
@@ -8,6 +8,7 @@ import { recordUserGame } from "../api/users";
 import { getUserSession } from "../utils/session";
 
 const sessionGamePageMock = vi.fn();
+const authModalMock = vi.fn();
 
 let mockSearchParams = new URLSearchParams("size=7&hvhstarter=player0");
 
@@ -16,6 +17,21 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     useSearchParams: () => [mockSearchParams],
+  };
+});
+
+vi.mock("antd", async () => {
+  const actual = await vi.importActual<any>("antd");
+  return {
+    ...actual,
+    App: {
+      useApp: () => ({
+        message: {
+          success: vi.fn(),
+          error: vi.fn(),
+        },
+      }),
+    },
   };
 });
 
@@ -41,6 +57,13 @@ vi.mock("../game/SessionGamePage", () => ({
   },
 }));
 
+vi.mock("../vistas/registroLogin/AuthModal", () => ({
+  default: (props: any) => {
+    authModalMock(props);
+    return <div>AuthModal</div>;
+  },
+}));
+
 describe("GameHvH", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,10 +77,10 @@ describe("GameHvH", () => {
   it("usa valores por defecto si faltan params", () => {
     render(<GameHvH />);
 
-    const props = sessionGamePageMock.mock.calls[0][0];
-
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
     expect(props.deps).toEqual([7, "player0"]);    
     expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: Player 0");
+    expect(props.canOfferGuestSave).toBe(false);
   });
 
   it("normaliza starter random", () => {
@@ -65,7 +88,7 @@ describe("GameHvH", () => {
 
     render(<GameHvH />);
 
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
     expect(props.deps).toEqual([8, "random"]);
     expect(props.resultConfig.subtitle).toBe("Tamaño: 8 · Empieza: Aleatorio");
   });
@@ -83,7 +106,7 @@ describe("GameHvH", () => {
 
     render(<GameHvH />);
 
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
     const result = await props.start();
 
     expect(putConfig).toHaveBeenCalledWith({
@@ -104,7 +127,7 @@ describe("GameHvH", () => {
     vi.mocked(hvhMove).mockResolvedValue({} as any);
 
     render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.move("g2", 2);
 
@@ -113,7 +136,7 @@ describe("GameHvH", () => {
 
   it("registra partida ganada cuando vence player0", async () => {
     render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameFinished({
       gameId: "g1",
@@ -134,7 +157,7 @@ describe("GameHvH", () => {
 
   it("registra partida perdida cuando vence player1", async () => {
     render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameFinished({
       gameId: "g2",
@@ -153,18 +176,112 @@ describe("GameHvH", () => {
     });
   });
 
-  it("no registra partida terminada si no hay sesión o winner", async () => {
-    vi.mocked(getUserSession).mockReturnValueOnce(null as any);
+  it("si no hay sesión no guarda al terminar, pero habilita guardar más tarde", async () => {
+    vi.mocked(getUserSession).mockReturnValue(null as any);
 
     render(<GameHvH />);
-
-    const props = sessionGamePageMock.mock.calls[0][0];
+    let props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameFinished({
       gameId: "g1",
       winner: "player0",
       totalMoves: 3,
     });
+
+    expect(recordUserGame).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      const latestProps = sessionGamePageMock.mock.calls.at(-1)?.[0];
+      expect(latestProps.canOfferGuestSave).toBe(true);
+      expect(typeof latestProps.onGuestSaveRequested).toBe("function");
+    });
+  });
+
+  it("abre el AuthModal al pedir guardar una partida pendiente", async () => {
+    vi.mocked(getUserSession).mockReturnValue(null as any);
+
+    render(<GameHvH />);
+    let props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    await props.onGameFinished({
+      gameId: "g1",
+      winner: "player0",
+      totalMoves: 3,
+    });
+
+    await waitFor(() => {
+      const latestProps = sessionGamePageMock.mock.calls.at(-1)?.[0];
+      expect(latestProps.canOfferGuestSave).toBe(true);
+    });
+
+    props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    props.onGuestSaveRequested({
+      gameId: "g1",
+      winner: "player0",
+      totalMoves: 3,
+    });
+
+    await waitFor(() => {
+      const latestAuthProps = authModalMock.mock.calls.at(-1)?.[0];
+      expect(latestAuthProps.open).toBe(true);
+      expect(typeof latestAuthProps.onLoginSuccess).toBe("function");
+    });
+  });
+
+  it("tras iniciar sesión desde el modal, guarda la partida pendiente", async () => {
+    vi.mocked(getUserSession).mockReturnValue(null as any);
+
+    render(<GameHvH />);
+    let props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    await props.onGameFinished({
+      gameId: "g9",
+      winner: "player0",
+      totalMoves: 10,
+    });
+
+    await waitFor(() => {
+      const latestProps = sessionGamePageMock.mock.calls.at(-1)?.[0];
+      expect(latestProps.canOfferGuestSave).toBe(true);
+    });
+
+    props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    props.onGuestSaveRequested({
+      gameId: "g9",
+      winner: "player0",
+      totalMoves: 10,
+    });
+
+    await waitFor(() => {
+      const latestAuthProps = authModalMock.mock.calls.at(-1)?.[0];
+      expect(latestAuthProps.open).toBe(true);
+    });
+
+    vi.mocked(getUserSession).mockReturnValue({
+      username: "marcelo",
+      profilePicture: "avatar.png",
+    } as any);
+
+    const authProps = authModalMock.mock.calls.at(-1)?.[0];
+    await authProps.onLoginSuccess();
+
+    await waitFor(() => {
+      expect(recordUserGame).toHaveBeenCalledWith("marcelo", {
+        gameId: "g9",
+        mode: "HvH",
+        result: "won",
+        boardSize: 7,
+        totalMoves: 10,
+        opponent: "Jugador local",
+        startedBy: "player0",
+      });
+    });
+  });
+
+  it("no registra partida terminada si winner es null", async () => {
+    render(<GameHvH />);
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
     await props.onGameFinished({
       gameId: "g2",
       winner: null,
@@ -176,7 +293,7 @@ describe("GameHvH", () => {
 
   it("evita registrar dos veces la misma partida", async () => {
     render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameFinished({
       gameId: "same-id",
@@ -194,8 +311,7 @@ describe("GameHvH", () => {
 
   it("registra abandono y borra la partida", async () => {
     render(<GameHvH />);
-
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameAbandoned({
       gameId: "g3",
@@ -215,10 +331,10 @@ describe("GameHvH", () => {
   });
 
   it("si no hay sesión en abandono, igualmente borra la partida", async () => {
-    vi.mocked(getUserSession).mockReturnValueOnce(null as any);
+    vi.mocked(getUserSession).mockReturnValue(null as any);
 
     render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls[0][0];
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameAbandoned({
       gameId: "g4",

@@ -18,11 +18,13 @@ import {
 import "../../estilos/RegisterForm.css";
 import { registerUser } from "../../api/users";
 
-/**
- * Componente funcional que renderiza el formulario de registro de la aplicación.
- * Gestiona el estado de los campos, validaciones de cliente y la integración con el backend.
- */
-const RegisterForm: React.FC = () => {
+type RegisterFormProps = {
+  embedded?: boolean;
+};
+
+const RegisterForm: React.FC<RegisterFormProps> = ({
+  embedded = false,
+}) => {
   const [form] = Form.useForm();
 
   // --- Estados ---
@@ -105,8 +107,12 @@ const RegisterForm: React.FC = () => {
         profilePicture,
       });
 
-      message.success(data.message);
-      setSuccess(data.message);
+      const successMessage = embedded
+        ? "Cuenta creada correctamente. Cuando la verifiques por correo y luego inicies sesión, podrás guardar partidas en tu cuenta."
+        : data.message;
+
+      message.success(successMessage);
+      setSuccess(successMessage);
 
       form.resetFields();
       setPassword("");
@@ -264,6 +270,7 @@ const RegisterForm: React.FC = () => {
                 gap: "1px",
                 justifyContent: "center",
                 marginTop: "10px",
+                flexWrap: "wrap",
               }}
             >
               {AVATARS.map((av) => (

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import UserHistory from "../vistas/UserHistory";
 
@@ -43,6 +43,14 @@ vi.mock("antd", () => {
         <div data-testid="history-list-item">{children}</div>
     );
 
+    const Descriptions = ({ children }: any) => (
+        <div data-testid="descriptions">{children}</div>
+    );
+
+    Descriptions.Item = ({ label, children }: any) => (
+        <div>{`${label}: ${children}`}</div>
+    );
+
     return {
         Alert: ({ message, description }: any) => (
             <div>
@@ -52,6 +60,17 @@ vi.mock("antd", () => {
         ),
         Avatar: ({ children }: any) => <div>{children}</div>,
         Card: ({ children }: any) => <div>{children}</div>,
+        Collapse: ({ items }: any) => (
+            <div>
+                {items.map((item: any) => (
+                    <div key={item.key}>
+                        <div>{item.label}</div>
+                        <div>{item.children}</div>
+                    </div>
+                ))}
+            </div>
+        ),
+        Descriptions,
         Empty: ({ description }: any) => <div>{description}</div>,
         Flex: ({ children }: any) => <div>{children}</div>,
         List: ListComponent,
@@ -62,6 +81,19 @@ vi.mock("antd", () => {
                     next-page
                 </button>
             </div>
+        ),
+        Select: ({ value, onChange, options }: any) => (
+            <select
+                role="combobox"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+            >
+                {options.map((option: any) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
         ),
         Space: ({ children }: any) => <div>{children}</div>,
         Spin: () => <div>Cargando...</div>,
@@ -80,6 +112,50 @@ vi.mock("@ant-design/icons", () => ({
     UserOutlined: () => null,
 }));
 
+function buildHistoryResponse(overrides: any = {}) {
+    return {
+        username: "marcelo",
+        profilePicture: "avatar.png",
+        stats: {
+            gamesPlayed: 3,
+            gamesWon: 1,
+            gamesLost: 1,
+            gamesAbandoned: 1,
+            totalMoves: 20,
+            winRate: 33,
+        },
+        pagination: {
+            page: 1,
+            pageSize: 5,
+            totalGames: 3,
+            totalPages: 1,
+        },
+        games: [
+            {
+                gameId: "g1",
+                mode: "HvB",
+                result: "won",
+                boardSize: 7,
+                totalMoves: 10,
+                opponent: "random_bot",
+                startedBy: "human",
+                finishedAt: "2026-03-21T12:00:00.000Z",
+            },
+            {
+                gameId: "g2",
+                mode: "HvH",
+                result: "abandoned",
+                boardSize: 9,
+                totalMoves: 5,
+                opponent: "Jugador local",
+                startedBy: "player0",
+                finishedAt: "2026-03-21T13:00:00.000Z",
+            },
+        ],
+        ...overrides,
+    };
+}
+
 describe("UserHistory", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -90,51 +166,16 @@ describe("UserHistory", () => {
     });
 
     it("carga el historial y muestra stats y partidas", async () => {
-        getUserHistoryMock.mockResolvedValueOnce({
-            username: "marcelo",
-            profilePicture: "avatar.png",
-            stats: {
-                gamesPlayed: 3,
-                gamesWon: 1,
-                gamesLost: 1,
-                gamesAbandoned: 1,
-                totalMoves: 20,
-                winRate: 33,
-            },
-            pagination: {
-                page: 1,
-                pageSize: 5,
-                totalGames: 3,
-                totalPages: 1,
-            },
-            games: [
-                {
-                    gameId: "g1",
-                    mode: "HvB",
-                    result: "won",
-                    boardSize: 7,
-                    totalMoves: 10,
-                    opponent: "random_bot",
-                    startedBy: "human",
-                    finishedAt: "2026-03-21T12:00:00.000Z",
-                },
-                {
-                    gameId: "g2",
-                    mode: "HvH",
-                    result: "abandoned",
-                    boardSize: 9,
-                    totalMoves: 5,
-                    opponent: "Jugador local",
-                    startedBy: "player0",
-                    finishedAt: "2026-03-21T13:00:00.000Z",
-                },
-            ],
-        });
+        getUserHistoryMock.mockResolvedValueOnce(buildHistoryResponse());
 
         render(<UserHistory />);
 
         await waitFor(() => {
-            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5);
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
         });
 
         expect(await screen.findByText("marcelo")).toBeInTheDocument();
@@ -146,12 +187,14 @@ describe("UserHistory", () => {
         expect(screen.getByText("L:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
-        expect(screen.getByText("Humano vs Bot · 7x")).toBeInTheDocument();
-        expect(screen.getByText("Humano vs Humano · 9x")).toBeInTheDocument();
+        expect(screen.getAllByText("Humano vs Bot")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("Humano vs Humano")[0]).toBeInTheDocument();
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
         expect(screen.getByText("Rival: random_bot")).toBeInTheDocument();
         expect(screen.getByText("Empieza: human")).toBeInTheDocument();
+        expect(screen.getByText("Tamaño: 7")).toBeInTheDocument();
+        expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
     });
 
     it("muestra spinner mientras carga", () => {
@@ -174,56 +217,46 @@ describe("UserHistory", () => {
     });
 
     it("muestra Empty si no hay partidas", async () => {
-        getUserHistoryMock.mockResolvedValueOnce({
-            username: "marcelo",
-            profilePicture: "avatar.png",
-            stats: {
-                gamesPlayed: 0,
-                gamesWon: 0,
-                gamesLost: 0,
-                gamesAbandoned: 0,
-                totalMoves: 0,
-                winRate: 0,
-            },
-            pagination: {
-                page: 1,
-                pageSize: 5,
-                totalGames: 0,
-                totalPages: 1,
-            },
-            games: [],
-        });
+        getUserHistoryMock.mockResolvedValueOnce(
+            buildHistoryResponse({
+                stats: {
+                    gamesPlayed: 0,
+                    gamesWon: 0,
+                    gamesLost: 0,
+                    gamesAbandoned: 0,
+                    totalMoves: 0,
+                    winRate: 0,
+                },
+                pagination: {
+                    page: 1,
+                    pageSize: 5,
+                    totalGames: 0,
+                    totalPages: 1,
+                },
+                games: [],
+            })
+        );
 
         render(<UserHistory />);
 
         expect(
             await screen.findByText(
-                "Todavía no hay partidas registradas para este usuario.",
+                "No hay partidas que coincidan con los filtros seleccionados.",
             ),
         ).toBeInTheDocument();
     });
 
     it("cambia de página", async () => {
         getUserHistoryMock
-            .mockResolvedValueOnce({
-                username: "marcelo",
-                profilePicture: "",
-                stats: {
-                    gamesPlayed: 6,
-                    gamesWon: 2,
-                    gamesLost: 2,
-                    gamesAbandoned: 2,
-                    totalMoves: 30,
-                    winRate: 33,
-                },
-                pagination: {
-                    page: 1,
-                    pageSize: 5,
-                    totalGames: 6,
-                    totalPages: 2,
-                },
-                games: [
-                    {
+            .mockResolvedValueOnce(
+                buildHistoryResponse({
+                    pagination: {
+                        page: 1,
+                        pageSize: 5,
+                        totalGames: 6,
+                        totalPages: 2,
+                    },
+                    games: [{
                         gameId: "g1",
                         mode: "HvB",
                         result: "won",
@@ -232,28 +265,18 @@ describe("UserHistory", () => {
                         opponent: "random_bot",
                         startedBy: "human",
                         finishedAt: "2026-03-21T12:00:00.000Z",
+                    },],
+                })
+            )
+            .mockResolvedValueOnce(
+                buildHistoryResponse({
+                    pagination: {
+                        page: 2,
+                        pageSize: 5,
+                        totalGames: 6,
+                        totalPages: 2,
                     },
-                ],
-            })
-            .mockResolvedValueOnce({
-                username: "marcelo",
-                profilePicture: "",
-                stats: {
-                    gamesPlayed: 6,
-                    gamesWon: 2,
-                    gamesLost: 2,
-                    gamesAbandoned: 2,
-                    totalMoves: 30,
-                    winRate: 33,
-                },
-                pagination: {
-                    page: 2,
-                    pageSize: 5,
-                    totalGames: 6,
-                    totalPages: 2,
-                },
-                games: [
-                    {
+                    games: [{
                         gameId: "g6",
                         mode: "HvH",
                         result: "lost",
@@ -262,24 +285,82 @@ describe("UserHistory", () => {
                         opponent: "Jugador local",
                         startedBy: "player1",
                         finishedAt: "2026-03-21T13:00:00.000Z",
-                    },
-                ],
-            });
+                    },],
+                })
+            );
 
         const user = userEvent.setup();
         render(<UserHistory />);
 
         await waitFor(() => {
-            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5);
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
         });
 
         await user.click(screen.getByRole("button", { name: "next-page" }));
 
         await waitFor(() => {
-            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 2, 5);
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 2, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
         });
 
-        expect(await screen.findByText("Humano vs Humano · 9x")).toBeInTheDocument();
+        expect(await screen.findByText("Perdida")).toBeInTheDocument();
+    });
+
+    it("aplica filtros y ordenación", async () => {
+        getUserHistoryMock.mockResolvedValue(buildHistoryResponse());
+
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[0], {
+            target: { value: "HvB" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "HvB",
+                result: "all",
+                sortBy: "newest",
+            });
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[1], {
+            target: { value: "won" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "HvB",
+                result: "won",
+                sortBy: "newest",
+            });
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[2], {
+            target: { value: "movesDesc" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "HvB",
+                result: "won",
+                sortBy: "movesDesc",
+            });
+        });
     });
 
     it("si no hay username no llama a la API", () => {
