@@ -1,14 +1,28 @@
 openapi: 3.0.0
 info:
-  title: User Service API
-  version: 1.1.0
-  description: API for managing users and game rankings
+  title: YOVI API
+  version: 1.2.0
+  description: >
+    API del sistema YOVI para gestión de usuarios, partidas y acceso externo de bots.
+    Incluye el endpoint `/play` que permite a bots externos jugar contra el sistema
+    enviando el estado del tablero en notación YEN.
+
+servers:
+  - url: https://yovies4a.duckdns.org
+    description: Servidor de producción
+  - url: http://localhost:8001
+    description: Servidor de desarrollo (users service directo)
 
 paths:
+
+  # ──────────────────────────────────────────────────────────────
+  # AUTH & REGISTRO
+  # ──────────────────────────────────────────────────────────────
+
   /createuser:
     post:
-      summary: Creates a new user
-      description: Creates a new user with the given username, password and email.
+      summary: Registrar un nuevo usuario
+      description: Crea un nuevo usuario con username, contraseña y email. Envía un correo de verificación.
       requestBody:
         required: true
         content:
@@ -22,6 +36,9 @@ paths:
               properties:
                 username:
                   type: string
+                  minLength: 3
+                  maxLength: 20
+                  pattern: '^[a-zA-Z0-9._-]+$'
                   example: "testuser"
                 password:
                   type: string
@@ -32,10 +49,10 @@ paths:
                   example: "testuser@example.com"
                 profilePicture:
                   type: string
-                  example: "webapp/public/avatars/seniora.png"
+                  example: "seniora.png"
       responses:
-        '200':
-          description: User created successfully
+        '201':
+          description: Usuario creado correctamente
           content:
             application/json:
               schema:
@@ -43,13 +60,18 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Bienvenido testuser. Por favor, revisa tu correo para verificar tu cuenta."
+                    example: "¡Bienvenido testuser! Por favor, revisa tu correo para verificar tu cuenta."
         '400':
-          description: Error creating user (duplicate username/email or validation error)
+          description: Error de validación o usuario/email duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /login:
     post:
-      summary: Login a user
+      summary: Iniciar sesión
+      description: Autentica a un usuario registrado y verificado.
       requestBody:
         required: true
         content:
@@ -62,11 +84,13 @@ paths:
               properties:
                 username:
                   type: string
+                  example: "testuser"
                 password:
                   type: string
+                  example: "secret123"
       responses:
         '200':
-          description: Login successful
+          description: Login correcto
           content:
             application/json:
               schema:
@@ -74,75 +98,225 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: "Bienvenido testuser"
+                  username:
+                    type: string
+                    example: "testuser"
+                  profilePicture:
+                    type: string
+                    example: "seniora.png"
         '401':
-          description: Invalid credentials
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Email not verified
+          description: Email no verificado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /verify:
     get:
-      summary: Verify user email
+      summary: Verificar correo electrónico
+      description: Verifica la cuenta de un usuario mediante el token enviado por email.
       parameters:
         - name: token
           in: query
           required: true
           schema:
             type: string
+          description: Token de verificación recibido por email
       responses:
         '200':
-          description: Email verified successfully
-        '400':
-          description: Invalid or expired token
-
-  /ranking:
-    get:
-      summary: Get user ranking
-      description: >
-        Returns a list of users sorted by the requested metric.
-        Only users who have played at least one game are included.
-      parameters:
-        - name: sortBy
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [winRate, gamesWon, gamesPlayed]
-            default: winRate
-          description: >
-            Metric to sort by:
-            - `winRate`: % of games won (default)
-            - `gamesWon`: absolute number of wins
-            - `gamesPlayed`: total games played
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-          description: Maximum number of players to return (max 100)
-      responses:
-        '200':
-          description: Ranking returned successfully
+          description: Email verificado correctamente
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  sortBy:
+                  message:
                     type: string
-                    example: winRate
-                  ranking:
+        '400':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────
+  # PARTIDAS Y ESTADÍSTICAS DE USUARIO
+  # ──────────────────────────────────────────────────────────────
+
+  /users/{username}/games:
+    post:
+      summary: Registrar una partida y actualizar estadísticas
+      description: >
+        Registra una partida terminada para el usuario indicado y actualiza
+        sus estadísticas acumuladas (gamesPlayed, gamesWon, gamesLost, etc.).
+        Si la partida ya fue registrada (mismo gameId), devuelve 409.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Nombre de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - gameId
+                - mode
+                - result
+                - boardSize
+                - totalMoves
+              properties:
+                gameId:
+                  type: string
+                  maxLength: 100
+                  description: Identificador único de la partida
+                  example: "abc-123"
+                mode:
+                  type: string
+                  enum: [HvB, HvH]
+                  description: Modo de juego (Human vs Bot o Human vs Human)
+                  example: "HvB"
+                result:
+                  type: string
+                  enum: [won, lost, abandoned]
+                  description: Resultado de la partida para este usuario
+                  example: "won"
+                opponent:
+                  type: string
+                  description: Nombre del oponente (bot o usuario)
+                  example: "random"
+                startedBy:
+                  type: string
+                  description: Quién inició la partida
+                  example: "human"
+                boardSize:
+                  type: integer
+                  minimum: 1
+                  description: Tamaño del tablero utilizado
+                  example: 5
+                totalMoves:
+                  type: integer
+                  minimum: 0
+                  description: Número total de movimientos realizados
+                  example: 12
+      responses:
+        '201':
+          description: Partida registrada y estadísticas actualizadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  stats:
+                    $ref: '#/components/schemas/GameStats'
+                  savedGame:
+                    $ref: '#/components/schemas/GameRecord'
+        '400':
+          description: Cuerpo de la petición inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La partida ya fue registrada para este usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{username}/history:
+    get:
+      summary: Historial de partidas paginado
+      description: >
+        Devuelve el historial de partidas del usuario con paginación.
+        Las partidas se ordenan de más reciente a más antigua.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página (empieza en 1)
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 5
+          description: Número de partidas por página (máximo 50)
+      responses:
+        '200':
+          description: Historial devuelto correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  profilePicture:
+                    type: string
+                  stats:
+                    $ref: '#/components/schemas/GameStats'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      pageSize:
+                        type: integer
+                      totalGames:
+                        type: integer
+                      totalPages:
+                        type: integer
+                  games:
                     type: array
                     items:
-                      $ref: '#/components/schemas/RankingEntry'
-        '500':
-          description: Internal server error
+                      $ref: '#/components/schemas/GameRecord'
+        '400':
+          description: Username inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /users/{username}/stats:
     get:
-      summary: Get individual user statistics
+      summary: Obtener estadísticas individuales de un usuario
       parameters:
         - name: username
           in: path
@@ -151,16 +325,23 @@ paths:
             type: string
       responses:
         '200':
-          description: User stats returned
+          description: Estadísticas devueltas correctamente
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserStats'
         '404':
-          description: User not found
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     patch:
-      summary: Update user game statistics after a match
+      summary: Actualizar estadísticas de usuario (endpoint legacy)
+      description: >
+        Actualiza las estadísticas del usuario tras una partida.
+        Se recomienda usar POST /users/{username}/games para nuevas integraciones.
       parameters:
         - name: username
           in: path
@@ -179,70 +360,354 @@ paths:
               properties:
                 won:
                   type: boolean
-                  description: Whether the user won the game
+                  description: Si el usuario ganó la partida
                 totalMoves:
                   type: integer
                   minimum: 0
-                  description: Number of moves made by the user (only accumulated when won=true)
+                  description: Movimientos realizados por el usuario
       responses:
         '200':
-          description: Stats updated successfully
+          description: Estadísticas actualizadas
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserStats'
         '400':
-          description: Invalid request body
+          description: Cuerpo inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: User not found
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────
+  # RANKING
+  # ──────────────────────────────────────────────────────────────
+
+  /ranking:
+    get:
+      summary: Obtener ranking de usuarios
+      description: >
+        Devuelve la lista de usuarios ordenada por la métrica solicitada.
+        Solo se incluyen usuarios que han jugado al menos una partida.
+      parameters:
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [winRate, gamesWon, gamesPlayed]
+            default: winRate
+          description: >
+            Métrica de ordenación:
+            - `winRate`: porcentaje de partidas ganadas (por defecto)
+            - `gamesWon`: número absoluto de victorias
+            - `gamesPlayed`: total de partidas jugadas
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Número máximo de jugadores a devolver (máximo 100)
+      responses:
+        '200':
+          description: Ranking devuelto correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sortBy:
+                    type: string
+                    example: winRate
+                  ranking:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RankingEntry'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────
+  # API EXTERNA DE BOTS — endpoint "play"
+  # ──────────────────────────────────────────────────────────────
+
+  /play:
+    get:
+      summary: Obtener el siguiente movimiento del bot (API para bots externos)
+      description: >
+        Permite a un bot externo solicitar el siguiente movimiento dado un estado
+        del tablero en notación YEN. El parámetro `position` contiene el estado
+        completo del juego serializado como JSON en notación YEN.
+        El parámetro opcional `bot_id` permite seleccionar la estrategia del bot.
+        El parámetro opcional `api_version` permite especificar la versión del API
+        (actualmente solo `v1` está soportada).
+
+        **Ejemplo de uso**: un bot externo envía el estado actual de la partida
+        y recibe la jugada que el sistema haría a continuación, también en YEN.
+      parameters:
+        - name: position
+          in: query
+          required: true
+          schema:
+            type: string
+          description: >
+            Estado del tablero en notación YEN, serializado como JSON y codificado
+            en la URL. Ejemplo: `{"size":5,"layout":"00000...","turn":3}`
+          example: '{"size":5,"layout":"0000000000000000000000000","turn":0}'
+        - name: bot_id
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [random, greedy, mcts_random, mcts_medio, mcts_dificil, mcts_demencial]
+            default: random
+          description: >
+            Identificador del bot / estrategia a utilizar.
+            Si se omite, se usa la estrategia por defecto (`random`).
+          example: "greedy"
+        - name: api_version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [v1]
+            default: v1
+          description: Versión del API. Actualmente solo `v1` está soportada.
+      responses:
+        '200':
+          description: Movimiento calculado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayResponse'
+        '400':
+          description: >
+            Petición inválida. Posibles causas: falta el parámetro `position`,
+            el JSON no es un YEN válido, o la versión de API no está soportada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayErrorResponse'
+        '404':
+          description: Bot no encontrado (bot_id desconocido)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayErrorResponse'
+        '409':
+          description: La partida ya ha terminado, no se puede calcular un movimiento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayErrorResponse'
+
+# ──────────────────────────────────────────────────────────────
+# SCHEMAS
+# ──────────────────────────────────────────────────────────────
 
 components:
   schemas:
+
+    YEN:
+      type: object
+      description: >
+        Estado de una partida en notación YEN (Y Exchange Notation).
+        Formato JSON inspirado en FEN del ajedrez, representa el estado
+        completo del tablero para su transmisión entre servicios.
+      required:
+        - size
+        - layout
+      properties:
+        size:
+          type: integer
+          description: Tamaño del tablero (número de casillas por lado)
+          example: 5
+        layout:
+          type: string
+          description: >
+            Representación lineal del tablero. Cada carácter representa una casilla:
+            '0' = vacía, '1' = jugador 1, '2' = jugador 2.
+          example: "0000000000000000000000000"
+        turn:
+          type: integer
+          description: Número de turno actual (0-indexed)
+          example: 3
+        players:
+          type: array
+          items:
+            type: string
+          description: Identificadores de los jugadores
+          example: ["human", "bot"]
+
+    Coordinates:
+      type: object
+      description: Coordenadas cúbicas de una casilla del tablero hexagonal
+      required:
+        - x
+        - y
+        - z
+      properties:
+        x:
+          type: integer
+          example: 1
+        y:
+          type: integer
+          example: -2
+        z:
+          type: integer
+          example: 1
+
+    PlayResponse:
+      type: object
+      description: Respuesta del endpoint /play con el movimiento calculado por el bot
+      properties:
+        api_version:
+          type: string
+          description: Versión del API utilizada
+          example: "v1"
+        bot_id:
+          type: string
+          description: Identificador del bot que calculó el movimiento
+          example: "greedy"
+        coords:
+          $ref: '#/components/schemas/Coordinates'
+        position:
+          $ref: '#/components/schemas/YEN'
+
+    PlayErrorResponse:
+      type: object
+      description: Respuesta de error del endpoint /play
+      properties:
+        api_version:
+          type: string
+          example: "v1"
+        bot_id:
+          type: string
+          nullable: true
+          example: "random"
+        message:
+          type: string
+          description: Descripción del error
+          example: "Missing required query parameter: position"
+
     GameStats:
       type: object
       properties:
         gamesPlayed:
           type: integer
-          description: Total games played
+          description: Total de partidas jugadas
+          example: 10
         gamesWon:
           type: integer
-          description: Games won
+          description: Partidas ganadas
+          example: 6
         gamesLost:
           type: integer
-          description: Games lost
+          description: Partidas perdidas
+          example: 3
+        gamesAbandoned:
+          type: integer
+          description: Partidas abandonadas
+          example: 1
         totalMoves:
           type: integer
-          description: Total moves made in winning games
+          description: Total de movimientos acumulados
+          example: 84
         winRate:
           type: integer
-          description: Percentage of games won (0–100)
+          description: Porcentaje de partidas ganadas (0–100)
+          example: 60
 
     UserStats:
       type: object
       properties:
         username:
           type: string
+          example: "testuser"
         profilePicture:
           type: string
+          example: "seniora.png"
         stats:
           $ref: '#/components/schemas/GameStats'
+
+    GameRecord:
+      type: object
+      description: Registro de una partida en el historial de un usuario
+      properties:
+        gameId:
+          type: string
+          example: "abc-123"
+        mode:
+          type: string
+          enum: [HvB, HvH]
+          example: "HvB"
+        result:
+          type: string
+          enum: [won, lost, abandoned]
+          example: "won"
+        opponent:
+          type: string
+          example: "greedy"
+        startedBy:
+          type: string
+          example: "human"
+        boardSize:
+          type: integer
+          example: 5
+        totalMoves:
+          type: integer
+          example: 12
+        finishedAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T18:30:00.000Z"
 
     RankingEntry:
       type: object
       properties:
         username:
           type: string
+          example: "testuser"
         profilePicture:
           type: string
+          example: "seniora.png"
         gamesPlayed:
           type: integer
+          example: 10
         gamesWon:
           type: integer
+          example: 6
         gamesLost:
           type: integer
+          example: 3
+        gamesAbandoned:
+          type: integer
+          example: 1
         totalMoves:
           type: integer
-          description: Total moves made in winning games
+          description: Total de movimientos acumulados
+          example: 84
         winRate:
           type: integer
-          description: Percentage of games won (0–100)
+          description: Porcentaje de partidas ganadas (0–100)
+          example: 60
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Descripción del error
+          example: "Usuario no encontrado"

@@ -65,6 +65,7 @@ type Props<TYen extends GameYEN> = {
   canOfferGuestSave?: boolean;
   onGuestSaveRequested?: (payload: FinishedGamePayload) => void;
   guestSaveLoading?: boolean;
+  disabledCells?: Set<number>;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -81,6 +82,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   canOfferGuestSave = false,
   onGuestSaveRequested,
   guestSaveLoading = false,
+  disabledCells, // <-- ¡Aquí estaba el posible problema!
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -160,7 +162,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
       setHintCellId(cellId);
       setHintUsed(true);
     } catch {
-      // silencioso — si falla simplemente no se muestra pista
+      // silencioso
     } finally {
       setHintLoading(false);
     }
@@ -291,6 +293,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
             size={yen?.size ?? 7}
             cells={cells}
             disabled={loading || abandoning || gameOver || nextTurn === "bot"}
+            disabledCells={disabledCells}
             onCellClick={(cellId) => {
               setHintCellId(null);
               onCellClick(cellId);
