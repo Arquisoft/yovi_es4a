@@ -12,20 +12,32 @@ export function getUserSession(): UserSession | null {
             return null;
 
         const parsed = JSON.parse(raw);
-        if (!parsed?.username)
+        if (!parsed || typeof parsed.username !== "string" || !parsed.username.trim()) {
+            clearUserSession();
             return null;
+        }
 
         return {
             username: parsed.username,
-            profilePicture: parsed.profilePicture,
+            profilePicture:
+                typeof parsed.profilePicture === "string"
+                    ? parsed.profilePicture
+                    : undefined,
         };
     } catch {
+        clearUserSession();
         return null;
     }
 }
 
 export function saveUserSession(session: UserSession) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+            username: session.username,
+            profilePicture: session.profilePicture,
+        })
+    );
 }
 
 export function clearUserSession() {

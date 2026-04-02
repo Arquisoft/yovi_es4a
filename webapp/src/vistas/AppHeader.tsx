@@ -1,4 +1,4 @@
-import { Button, Card, Dropdown, Flex, Space, Typography } from "antd";
+import { Avatar, Button, Card, Dropdown, Flex, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
   HomeOutlined,
@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
 import { clearUserSession, getUserSession } from "../utils/session";
+import { resolveAvatarSrc } from "../utils/avatar";
 import HelpModal from "./HelpModal";
 
 
@@ -151,7 +152,24 @@ export default function AppHeader({ title }: AppHeaderProps) {
             trigger={["click"]}
             placement="bottomRight"
           >
-            <Button shape="circle" icon={<UserOutlined />} />
+            <Button
+              shape="circle"
+              style={{ padding: 0, width: 40, height: 40 }}
+              icon={
+                session ? (
+                  <Avatar
+                    size={32}
+                    src={resolveAvatarSrc(session?.profilePicture)}
+                    icon={<UserOutlined />}
+                  />
+                ) : (
+                  <Avatar
+                    size={32}
+                    icon={<UserOutlined />}
+                  />
+                )
+              }
+            />
           </Dropdown>
         </Space>
       </Flex>

@@ -19,6 +19,7 @@ import {
 } from "@ant-design/icons";
 import AppHeader from "./AppHeader";
 import { getRanking } from "../api/users";
+import { resolveAvatarSrc } from "../utils/avatar";
 
 const { Title, Text } = Typography;
 type SortBy = "winRate" | "gamesWon" | "gamesPlayed";
@@ -77,7 +78,7 @@ export default function Ranking() {
       key: 'username',
       render: (_: any, record: RankingEntry) => (
         <Space>
-          <Avatar src={record.profilePicture}>{record.username[0].toUpperCase()}</Avatar>
+          <Avatar src={resolveAvatarSrc(record.profilePicture)}>{record.username[0].toUpperCase()}</Avatar>
           <Space direction="vertical" size={0}>
             <Text strong>{record.username}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>

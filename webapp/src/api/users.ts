@@ -41,6 +41,12 @@ export type RecordUserGameRequest = {
     startedBy?: string;
 };
 
+export type UserHistoryQuery = {
+    mode?: "all" | "HvB" | "HvH";
+    result?: "all" | "won" | "lost" | "abandoned";
+    sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
+};
+
 const USERS_API_URL = "/api/users";
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -102,10 +108,25 @@ export async function getRanking(sortBy: "winRate" | "gamesWon" | "gamesPlayed",
 export async function getUserHistory(
     username: string,
     page = 1,
-    pageSize = 5
+    pageSize = 5,
+    query?: UserHistoryQuery
 ): Promise<UserHistoryResponse> {
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+    });
+
+    if (query?.mode && query.mode !== "all")
+        params.set("mode", query.mode);
+
+    if (query?.result && query.result !== "all")
+        params.set("result", query.result);
+
+    if (query?.sortBy)
+        params.set("sortBy", query.sortBy);
+
     const response = await fetch(
-        `${USERS_API_URL}/users/${encodeURIComponent(username)}/history?page=${page}&pageSize=${pageSize}`
+        `${USERS_API_URL}/users/${encodeURIComponent(username)}/history?${params.toString()}`
     );
 
     return parseJson<UserHistoryResponse>(response);
@@ -129,13 +150,13 @@ export async function recordUserGame(username: string, body: RecordUserGameReque
 }
 
 export async function getUserStats(username: string) {
-  const response = await fetch(
-    `${USERS_API_URL}/users/${encodeURIComponent(username)}/stats`
-  );
+    const response = await fetch(
+        `${USERS_API_URL}/users/${encodeURIComponent(username)}/stats`
+    );
 
-  return parseJson<{
-    username: string;
-    profilePicture?: string;
-    stats: UserStats;
-  }>(response);
+    return parseJson<{
+        username: string;
+        profilePicture?: string;
+        stats: UserStats;
+    }>(response);
 }
