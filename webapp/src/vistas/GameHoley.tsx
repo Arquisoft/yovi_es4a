@@ -76,7 +76,7 @@ export default function GameHoley() {
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
       gameId,
-      mode: "Holey - HvH",
+      mode: "holey_hvh",
       result: winner === "player0" ? "won" : "lost",
       boardSize: size,
       totalMoves,
@@ -91,7 +91,7 @@ export default function GameHoley() {
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
         gameId,
-        mode: "Holey - HvH",
+        mode: "holey_hvh",
         result: "abandoned",
         boardSize: size,
         totalMoves,

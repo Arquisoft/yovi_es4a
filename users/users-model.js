@@ -8,7 +8,7 @@ const gameHistorySchema = new mongoose.Schema(
         },
         mode: {
             type: String,
-            enum: ["Classic - HvB", "Classic - HvH", "Tabu - HvH", "Holey - HvH", "Fortune Dice - HvH", "PolY - HvH"],
+            enum: ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"],
             required: true,
         },
         result: {

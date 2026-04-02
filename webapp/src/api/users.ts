@@ -1,10 +1,10 @@
 export type GameMode =
-    | "Classic - HvB"
-    | "Classic - HvH"
-    | "Tabu - HvH"
-    | "Holey - HvH"
-    | "Fortune Dice - HvH"
-    | "PolY - HvH";
+    | "classic_hvb"
+    | "classic_hvh"
+    | "tabu_hvh"
+    | "holey_hvh"
+    | "fortune_dice_hvh"
+    | "poly_hvh";
 
 export type HistoryGame = {
     gameId: string;

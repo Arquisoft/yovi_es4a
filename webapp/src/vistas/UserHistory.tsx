@@ -58,17 +58,17 @@ function resultTag(result: HistoryGame["result"]) {
 
 function modeTag(mode: HistoryGame["mode"]) {
   switch (mode) {
-    case "Classic - HvB":
+    case "classic_hvb":
       return <Tag color="#28BBF5">Clásico HvB</Tag>;
-    case "Classic - HvH":
+    case "classic_hvh":
       return <Tag color="#FF7B00">Clásico HvH</Tag>;
-    case "Tabu - HvH":
+    case "tabu_hvh":
       return <Tag color="#FF4D6D">Tabú HvH</Tag>;
-    case "Holey - HvH":
+    case "holey_hvh":
       return <Tag color="#A855F7">HoleY HvH</Tag>;
-    case "Fortune Dice - HvH":
+    case "fortune_dice_hvh":
       return <Tag color="#FACC15">Fortune Dice HvH</Tag>;
-    case "PolY - HvH":
+    case "poly_hvh":
       return <Tag color="#22C55E">PolY HvH</Tag>;
     default:
       return <Tag>{mode}</Tag>;
@@ -77,17 +77,17 @@ function modeTag(mode: HistoryGame["mode"]) {
 
 function modeLabel(mode: HistoryGame["mode"]) {
   switch (mode) {
-    case "Classic - HvB":
+    case "classic_hvb":
       return "Clásico — Humano vs Bot";
-    case "Classic - HvH":
+    case "classic_hvh":
       return "Clásico — Humano vs Humano";
-    case "Tabu - HvH":
+    case "tabu_hvh":
       return "Tabú — Humano vs Humano";
-    case "Holey - HvH":
+    case "holey_hvh":
       return "HoleY — Humano vs Humano";
-    case "Fortune Dice - HvH":
+    case "fortune_dice_hvh":
       return "Fortune Dice — Humano vs Humano";
-    case "PolY - HvH":
+    case "poly_hvh":
       return "PolY — Humano vs Humano";
     default:
       return mode;
@@ -95,7 +95,7 @@ function modeLabel(mode: HistoryGame["mode"]) {
 }
 
 function defaultOpponentLabel(mode: HistoryGame["mode"]) {
-  return mode === "Classic - HvB" ? "Bot" : "Jugador local";
+  return mode === "classic_hvb" ? "Bot" : "Jugador local";
 }
 
 function gameDetails(game: HistoryGame) {
@@ -146,7 +146,7 @@ export default function UserHistory() {
   const [error, setError] = useState<string | null>(null);
 
   const [modeFilter, setModeFilter] = useState<
-    "all" | "Classic - HvB" | "Classic - HvH" | "Tabu - HvH" | "Holey - HvH" | "Fortune Dice - HvH" | "PolY - HvH"
+    "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh"
   >("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
@@ -231,12 +231,12 @@ export default function UserHistory() {
                         style={{ width: 220 }}
                         options={[
                           { value: "all", label: "Todos los modos" },
-                          { value: "Classic - HvB", label: "Clásico HvB" },
-                          { value: "Classic - HvH", label: "Clásico HvH" },
-                          { value: "Tabu - HvH", label: "Tabú HvH" },
-                          { value: "Holey - HvH", label: "HoleY HvH" },
-                          { value: "Fortune Dice - HvH", label: "Fortune Dice HvH" },
-                          { value: "PolY - HvH", label: "PolY HvH" },
+                          { value: "classic_hvb", label: "Clásico HvB" },
+                          { value: "classic_hvh", label: "Clásico HvH" },
+                          { value: "tabu_hvh", label: "Tabú HvH" },
+                          { value: "holey_hvh", label: "HoleY HvH" },
+                          { value: "fortune_dice_hvh", label: "Fortune Dice HvH" },
+                          { value: "poly_hvh", label: "PolY HvH" },
                         ]}
                       />
 

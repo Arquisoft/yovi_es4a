@@ -113,7 +113,7 @@ export default function GameTabu() {
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
       gameId,
-      mode: "Tabu - HvH",
+      mode: "tabu_hvh",
       result: winner === "player0" ? "won" : "lost",
       boardSize: size,
       totalMoves,
@@ -128,7 +128,7 @@ export default function GameTabu() {
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
         gameId,
-        mode: "Tabu - HvH",
+        mode: "tabu_hvh",
         result: "abandoned",
         boardSize: size,
         totalMoves,
