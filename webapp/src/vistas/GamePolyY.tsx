@@ -93,7 +93,7 @@ export default function GamePolyY() {
     const session = getUserSession();
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "HvH", result: winner === "player0" ? "won" : "lost",
+      gameId, mode: "PolY - HvH", result: winner === "player0" ? "won" : "lost",
       boardSize: size, totalMoves,
       opponent: "Jugador local (Poly-Y)", startedBy: hvh_starter,
     });
@@ -104,7 +104,7 @@ export default function GamePolyY() {
     const session = getUserSession();
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
-        gameId, mode: "HvH", result: "abandoned",
+        gameId, mode: "PolY - HvH", result: "abandoned",
         boardSize: size, totalMoves,
         opponent: "Jugador local (Poly-Y)", startedBy: hvh_starter,
       });

@@ -66,6 +66,10 @@ function modeTag(mode: HistoryGame["mode"]) {
       return <Tag color="#FF4D6D">Tabú HvH</Tag>;
     case "Holey - HvH":
       return <Tag color="#A855F7">HoleY HvH</Tag>;
+    case "Fortune Dice - HvH":
+      return <Tag color="#FACC15">Fortune Dice HvH</Tag>;
+    case "PolY - HvH":
+      return <Tag color="#22C55E">PolY HvH</Tag>;
     default:
       return <Tag>{mode}</Tag>;
   }
@@ -81,6 +85,10 @@ function modeLabel(mode: HistoryGame["mode"]) {
       return "Tabú — Humano vs Humano";
     case "Holey - HvH":
       return "HoleY — Humano vs Humano";
+    case "Fortune Dice - HvH":
+      return "Fortune Dice — Humano vs Humano";
+    case "PolY - HvH":
+      return "PolY — Humano vs Humano";
     default:
       return mode;
   }
@@ -138,7 +146,7 @@ export default function UserHistory() {
   const [error, setError] = useState<string | null>(null);
 
   const [modeFilter, setModeFilter] = useState<
-    "all" | "Classic - HvB" | "Classic - HvH" | "Tabu - HvH" | "Holey - HvH"
+    "all" | "Classic - HvB" | "Classic - HvH" | "Tabu - HvH" | "Holey - HvH" | "Fortune Dice - HvH" | "PolY - HvH"
   >("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
@@ -227,6 +235,8 @@ export default function UserHistory() {
                           { value: "Classic - HvH", label: "Clásico HvH" },
                           { value: "Tabu - HvH", label: "Tabú HvH" },
                           { value: "Holey - HvH", label: "HoleY HvH" },
+                          { value: "Fortune Dice - HvH", label: "Fortune Dice HvH" },
+                          { value: "PolY - HvH", label: "PolY HvH" },
                         ]}
                       />
 

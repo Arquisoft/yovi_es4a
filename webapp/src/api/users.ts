@@ -2,7 +2,9 @@ export type GameMode =
     | "Classic - HvB"
     | "Classic - HvH"
     | "Tabu - HvH"
-    | "Holey - HvH";
+    | "Holey - HvH"
+    | "Fortune Dice - HvH"
+    | "PolY - HvH";
 
 export type HistoryGame = {
     gameId: string;
