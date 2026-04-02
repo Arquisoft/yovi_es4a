@@ -57,11 +57,37 @@ function resultTag(result: HistoryGame["result"]) {
 }
 
 function modeTag(mode: HistoryGame["mode"]) {
-  return <Tag color={mode === "HvB" ? "processing" : "purple"}>{mode}</Tag>;
+  switch (mode) {
+    case "Classic - HvB":
+      return <Tag color="#28BBF5">Clásico HvB</Tag>;
+    case "Classic - HvH":
+      return <Tag color="#FF7B00">Clásico HvH</Tag>;
+    case "Tabu - HvH":
+      return <Tag color="#FF4D6D">Tabú HvH</Tag>;
+    case "Holey - HvH":
+      return <Tag color="#A855F7">HoleY HvH</Tag>;
+    default:
+      return <Tag>{mode}</Tag>;
+  }
 }
 
 function modeLabel(mode: HistoryGame["mode"]) {
-  return mode === "HvB" ? "Humano vs Bot" : "Humano vs Humano";
+  switch (mode) {
+    case "Classic - HvB":
+      return "Clásico — Humano vs Bot";
+    case "Classic - HvH":
+      return "Clásico — Humano vs Humano";
+    case "Tabu - HvH":
+      return "Tabú — Humano vs Humano";
+    case "Holey - HvH":
+      return "HoleY — Humano vs Humano";
+    default:
+      return mode;
+  }
+}
+
+function defaultOpponentLabel(mode: HistoryGame["mode"]) {
+  return mode === "Classic - HvB" ? "Bot" : "Jugador local";
 }
 
 function gameDetails(game: HistoryGame) {
@@ -90,7 +116,7 @@ function gameDetails(game: HistoryGame) {
       </Descriptions.Item>
 
       <Descriptions.Item label="Rival">
-        {game.opponent || (game.mode === "HvB" ? "Bot" : "Jugador local")}
+        {game.opponent || defaultOpponentLabel(game.mode)}
       </Descriptions.Item>
 
       {game.startedBy ? (
@@ -111,7 +137,9 @@ export default function UserHistory() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
-  const [modeFilter, setModeFilter] = useState<"all" | "HvH" | "HvB">("all");
+  const [modeFilter, setModeFilter] = useState<
+    "all" | "Classic - HvB" | "Classic - HvH" | "Tabu - HvH" | "Holey - HvH"
+  >("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
 
@@ -192,11 +220,13 @@ export default function UserHistory() {
                       <Select
                         value={modeFilter}
                         onChange={setModeFilter}
-                        style={{ width: 160 }}
+                        style={{ width: 220 }}
                         options={[
                           { value: "all", label: "Todos los modos" },
-                          { value: "HvH", label: "HvH" },
-                          { value: "HvB", label: "HvB" },
+                          { value: "Classic - HvB", label: "Clásico HvB" },
+                          { value: "Classic - HvH", label: "Clásico HvH" },
+                          { value: "Tabu - HvH", label: "Tabú HvH" },
+                          { value: "Holey - HvH", label: "HoleY HvH" },
                         ]}
                       />
 

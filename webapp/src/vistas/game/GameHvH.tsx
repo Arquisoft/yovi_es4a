@@ -66,7 +66,7 @@ export default function GameHvH() {
     if (session) {
       await saveGameForCurrentSession({
         gameId,
-        mode: "HvH",
+        mode: "Classic - HvH",
         result: "abandoned",
         boardSize: size,
         totalMoves,
@@ -102,7 +102,7 @@ export default function GameHvH() {
 
           const payload: RecordUserGameRequest = {
             gameId,
-            mode: "HvH",
+            mode: "Classic - HvH",
             result: winner === "player0" ? "won" : "lost",
             boardSize: size,
             totalMoves,

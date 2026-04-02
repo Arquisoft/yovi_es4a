@@ -112,9 +112,13 @@ export default function GameTabu() {
     const session = getUserSession();
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "HvH", result: winner === "player0" ? "won" : "lost",
-      boardSize: size, totalMoves,
-      opponent: "Jugador local (Tabú)", startedBy: hvh_starter,
+      gameId,
+      mode: "Tabu - HvH",
+      result: winner === "player0" ? "won" : "lost",
+      boardSize: size,
+      totalMoves,
+      opponent: "Jugador local (Tabú)",
+      startedBy: hvh_starter,
     });
     savedGameIdsRef.current.add(gameId);
   }
@@ -123,9 +127,13 @@ export default function GameTabu() {
     const session = getUserSession();
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
-        gameId, mode: "HvH", result: "abandoned",
-        boardSize: size, totalMoves,
-        opponent: "Jugador local (Tabú)", startedBy: hvh_starter,
+        gameId,
+        mode: "Tabu - HvH",
+        result: "abandoned",
+        boardSize: size,
+        totalMoves,
+        opponent: "Jugador local (Tabú)",
+        startedBy: hvh_starter,
       });
       savedGameIdsRef.current.add(gameId);
     }

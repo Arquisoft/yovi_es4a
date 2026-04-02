@@ -1,6 +1,12 @@
+export type GameMode =
+    | "Classic - HvB"
+    | "Classic - HvH"
+    | "Tabu - HvH"
+    | "Holey - HvH";
+
 export type HistoryGame = {
     gameId: string;
-    mode: "HvB" | "HvH";
+    mode: GameMode;
     result: "won" | "lost" | "abandoned";
     boardSize: number;
     totalMoves: number;
@@ -33,7 +39,7 @@ export type UserHistoryResponse = {
 
 export type RecordUserGameRequest = {
     gameId: string;
-    mode: "HvB" | "HvH";
+    mode: GameMode;
     result: "won" | "lost" | "abandoned";
     boardSize: number;
     totalMoves: number;
@@ -42,7 +48,7 @@ export type RecordUserGameRequest = {
 };
 
 export type UserHistoryQuery = {
-    mode?: "all" | "HvB" | "HvH";
+    mode?: "all" | GameMode;
     result?: "all" | "won" | "lost" | "abandoned";
     sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };
