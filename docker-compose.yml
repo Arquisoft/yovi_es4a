@@ -4,8 +4,8 @@ services:
     image: mongo:latest
     container_name: mongodb
     # Mongo no debería estar abierto a internet, por lo que no exponemos el puerto fuera del contenedor
-    # ports:
-    #   - "27017:27017"
+    ports:
+      - "27017:27017"
     networks:
       - monitor-net
     volumes:
