@@ -70,12 +70,12 @@ impl YBot for MctsBot {
         let mut best_move = None;
         let mut max_wins = -1.0;
 
+        // Evita división por cero si iterations < available_cells.len()
+        let simulations_per_move = (self.iterations / (available_cells.len() as u32).max(1)).max(1);
+
         // BUCLE PRINCIPAL: Iteramos por cada casilla vacía disponible en el tablero actual.
         for &move_idx in available_cells.iter() {
-            let mut wins = 0;
-            
-            // Dividimos el presupuesto de iteraciones entre los movimientos posibles.
-            let simulations_per_move = self.iterations / (available_cells.len() as u32).max(1);
+            let mut wins = 0u32;
 
             // BUCLE DE SIMULACIONES: Ejecutamos múltiples playouts para este movimiento
             for _ in 0..simulations_per_move {
@@ -115,7 +115,7 @@ impl YBot for MctsBot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{GameY, PlayerId};
+    use crate::{GameY, Movement, PlayerId};
 
     #[test]
     fn test_mcts_bot_name() {
@@ -155,5 +155,6 @@ mod tests {
         }
         let chosen_move = bot.choose_move(&game);
         assert!(chosen_move.is_none());
-    }   
-}
+    }
+}  
+

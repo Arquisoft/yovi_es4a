@@ -1,114 +1,163 @@
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { App } from "antd";
+import userEvent from "@testing-library/user-event";
 import Ranking from "../vistas/Ranking";
 
-const { matchMediaMock } = vi.hoisted(() => {
-  const matchMediaMock = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }));
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: matchMediaMock,
-  });
-  return { matchMediaMock };
+const getRankingMock = vi.fn();
+
+vi.mock("../api/users", () => ({
+  getRanking: (...args: any[]) => getRankingMock(...args),
+}));
+
+vi.mock("../vistas/AppHeader", () => ({
+  default: ({ title }: any) => <div>{title}</div>,
+}));
+
+vi.mock("antd", async () => {
+  const actual = await vi.importActual<any>("antd");
+
+  return {
+    ...actual,
+    Select: ({ value, onChange, options }: any) => (
+      <select
+        aria-label="sort-ranking"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((opt: any) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.value}
+          </option>
+        ))}
+      </select>
+    ),
+  };
 });
 
-// Mock global del fetch
-global.fetch = vi.fn();
-
-describe("Ranking Component", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Restaurar matchMedia tras el reset
-    window.matchMedia = matchMediaMock;
-    Object.defineProperty(window, "getComputedStyle", {
-      value: () => ({
-        getPropertyValue: () => {
-          return "";
-        },
-      }),
+describe("Ranking", () => {
+  beforeAll(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
     });
   });
 
-  it("renderiza el ranking haciendo la petición a la URL correcta", async () => {
-    const mockRankingData = {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("carga y muestra el ranking con el sort inicial", async () => {
+    getRankingMock.mockResolvedValueOnce({
       sortBy: "winRate",
       ranking: [
         {
           username: "Faker",
-          winRate: 100,
-          gamesWon: 10,
-          gamesPlayed: 10,
-          gamesLost: 0,
-          totalMoves: 150,
           profilePicture: "faker.png",
+          gamesPlayed: 10,
+          gamesWon: 10,
+          gamesLost: 0,
+          gamesAbandoned: 0,
+          totalMoves: 150,
+          winRate: 100,
         },
         {
           username: "Novato",
-          winRate: 50,
-          gamesWon: 1,
-          gamesPlayed: 2,
-          gamesLost: 1,
-          totalMoves: 25,
           profilePicture: "novato.png",
+          gamesPlayed: 2,
+          gamesWon: 1,
+          gamesLost: 1,
+          gamesAbandoned: 0,
+          totalMoves: 25,
+          winRate: 50,
         },
       ],
-    };
-
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => mockRankingData,
     });
 
-    render(
-      <MemoryRouter>
-        <App>
-          <Ranking />
-        </App>
-      </MemoryRouter>,
-    );
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/ranking?sortBy=winRate&limit=20",
-    );
+    render(<Ranking />);
 
     await waitFor(() => {
-      expect(screen.getByText("Faker")).toBeInTheDocument();
-      expect(screen.getByText("Novato")).toBeInTheDocument();
-      expect(screen.getByText("10V · 0D")).toBeInTheDocument();
-      expect(screen.getByText("1V · 1D")).toBeInTheDocument();
+      expect(getRankingMock).toHaveBeenCalledWith("winRate", 20);
     });
+
+    expect(await screen.findByText("Faker")).toBeInTheDocument();
+    expect(screen.getByText("Novato")).toBeInTheDocument();
+    expect(screen.getByText("10V · 0D · 0A")).toBeInTheDocument();
+    expect(screen.getByText("1V · 1D · 0A")).toBeInTheDocument();
   });
 
-  it("muestra un mensaje de error si la API falla", async () => {
-    (global.fetch as any).mockResolvedValue({
-      ok: false,
-      status: 500,
-    });
+  it("permite cambiar el criterio de ordenación", async () => {
+    getRankingMock
+      .mockResolvedValueOnce({
+        sortBy: "winRate",
+        ranking: [],
+      })
+      .mockResolvedValueOnce({
+        sortBy: "gamesWon",
+        ranking: [
+          {
+            username: "Marcelo",
+            profilePicture: "",
+            gamesPlayed: 8,
+            gamesWon: 6,
+            gamesLost: 2,
+            gamesAbandoned: 0,
+            totalMoves: 90,
+            winRate: 75,
+          },
+        ],
+      });
 
-    render(
-      <MemoryRouter>
-        <App>
-          <Ranking />
-        </App>
-      </MemoryRouter>,
-    );
+    const user = userEvent.setup();
+    render(<Ranking />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("No se pudo cargar el ranking"),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Error 500")).toBeInTheDocument();
+      expect(getRankingMock).toHaveBeenCalledWith("winRate", 20);
     });
+
+    await user.selectOptions(screen.getByLabelText("sort-ranking"), "gamesWon");
+
+    await waitFor(() => {
+      expect(getRankingMock).toHaveBeenCalledWith("gamesWon", 20);
+    });
+
+    expect(await screen.findByText("Marcelo")).toBeInTheDocument();
+  });
+
+  it("muestra error si la API falla", async () => {
+    getRankingMock.mockRejectedValueOnce(new Error("Error 500"));
+
+    render(<Ranking />);
+
+    expect(
+      await screen.findByText("No se pudo cargar el ranking"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Error 500")).toBeInTheDocument();
+  });
+
+  it("tolera respuestas sin ranking array", async () => {
+    getRankingMock.mockResolvedValueOnce({
+      sortBy: "winRate",
+      ranking: null,
+    });
+
+    render(<Ranking />);
+
+    await waitFor(() => {
+      expect(getRankingMock).toHaveBeenCalledWith("winRate", 20);
+    });
+
+    expect(
+      screen.getByText("Todavía no hay jugadores con partidas registradas."),
+    ).toBeInTheDocument();
   });
 });

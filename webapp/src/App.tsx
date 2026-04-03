@@ -9,6 +9,8 @@ import RegisterForm from "./vistas/registroLogin/RegisterForm";
 import GameHvH from "./vistas/game/GameHvH";
 import Ranking from "./vistas/Ranking";
 import ValidacionEmail from "./vistas/registroLogin/ValidacionEmail";
+import UserHistory from "./vistas/UserHistory";
+import ProtectedRoute from "./utils/ProtectedRoute";
 
 function App() {
   return (
@@ -20,6 +22,14 @@ function App() {
         <Route path="/game-hvh" element={<GameHvH />} />
         <Route path="/registro" element={<RegisterForm />} />
         <Route path="/ranking" element={<Ranking />} />
+        <Route
+          path="/historial"
+          element={
+            <ProtectedRoute>
+              <UserHistory />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/verify" element={<ValidacionEmail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

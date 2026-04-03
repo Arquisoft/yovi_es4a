@@ -1,11 +1,17 @@
 import "@testing-library/jest-dom";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import AppHeader from "../vistas/AppHeader.tsx"; 
+import AppHeader from "../vistas/AppHeader";
 
 const navigateMock = vi.fn();
 const confirmMock = vi.fn();
+
+const clearUserSessionMock = vi.fn();
+const getUserSessionMock = vi.fn();
+
+const infoMock = vi.fn();
+
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -15,10 +21,15 @@ vi.mock("react-router-dom", async () => {
     };
 });
 
+vi.mock("../utils/session", () => ({
+  clearUserSession: (...args: any[]) => clearUserSessionMock(...args),
+  getUserSession: (...args: any[]) => getUserSessionMock(...args),
+}));
+
 vi.mock("antd", () => ({
     App: {
         useApp: () => ({
-            modal: { confirm: confirmMock },
+            modal: { confirm: confirmMock, info: infoMock },
         }),
     },
     Button: ({ children, onClick, disabled, icon, ...props }: any) => (
@@ -40,107 +51,145 @@ vi.mock("antd", () => ({
                         <button
                             key={item.key || index}
                             type="button"
-                            onClick={() => menu.onClick?.({ key: item.key })}
+                            disabled={!!item.disabled}
+                            onClick={() => !item.disabled && menu.onClick?.({ key: item.key })}
                         >
                             {item.label}
                         </button>
-                    )
+                    );
                 })}
             </div>
         </div>
     ),
     Typography: {
         Title: ({ children }: any) => <h2>{children}</h2>,
+        Text: ({ children }: any) => <span>{children}</span>,
     },
 }));
 
 vi.mock("@ant-design/icons", () => ({
-    BarChartOutlined: () => null,
     HomeOutlined: () => null,
     LogoutOutlined: () => null,
     QuestionCircleOutlined: () => null,
     UserOutlined: () => null,
     TrophyOutlined: () => null,
+    HistoryOutlined: () => null,
 }));
 
 describe("AppHeader", () => {
     beforeEach(() => {
-        navigateMock.mockReset();
-        confirmMock.mockReset();
+        vi.clearAllMocks();
     });
 
-    it("renderiza el título recibido por props", () => {
+    it("renderiza el título y muestra Invitado cuando no hay sesión", () => {
+        getUserSessionMock.mockReturnValue(null);
+
         render(<AppHeader title="Perfil" />);
+
         expect(screen.getByText("Perfil")).toBeInTheDocument();
+        expect(screen.getByText("Invitado")).toBeInTheDocument();
     });
 
-    it("renderiza todas las opciones del dropdown incluyendo el Ranking", () => {
+    it("muestra el username cuando hay sesión", () => {
+        getUserSessionMock.mockReturnValue({
+            username: "marcelo",
+            profilePicture: "avatar.png",
+        });
+
         render(<AppHeader title="YOVI" />);
 
-        expect(screen.getByRole("button", { name: "Ver Perfil" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ver Estadísticas" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ranking Global" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Volver a Home" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ayuda" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Cerrar Sesión" })).toBeInTheDocument();
+        expect(screen.getByText("marcelo")).toBeInTheDocument();
     });
 
-    it("al pulsar 'Ranking Global' navega a '/ranking'", async () => {
+    it("deshabilita Mi Historial si no hay sesión", () => {
+        getUserSessionMock.mockReturnValue(null);
+
+        render(<AppHeader title="YOVI" />);
+
+        expect(
+            screen.getByRole("button", { name: "Mi Historial" }),
+        ).toBeDisabled();
+    });
+
+    it("permite navegar a Mi Historial si hay sesión", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
+
+        const user = userEvent.setup();
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Mi Historial" }));
+
+        expect(navigateMock).toHaveBeenCalledWith("/historial");
+    });
+
+    it("navega a ranking y home", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
+
         const user = userEvent.setup();
         render(<AppHeader title="YOVI" />);
 
         await user.click(screen.getByRole("button", { name: "Ranking Global" }));
-
-        expect(navigateMock).toHaveBeenCalledWith("/ranking");
-    });
-
-    it("al pulsar 'Volver a Home' navega a '/home'", async () => {
-        const user = userEvent.setup();
-        render(<AppHeader title="YOVI" />);
-
         await user.click(screen.getByRole("button", { name: "Volver a Home" }));
 
+        expect(navigateMock).toHaveBeenCalledWith("/ranking");
         expect(navigateMock).toHaveBeenCalledWith("/home");
     });
 
-    it("al pulsar 'Cerrar Sesión' del menú abre modal.confirm", async () => {
-        const user = userEvent.setup();
+    it("abre confirm al cerrar sesión", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
 
+        const user = userEvent.setup();
         render(<AppHeader title="YOVI" />);
 
         await user.click(screen.getByRole("button", { name: "Cerrar Sesión" }));
 
         expect(confirmMock).toHaveBeenCalledTimes(1);
-
         const args = confirmMock.mock.calls[0][0];
         expect(args.title).toBe("Cerrar sesión");
+        expect(args.content).toBe("¿Seguro que quieres cerrar sesión y salir?");
         expect(args.okText).toBe("Sí, salir");
         expect(args.cancelText).toBe("Cancelar");
     });
 
-    it("al confirmar el logout navega a '/' con replace", async () => {
-        const user = userEvent.setup();
+    it("al confirmar logout limpia sesión y navega al inicio", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
 
+        const user = userEvent.setup();
         render(<AppHeader title="YOVI" />);
 
         await user.click(screen.getByRole("button", { name: "Cerrar Sesión" }));
 
         const args = confirmMock.mock.calls[0][0];
-        args.onOk();
+        await args.onOk();
 
+        expect(clearUserSessionMock).toHaveBeenCalled();
         expect(navigateMock).toHaveBeenCalledWith("/", { replace: true });
     });
 
-    it("al pulsar las opciones no implementadas no navega ni rompe el componente", async () => {
-        const user = userEvent.setup();
+    it("las opciones no implementadas no navegan", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
 
+        const user = userEvent.setup();
         render(<AppHeader title="YOVI" />);
 
         await user.click(screen.getByRole("button", { name: "Ver Perfil" }));
-        await user.click(screen.getByRole("button", { name: "Ver Estadísticas" }));
         await user.click(screen.getByRole("button", { name: "Ayuda" }));
 
         expect(navigateMock).not.toHaveBeenCalled();
         expect(confirmMock).not.toHaveBeenCalled();
+    });
+
+    it("al pulsar 'Ayuda' abre modal.info con el título correcto", async () => {
+        const user = userEvent.setup();
+
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Ayuda" }));
+
+        expect(infoMock).toHaveBeenCalledTimes(1);
+
+        const args = infoMock.mock.calls[0][0];
+        expect(args.title).toBe("Ayuda — Juego Y");
+        expect(args.okText).toBe("Cerrar");
     });
 });

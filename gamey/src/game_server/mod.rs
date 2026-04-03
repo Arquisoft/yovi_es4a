@@ -1,6 +1,9 @@
 //! HTTP Game Server
 //!
 //! Expone endpoints para jugar desde `webapp` contra humano (HvH) o contra bot (HvB).
+//! Además expone la API externa obligatoria para bots:
+//! - GET /play?position=...&bot_id=...&api_version=...
+//!
 //! Diseñado para ser mantenible:
 //! - Sesiones por `game_id` en memoria (HashMap)
 //! - Identidad opcional (Guest por `X-Client-Id` hoy; User por token mañana)
@@ -12,19 +15,21 @@ pub mod dto;
 pub mod error;
 pub mod hvb;
 pub mod hvh;
+pub mod play;
 pub mod sessions;
 pub mod state;
 
 use axum::{Router, http, routing::{get, post}};
 use http::Method;
 use tower_http::cors::{Any, CorsLayer};
+
 use state::GameServerState;
 
-/// Límites de tablero (ajústalos a lo que queráis permitir en UI).
+/// Límites de tablero
 pub const MIN_BOARD_SIZE: u32 = 2;
 pub const MAX_BOARD_SIZE: u32 = 15;
 
-/// Versión de API (simple y explícita).
+/// Versión de API
 pub const API_V1: &str = "v1";
 
 pub fn create_router(state: GameServerState) -> Router {
@@ -38,6 +43,8 @@ pub fn create_router(state: GameServerState) -> Router {
     Router::new()
         // Salud
         .route("/status", get(status))
+        // API externa de competición / bots
+        .route("/play", get(play::play))
         // Info para UI: límites + bots disponibles
         .route("/api/v1/meta", get(dto::get_meta))
         // Config recordada (por client_id / user)
@@ -80,6 +87,24 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn router_exposes_play_endpoint() {
+        let app = create_router(GameServerState::new_default());
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/play")
+                    .method("GET")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_ne!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]

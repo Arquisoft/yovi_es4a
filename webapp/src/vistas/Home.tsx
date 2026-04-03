@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Button,
   Card,
   Divider,
@@ -7,7 +8,8 @@ import {
   InputNumber,
   Select,
   Space,
-  Typography
+  Spin,
+  Typography,
 } from "antd";
 import {
   BuildOutlined,
@@ -16,8 +18,11 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getMeta, type MetaResponse } from "../api/gamey";
+import { getUserStats, type UserStats } from "../api/users";
+import { getUserSession } from "../utils/session";
 import AppHeader from "./AppHeader.tsx";
 import DifficultySelect from "./Dificultyselect.tsx";
+import UserStatsSummary from "./UserStats";
 
 const { Title, Text } = Typography;
 
@@ -77,6 +82,7 @@ function clampSize(n: number, meta: MetaResponse | null) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const session = getUserSession();
 
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [size, setSize] = useState(7);
@@ -90,6 +96,10 @@ export default function Home() {
 
   // Pantalla de dificultad HvB
   const [showDifficulty, setShowDifficulty] = useState(false);
+
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     getMeta()
@@ -122,6 +132,23 @@ export default function Home() {
     if (!meta) return;
     setSize((prev) => clampSize(prev, meta));
   }, [meta]);
+
+  useEffect(() => {
+    if (!session?.username) {
+      setStats(null);
+      setStatsError(null);
+      setStatsLoading(false);
+      return;
+    }
+
+    setStatsLoading(true);
+    setStatsError(null);
+
+    getUserStats(session.username)
+      .then((data) => setStats(data.stats))
+      .catch((e) => setStatsError(e.message))
+      .finally(() => setStatsLoading(false));
+  }, [session?.username]);
 
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
@@ -260,18 +287,28 @@ export default function Home() {
             </Space>
           </Card>
 
-          {/* Estadísticas */}
-          <Card>
-            <Space direction="vertical" size={16} style={{ width: "100%" }}>
-              <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Title level={3} style={{ margin: 0 }}>Estadísticas</Title>
-              </Flex>
-              <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Text type="secondary">Sin implementar todavía</Text>
-              </Flex>
-            </Space>
-          </Card>
+          {session && (
+            <>
+              {statsError && (
+                <Alert
+                  type="error"
+                  message="No se pudieron cargar las estadísticas"
+                  description={statsError}
+                  showIcon
+                />
+              )}
 
+              {statsLoading ? (
+                <Card>
+                  <Flex justify="center" align="center" style={{ minHeight: 180 }}>
+                    <Spin size="large" />
+                  </Flex>
+                </Card>
+              ) : stats ? (
+                <UserStatsSummary stats={stats} title="Tus estadísticas" />
+              ) : null}
+            </>
+          )}
         </Space>
       </div>
     </Flex>

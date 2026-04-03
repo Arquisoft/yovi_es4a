@@ -16,6 +16,7 @@ import {
   type StrengthResult,
 } from "../../utils/Validation";
 import "../../estilos/RegisterForm.css";
+import { registerUser } from "../../api/users";
 
 /**
  * Componente funcional que renderiza el formulario de registro de la aplicación.
@@ -41,9 +42,6 @@ const RegisterForm: React.FC = () => {
   // --- Estado de visibilidad de contraseñas (Estilo solicitado) ---
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-
-  const apiEndpoint =
-    import.meta.env.VITE_API_URL || "http://localhost:8000/api/users";
 
   /**
    * Hook de efecto que monitoriza cambios en la contraseña para actualizar
@@ -100,27 +98,16 @@ const RegisterForm: React.FC = () => {
 
     // 2. Si todo es correcto, llamamos al backend
     try {
-      const response = await fetch(`${apiEndpoint}/createuser`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: values.username,
-          email: values.email,
-          password: values.password,
-          profilePicture,
-        }),
+      const data = await registerUser({
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        profilePicture,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "No se pudo completar el registro.");
-      }
-
-      message.success(data.message); // Pop-up de éxito
+      message.success(data.message);
       setSuccess(data.message);
 
-      // Limpiar formulario tras éxito
       form.resetFields();
       setPassword("");
       setProfilePicture(AVATARS[0].id);

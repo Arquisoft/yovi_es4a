@@ -6,6 +6,8 @@ import Home from "../vistas/Home.tsx";
 
 const navigateMock = vi.fn();
 const getMetaMock = vi.fn();
+const getUserStatsMock = vi.fn();
+const getUserSessionMock = vi.fn();
 
 vi.mock("react-router-dom", async () => {
     const actual = await vi.importActual<any>("react-router-dom");
@@ -19,13 +21,20 @@ vi.mock("../api/gamey", () => ({
     getMeta: () => getMetaMock(),
 }));
 
+vi.mock("../api/users", () => ({
+    getUserStats: (...args: any[]) => getUserStatsMock(...args),
+}));
+
+vi.mock("../utils/session", () => ({
+    getUserSession: (...args: any[]) => getUserSessionMock(...args),
+}));
+
 vi.mock("../vistas/AppHeader.tsx", () => ({
     default: ({ title }: { title: string }) => (
         <div data-testid="app-header">{title}</div>
     ),
 }));
 
-// Mockeamos la pantalla de dificultad intermedia introducida recientemente
 vi.mock("../vistas/Dificultyselect.tsx", () => ({
     default: ({ selectedBot, onSelect, onConfirm }: any) => (
         <div data-testid="difficulty-select" data-bot={selectedBot}>
@@ -35,7 +44,24 @@ vi.mock("../vistas/Dificultyselect.tsx", () => ({
     )
 }));
 
+vi.mock("../vistas/UserStats", () => ({
+  default: ({ title, stats }: any) => (
+    <div data-testid="user-stats-summary">
+      <div>{title}</div>
+      <div>{`W:${stats.gamesWon}`}</div>
+      <div>{`L:${stats.gamesLost}`}</div>
+      <div>{`A:${stats.gamesAbandoned}`}</div>
+    </div>
+  ),
+}));
+
 vi.mock("antd", () => ({
+    Alert: ({ message, description }: any) => (
+        <div>
+            <div>{message}</div>
+            <div>{description}</div>
+        </div>
+    ),
     Button: ({ children, onClick, disabled, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
             {children}
@@ -45,6 +71,7 @@ vi.mock("antd", () => ({
     Divider: ({ children }: any) => <div>{children}</div>,
     Flex: ({ children }: any) => <div>{children}</div>,
     Space: ({ children }: any) => <div>{children}</div>,
+    Spin: () => <div>Cargando...</div>,
     Typography: {
         Title: ({ children }: any) => <h2>{children}</h2>,
         Text: ({ children }: any) => <span>{children}</span>,
@@ -115,8 +142,12 @@ describe("Home", () => {
     beforeEach(() => {
         navigateMock.mockReset();
         getMetaMock.mockReset();
+        getUserStatsMock.mockReset();
+        getUserSessionMock.mockReset();
         vi.restoreAllMocks();
         localStorage.clear();
+
+        getUserSessionMock.mockReturnValue(null);
     });
 
     it("renderiza el AppHeader con el título YOVI", async () => {
@@ -449,14 +480,77 @@ describe("Home", () => {
         expect(navigateMock).toHaveBeenCalled();
     });
 
-    it("renderiza el bloque de estadísticas", async () => {
+    it("muestra el bloque de estadísticas si hay usuario registrado", async () => {
         metaOk();
+        getUserSessionMock.mockReturnValue({
+        username: "marcelo",
+        profilePicture: "avatar.png",
+        });
+        getUserStatsMock.mockResolvedValue({
+        username: "marcelo",
+        profilePicture: "avatar.png",
+        stats: {
+            gamesPlayed: 6,
+            gamesWon: 2,
+            gamesLost: 3,
+            gamesAbandoned: 1,
+            totalMoves: 24,
+            winRate: 33,
+        },
+        });
 
         render(<Home />);
 
         await waitFor(() => {
-            expect(screen.getByText("Estadísticas")).toBeInTheDocument();
-            expect(screen.getByText("Sin implementar todavía")).toBeInTheDocument();
+            expect(getUserStatsMock).toHaveBeenCalledWith("marcelo");
         });
+
+        expect(await screen.findByTestId("user-stats-summary")).toBeInTheDocument();
+        expect(screen.getByText("Tus estadísticas")).toBeInTheDocument();
+        expect(screen.getByText("W:2")).toBeInTheDocument();
+        expect(screen.getByText("L:3")).toBeInTheDocument();
+        expect(screen.getByText("A:1")).toBeInTheDocument();
+    });
+
+    it("no muestra el bloque de estadísticas si es usuario invitado", async () => {
+        metaOk();
+        getUserSessionMock.mockReturnValue(null);
+
+        render(<Home />);
+
+        await screen.findByTestId("app-header");
+
+        expect(getUserStatsMock).not.toHaveBeenCalled();
+        expect(screen.queryByTestId("user-stats-summary")).not.toBeInTheDocument();
+        expect(screen.queryByText("Tus estadísticas")).not.toBeInTheDocument();
+    });
+
+    it("muestra spinner mientras carga estadísticas del usuario", async () => {
+        metaOk();
+        getUserSessionMock.mockReturnValue({
+            username: "marcelo",
+            profilePicture: "avatar.png",
+        });
+        getUserStatsMock.mockReturnValue(new Promise(() => {}));
+
+        render(<Home />);
+
+        expect(await screen.findByText("Cargando...")).toBeInTheDocument();
+    });
+
+    it("muestra error si falla la carga de estadísticas del usuario", async () => {
+        metaOk();
+        getUserSessionMock.mockReturnValue({
+            username: "marcelo",
+            profilePicture: "avatar.png",
+        });
+        getUserStatsMock.mockRejectedValue(new Error("Error stats"));
+
+        render(<Home />);
+
+        expect(
+            await screen.findByText("No se pudieron cargar las estadísticas")
+        ).toBeInTheDocument();
+        expect(screen.getByText("Error stats")).toBeInTheDocument();
     });
 });

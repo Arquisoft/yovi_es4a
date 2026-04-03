@@ -192,11 +192,14 @@ mod tests {
     }
 
     #[test]
-    fn new_default_creates_state_with_bots() {
+    fn new_default_creates_state_with_expected_bots() {
         let state = GameServerState::new_default();
         let names = state.bots.names();
 
         assert!(!names.is_empty());
         assert!(names.iter().any(|b| b == "random_bot"));
+        assert!(names.iter().any(|b| b == "mcts_medio"));
+        assert!(names.iter().any(|b| b == "mcts_dificil"));
+        assert!(names.iter().any(|b| b == "mcts_demencial"));
     }
 }

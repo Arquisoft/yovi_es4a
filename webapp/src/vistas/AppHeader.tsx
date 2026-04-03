@@ -1,17 +1,20 @@
 import { Button, Card, Dropdown, Flex, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import {
-  BarChartOutlined,
   HomeOutlined,
   LogoutOutlined,
   QuestionCircleOutlined,
   UserOutlined,
-  TrophyOutlined // 1. Importamos el icono del trofeo
+  TrophyOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
+import { clearUserSession, getUserSession } from "../utils/session";
+import HelpModal from "./HelpModal";
 
-const { Title } = Typography;
+
+const { Title, Text } = Typography;
 
 type AppHeaderProps = {
   title: string;
@@ -20,6 +23,7 @@ type AppHeaderProps = {
 export default function AppHeader({ title }: AppHeaderProps) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
+  const session = getUserSession();
 
   function handleLogout() {
     modal.confirm({
@@ -27,7 +31,20 @@ export default function AppHeader({ title }: AppHeaderProps) {
       content: "¿Seguro que quieres cerrar sesión y salir?",
       okText: "Sí, salir",
       cancelText: "Cancelar",
-      onOk: () => navigate("/", { replace: true }),
+      onOk: () => {
+        clearUserSession();
+        navigate("/", { replace: true });
+      },
+    });
+  }
+
+  function handleHelp() {
+    modal.info({
+      title: "Ayuda — Juego Y",
+      content: <HelpModal />,
+      okText: "Cerrar",
+      width: 640,
+      icon: <QuestionCircleOutlined />,
     });
   }
 
@@ -36,17 +53,17 @@ export default function AppHeader({ title }: AppHeaderProps) {
       case "profile":
         //navigate("/profile");
         break;
-      case "stats":
-        //navigate("/stats");
+      case "history":
+        navigate("/historial");
         break;
-      case "ranking":       // 2. Añadimos el caso para navegar al ranking
+      case "ranking":
         navigate("/ranking");
         break;
       case "home":
         navigate("/home");
         break;
       case "help":
-        //navigate("/help");
+        handleHelp();
         break;
       case "logout":
         handleLogout();
@@ -63,17 +80,18 @@ export default function AppHeader({ title }: AppHeaderProps) {
       label: "Ver Perfil",
     },
     {
-      key: "stats",
-      icon: <BarChartOutlined />,
-      label: "Ver Estadísticas",
+      key: "history",
+      icon: <HistoryOutlined />,
+      label: "Mi Historial",
+      disabled: !session,
     },
     {
-      key: "ranking",       // 3. Añadimos el botón visual al menú
+      key: "ranking",
       icon: <TrophyOutlined />,
       label: "Ranking Global",
     },
     {
-      type: "divider",      // (Opcional) Una pequeña línea para separar el menú principal
+      type: "divider",
     },
     {
       key: "home",
@@ -103,7 +121,28 @@ export default function AppHeader({ title }: AppHeaderProps) {
           {title}
         </Title>
 
-        <Space>
+        {/* <Space>
+          <Dropdown
+            menu={{
+              items: profileMenuItems,
+              onClick: ({ key }) => handleProfileMenuClick(key),
+            }}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
+            <Button shape="circle" icon={<UserOutlined />} />
+          </Dropdown>
+        </Space> */}
+
+        <Space size={12}>
+          {session ? (
+            <Space size={8}>
+              <Text strong>{session.username}</Text>
+            </Space>
+          ) : (
+            <Text type="secondary">Invitado</Text>
+          )}
+
           <Dropdown
             menu={{
               items: profileMenuItems,
