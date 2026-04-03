@@ -5,9 +5,6 @@ import io.gatling.javaapi.core.ChainBuilder;
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
-/**
- * Cadenas de peticiones reutilizables por todos los escenarios.
- */
 public class Requests {
 
     // ── Auth ──────────────────────────────────────────────────────────────────
@@ -21,19 +18,6 @@ public class Requests {
             .check(jsonPath("$.username").saveAs("loggedUser"))
     );
 
-    public static final ChainBuilder register = exec(
-        http("Registro de usuario")
-            .post("/api/users/createuser")
-            .header("Content-Type", "application/json")
-            .body(StringBody(
-                "{\"username\":\"#{newUsername}\"," +
-                "\"password\":\"Password1!\"," +
-                "\"email\":\"#{newUsername}@gatling.test\"," +
-                "\"profilePicture\":\"seniora.png\"}"
-            ))
-            .check(status().in(201, 400))
-    );
-
     // ── Meta / Config ─────────────────────────────────────────────────────────
 
     public static final ChainBuilder getMeta = exec(
@@ -42,7 +26,6 @@ public class Requests {
             .check(status().is(200))
             .check(jsonPath("$.min_board_size").saveAs("minSize"))
             .check(jsonPath("$.max_board_size").saveAs("maxSize"))
-            .check(jsonPath("$.bots[0]").saveAs("firstBot"))
     );
 
     public static final ChainBuilder getConfig = exec(
@@ -73,7 +56,7 @@ public class Requests {
     );
 
     public static final ChainBuilder postHvBMove = exec(
-        http("POST /api/v1/hvb/games/{id}/moves (human)")
+        http("POST /api/v1/hvb/games/{id}/moves")
             .post("/api/v1/hvb/games/#{hvbGameId}/moves")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
@@ -141,16 +124,12 @@ public class Requests {
 
     // ── Bot externo ───────────────────────────────────────────────────────────
 
-    public static final ChainBuilder playExternal = exec(
-        http("GET /play (bot externo)")
-            .get("/play")
-            .queryParam("position", "{\"size\":5,\"layout\":\"0000000000000000000000000\",\"turn\":0}")
-            .queryParam("bot_id", "random")
-            .queryParam("api_version", "v1")
-            .check(status().is(200))
-            .check(jsonPath("$.coords").exists())
-    );
-
+public static final ChainBuilder playExternal = exec(
+    http("GET /play (bot externo)")
+        .get("/play?position=%7B%22size%22%3A5%2C%22layout%22%3A%220000000000000000000000000%22%2C%22turn%22%3A0%7D&bot_id=random&api_version=v1")
+        .check(status().is(200))
+        .check(jsonPath("$.coords").exists())
+);
     // ── Users service ─────────────────────────────────────────────────────────
 
     public static final ChainBuilder getUserStats = exec(

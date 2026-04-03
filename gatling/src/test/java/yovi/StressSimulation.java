@@ -15,27 +15,23 @@ import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
 /**
- * StressSimulation — aumenta la carga en escalones hasta encontrar el límite.
- *
- * Estrategia staircase:
- *   5 → 10 → 20 → 40 → 60 usuarios concurrentes, 30 s cada escalón.
- *
- * Enfoca los endpoints más costosos:
- *   - POST /api/v1/hvb/games/{id}/bot-move  (MCTS es CPU-intensivo)
- *   - POST /api/v1/hvb/games               (crea estado en memoria)
- *   - GET  /play                            (bot externo)
+ * StressSimulation — escalones 5→10→20→40→60 usuarios, 30 s cada uno.
  *
  * Ejecutar:
- *   LOCAL: mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
- *   AZURE: YOVI_BASE_URL=https://yovies4a.duckdns.org \
- *          mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ *   Azure (por defecto):
+ *     mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ *
+ *   Local:
+ *     YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
  */
 public class StressSimulation extends Simulation {
 
     HttpProtocolBuilder httpProtocol = http
         .baseUrl(Config.BASE_URL)
         .acceptHeader("application/json")
-        .contentTypeHeader("application/json");
+        .contentTypeHeader("application/json")
+        .followRedirect(true)
+        .requestTimeout(Duration.ofSeconds(30));
 
     private static final List<Map<String, Object>> USERS = List.of(
         Map.of("username", Config.USERNAME,  "password", Config.PASSWORD),
@@ -87,12 +83,6 @@ public class StressSimulation extends Simulation {
         );
 
     // ── Inyección en escalones ────────────────────────────────────────────────
-    //
-    //  Escalón 1:  5 usuarios  — warm-up
-    //  Escalón 2: 10 usuarios
-    //  Escalón 3: 20 usuarios
-    //  Escalón 4: 40 usuarios
-    //  Escalón 5: 60 usuarios  — punto de ruptura esperado
 
     {
         Duration stepDuration = Duration.ofSeconds(30);
@@ -117,10 +107,8 @@ public class StressSimulation extends Simulation {
             )
         ).protocols(httpProtocol)
          .assertions(
-             // En stress aceptamos hasta 10% de errores y tiempos más altos
              global().successfulRequests().percent().gte(90.0),
              global().responseTime().percentile(95.0).lt(5000),
-             // El objetivo es observar cuándo se degrada, no solo pasar/fallar
              forAll().responseTime().max().lt(15000)
          );
     }
