@@ -4,12 +4,6 @@ import io.gatling.javaapi.core.*;
 import io.gatling.javaapi.http.*;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Iterator;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
@@ -17,40 +11,23 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 /**
  * StressSimulation — escalones 5→10→20→40→60 usuarios, 30 s cada uno.
  *
- * Ejecutar:
- *   Azure (por defecto):
- *     mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ * Azure (por defecto):
+ * mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
  *
- *   Local:
- *     YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ * Local:
+ * YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
  */
 public class StressSimulation extends Simulation {
 
     HttpProtocolBuilder httpProtocol = http
         .baseUrl(Config.BASE_URL)
         .acceptHeader("application/json")
-        .contentTypeHeader("application/json")
-        .followRedirect(true)
-        .requestTimeout(Duration.ofSeconds(30));
-
-    private static final List<Map<String, Object>> USERS = List.of(
-        Map.of("username", Config.USERNAME,  "password", Config.PASSWORD),
-        Map.of("username", Config.USERNAME2, "password", Config.PASSWORD),
-        Map.of("username", Config.USERNAME3, "password", Config.PASSWORD)
-    );
-    private static final Random RND = new Random();
-
-    Iterator<Map<String, Object>> userFeeder = Stream
-        .generate((Supplier<Map<String, Object>>) () -> USERS.get(RND.nextInt(USERS.size())))
-        .iterator();
+        .contentTypeHeader("application/json");
 
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")
-        .feed(userFeeder)
         .exec(session -> session.set("userId", "stress-" + session.userId()))
-        .exec(Requests.login)
-        .pause(Duration.ofMillis(200))
         .exec(Requests.createHvBGame)
         .pause(Duration.ofMillis(200))
         .exec(Requests.postHvBMove)
@@ -60,13 +37,10 @@ public class StressSimulation extends Simulation {
         .exec(Requests.getHvBGame)
         .exec(Requests.deleteHvBGame);
 
-    // ── Escenario ligero: meta + ranking ──────────────────────────────────────
+    // ── Escenario ligero: meta + ranking + bot externo ────────────────────────
 
     ScenarioBuilder lightScenario = scenario("Stress — consultas ligeras")
-        .exec(session -> session
-            .set("userId",   "light-" + session.userId())
-            .set("username", Config.USERNAME)
-        )
+        .exec(session -> session.set("userId", "light-" + session.userId()))
         .exec(Requests.getMeta)
         .pause(Duration.ofMillis(100))
         .exec(Requests.getRanking)
@@ -83,6 +57,11 @@ public class StressSimulation extends Simulation {
         );
 
     // ── Inyección en escalones ────────────────────────────────────────────────
+    //   Escalón 1:  5 usuarios — warm-up
+    //   Escalón 2: 10 usuarios
+    //   Escalón 3: 20 usuarios
+    //   Escalón 4: 40 usuarios
+    //   Escalón 5: 60 usuarios — punto de ruptura esperado
 
     {
         Duration stepDuration = Duration.ofSeconds(30);
@@ -95,7 +74,7 @@ public class StressSimulation extends Simulation {
                     .startingFrom(5)
             ),
             lightScenario.injectClosed(
-                nothingFor(Duration.ofSeconds(5)),
+                constantConcurrentUsers(0).during(Duration.ofSeconds(5)),
                 incrementConcurrentUsers(3)
                     .times(5)
                     .eachLevelLasting(stepDuration)

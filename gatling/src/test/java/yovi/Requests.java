@@ -5,18 +5,11 @@ import io.gatling.javaapi.core.ChainBuilder;
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
+/**
+ * Cadenas de peticiones reutilizables.
+ * No requieren autenticación — la app funciona como invitado.
+ */
 public class Requests {
-
-    // ── Auth ──────────────────────────────────────────────────────────────────
-
-    public static final ChainBuilder login = exec(
-        http("Login")
-            .post("/api/users/login")
-            .header("Content-Type", "application/json")
-            .body(StringBody("{\"username\":\"#{username}\",\"password\":\"#{password}\"}"))
-            .check(status().is(200))
-            .check(jsonPath("$.username").saveAs("loggedUser"))
-    );
 
     // ── Meta / Config ─────────────────────────────────────────────────────────
 
@@ -124,27 +117,14 @@ public class Requests {
 
     // ── Bot externo ───────────────────────────────────────────────────────────
 
-public static final ChainBuilder playExternal = exec(
-    http("GET /play (bot externo)")
-        .get("/play?position=%7B%22size%22%3A5%2C%22layout%22%3A%220000000000000000000000000%22%2C%22turn%22%3A0%7D&bot_id=random&api_version=v1")
-        .check(status().is(200))
-        .check(jsonPath("$.coords").exists())
-);
-    // ── Users service ─────────────────────────────────────────────────────────
-
-    public static final ChainBuilder getUserStats = exec(
-        http("GET /users/{username}/stats")
-            .get("/api/users/users/#{username}/stats")
-            .check(status().in(200, 404))
+    public static final ChainBuilder playExternal = exec(
+        http("GET /play (bot externo)")
+            .get("/play?position=%7B%22size%22%3A5%2C%22layout%22%3A%220000000000000000000000000%22%2C%22turn%22%3A0%7D&bot_id=random&api_version=v1")
+            .check(status().is(200))
+            .check(jsonPath("$.coords").exists())
     );
 
-    public static final ChainBuilder getUserHistory = exec(
-        http("GET /users/{username}/history")
-            .get("/api/users/users/#{username}/history")
-            .queryParam("page", "1")
-            .queryParam("pageSize", "5")
-            .check(status().in(200, 404))
-    );
+    // ── Ranking (público) ─────────────────────────────────────────────────────
 
     public static final ChainBuilder getRanking = exec(
         http("GET /ranking")
