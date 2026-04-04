@@ -19,6 +19,8 @@ let User
 
 beforeAll(async () => {
   process.env.NODE_ENV = 'test'
+  process.env.EMAIL_USER = 'test@yovi.com'
+  process.env.EMAIL_PASS = 'password_falsa_123'
   mongod = await MongoMemoryServer.create()
   const uri = mongod.getUri()
   await mongoose.connect(uri)

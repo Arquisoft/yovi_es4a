@@ -7,6 +7,5 @@ docs/build
 webapp/.env
 .vscode/
 gateway/certs
-gateway/letsencrypt
 
 .DS_Store
