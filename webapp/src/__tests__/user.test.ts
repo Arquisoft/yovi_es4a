@@ -128,13 +128,13 @@ describe("api/users", () => {
     });
 
     await getUserHistory("marcelo", 1, 5, {
-      mode: "HvB",
+      mode: "classic_hvb",
       result: "won",
       sortBy: "movesDesc",
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo/history?page=1&pageSize=5&mode=HvB&result=won&sortBy=movesDesc",
+      "/api/users/users/marcelo/history?page=1&pageSize=5&mode=classic_hvb&result=won&sortBy=movesDesc",
     );
   });
 
@@ -150,7 +150,7 @@ describe("api/users", () => {
 
     await recordUserGame("marcelo", {
       gameId: "g1",
-      mode: "HvB",
+      mode: "classic_hvb",
       result: "won",
       boardSize: 7,
       totalMoves: 10,
@@ -165,7 +165,7 @@ describe("api/users", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           gameId: "g1",
-          mode: "HvB",
+          mode: "classic_hvb",
           result: "won",
           boardSize: 7,
           totalMoves: 10,

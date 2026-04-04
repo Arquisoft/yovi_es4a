@@ -1,6 +1,14 @@
+export type GameMode =
+    | "classic_hvb"
+    | "classic_hvh"
+    | "tabu_hvh"
+    | "holey_hvh"
+    | "fortune_dice_hvh"
+    | "poly_hvh";
+
 export type HistoryGame = {
     gameId: string;
-    mode: "HvB" | "HvH";
+    mode: GameMode;
     result: "won" | "lost" | "abandoned";
     boardSize: number;
     totalMoves: number;
@@ -33,7 +41,7 @@ export type UserHistoryResponse = {
 
 export type RecordUserGameRequest = {
     gameId: string;
-    mode: "HvB" | "HvH";
+    mode: GameMode;
     result: "won" | "lost" | "abandoned";
     boardSize: number;
     totalMoves: number;
@@ -42,7 +50,7 @@ export type RecordUserGameRequest = {
 };
 
 export type UserHistoryQuery = {
-    mode?: "all" | "HvB" | "HvH";
+    mode?: "all" | GameMode;
     result?: "all" | "won" | "lost" | "abandoned";
     sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };

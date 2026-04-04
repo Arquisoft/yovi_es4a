@@ -15,6 +15,10 @@ vi.mock("../utils/session", () => ({
     getUserSession: (...args: any[]) => getUserSessionMock(...args),
 }));
 
+vi.mock("../utils/avatar", () => ({
+    resolveAvatarSrc: (value: string) => value,
+}));
+
 vi.mock("../vistas/AppHeader", () => ({
     default: ({ title }: any) => <div>{title}</div>,
 }));
@@ -133,7 +137,7 @@ function buildHistoryResponse(overrides: any = {}) {
         games: [
             {
                 gameId: "g1",
-                mode: "HvB",
+                mode: "classic_hvb",
                 result: "won",
                 boardSize: 7,
                 totalMoves: 10,
@@ -143,7 +147,7 @@ function buildHistoryResponse(overrides: any = {}) {
             },
             {
                 gameId: "g2",
-                mode: "HvH",
+                mode: "classic_hvh",
                 result: "abandoned",
                 boardSize: 9,
                 totalMoves: 5,
@@ -187,8 +191,10 @@ describe("UserHistory", () => {
         expect(screen.getByText("L:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
-        expect(screen.getAllByText("Humano vs Bot")[0]).toBeInTheDocument();
-        expect(screen.getAllByText("Humano vs Humano")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Clásico HvH").length).toBeGreaterThan(0);
+        expect(screen.getByText("Clásico — Humano vs Bot")).toBeInTheDocument();
+        expect(screen.getByText("Clásico — Humano vs Humano")).toBeInTheDocument();
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
         expect(screen.getByText("Rival: random_bot")).toBeInTheDocument();
@@ -258,7 +264,7 @@ describe("UserHistory", () => {
                     },
                     games: [{
                         gameId: "g1",
-                        mode: "HvB",
+                        mode: "classic_hvb",
                         result: "won",
                         boardSize: 7,
                         totalMoves: 10,
@@ -278,7 +284,7 @@ describe("UserHistory", () => {
                     },
                     games: [{
                         gameId: "g6",
-                        mode: "HvH",
+                        mode: "classic_hvh",
                         result: "lost",
                         boardSize: 9,
                         totalMoves: 12,
@@ -327,12 +333,12 @@ describe("UserHistory", () => {
         });
 
         fireEvent.change(screen.getAllByRole("combobox")[0], {
-            target: { value: "HvB" },
+            target: { value: "classic_hvb" },
         });
 
         await waitFor(() => {
             expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
-                mode: "HvB",
+                mode: "classic_hvb",
                 result: "all",
                 sortBy: "newest",
             });
@@ -344,7 +350,7 @@ describe("UserHistory", () => {
 
         await waitFor(() => {
             expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
-                mode: "HvB",
+                mode: "classic_hvb",
                 result: "won",
                 sortBy: "newest",
             });
@@ -356,7 +362,7 @@ describe("UserHistory", () => {
 
         await waitFor(() => {
             expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
-                mode: "HvB",
+                mode: "classic_hvb",
                 result: "won",
                 sortBy: "movesDesc",
             });

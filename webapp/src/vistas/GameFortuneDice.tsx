@@ -59,7 +59,7 @@ export default function GameFortuneDice() {
     const session = getUserSession();
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "HvH", result: winner === "player0" ? "won" : "lost",
+      gameId, mode: "fortune_dice_hvh", result: winner === "player0" ? "won" : "lost",
       boardSize: size, totalMoves,
       opponent: "Jugador local (Dado)", startedBy: hvh_starter,
     });
@@ -70,7 +70,7 @@ export default function GameFortuneDice() {
     const session = getUserSession();
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
-        gameId, mode: "HvH", result: "abandoned",
+        gameId, mode: "fortune_dice_hvh", result: "abandoned",
         boardSize: size, totalMoves,
         opponent: "Jugador local (Dado)", startedBy: hvh_starter,
       });

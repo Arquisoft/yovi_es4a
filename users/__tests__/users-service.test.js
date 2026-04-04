@@ -168,7 +168,7 @@ describe('POST /users/:username/games', () => {
       .post('/users/GameUser/games')
       .send({
         gameId: 'game-1',
-        mode: 'HvB',
+        mode: 'classic_hvb',
         result: 'won',
         boardSize: 7,
         totalMoves: 10,
@@ -186,6 +186,7 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.totalMoves).toBe(10)
     expect(res.body.stats.winRate).toBe(100)
     expect(res.body.savedGame.gameId).toBe('game-1')
+    expect(res.body.savedGame.mode).toBe('classic_hvb')
   })
 
   it('devuelve 409 si la misma partida ya fue registrada', async () => {
@@ -193,7 +194,7 @@ describe('POST /users/:username/games', () => {
       .post('/users/GameUser/games')
       .send({
         gameId: 'game-1',
-        mode: 'HvB',
+        mode: 'classic_hvb',
         result: 'won',
         boardSize: 7,
         totalMoves: 10,
@@ -204,6 +205,42 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(409)
     expect(res.body.error).toMatch(/ya fue registrada/i)
+  })
+
+  it('acepta modos nuevos como fortune_dice_hvh', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-2',
+        mode: 'fortune_dice_hvh',
+        result: 'lost',
+        boardSize: 9,
+        totalMoves: 14,
+        opponent: 'Jugador local',
+        startedBy: 'player0',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.mode).toBe('fortune_dice_hvh')
+  })
+
+  it('acepta modos nuevos como poly_hvh', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-3',
+        mode: 'poly_hvh',
+        result: 'abandoned',
+        boardSize: 11,
+        totalMoves: 7,
+        opponent: 'Jugador local',
+        startedBy: 'player1',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.mode).toBe('poly_hvh')
   })
 
   it('devuelve 400 si el body no es válido', async () => {
@@ -229,7 +266,7 @@ describe('GET /users/:username/history', () => {
 
     await api.post('/users/HistoryUser/games').send({
       gameId: 'h1',
-      mode: 'HvB',
+      mode: 'classic_hvb',
       result: 'won',
       boardSize: 7,
       totalMoves: 8,
@@ -239,7 +276,7 @@ describe('GET /users/:username/history', () => {
 
     await api.post('/users/HistoryUser/games').send({
       gameId: 'h2',
-      mode: 'HvH',
+      mode: 'classic_hvh',
       result: 'lost',
       boardSize: 9,
       totalMoves: 14,
@@ -249,12 +286,22 @@ describe('GET /users/:username/history', () => {
 
     await api.post('/users/HistoryUser/games').send({
       gameId: 'h3',
-      mode: 'HvB',
+      mode: 'classic_hvb',
       result: 'won',
       boardSize: 11,
       totalMoves: 5,
       opponent: 'bot_b',
       startedBy: 'bot',
+    })
+
+    await api.post('/users/HistoryUser/games').send({
+      gameId: 'h4',
+      mode: 'fortune_dice_hvh',
+      result: 'abandoned',
+      boardSize: 9,
+      totalMoves: 6,
+      opponent: 'Jugador local',
+      startedBy: 'player1',
     })
   })
 
@@ -263,23 +310,33 @@ describe('GET /users/:username/history', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('HistoryUser')
-    expect(res.body.stats.gamesPlayed).toBe(3)
+    expect(res.body.stats.gamesPlayed).toBe(4)
     expect(res.body.pagination.page).toBe(1)
     expect(res.body.pagination.pageSize).toBe(2)
-    expect(res.body.pagination.totalGames).toBe(3)
+    expect(res.body.pagination.totalGames).toBe(4)
     expect(res.body.pagination.totalPages).toBe(2)
     expect(res.body.games).toHaveLength(2)
   })
 
   it('filtra por modo y resultado', async () => {
     const res = await api.get(
-      '/users/HistoryUser/history?page=1&pageSize=10&mode=HvB&result=won'
+      '/users/HistoryUser/history?page=1&pageSize=10&mode=classic_hvb&result=won'
     )
 
     expect(res.status).toBe(200)
     expect(res.body.games).toHaveLength(2)
-    expect(res.body.games.every((g) => g.mode === 'HvB')).toBe(true)
+    expect(res.body.games.every((g) => g.mode === 'classic_hvb')).toBe(true)
     expect(res.body.games.every((g) => g.result === 'won')).toBe(true)
+  })
+
+  it('filtra también por uno de los modos nuevos', async () => {
+    const res = await api.get(
+      '/users/HistoryUser/history?page=1&pageSize=10&mode=fortune_dice_hvh'
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.body.games).toHaveLength(1)
+    expect(res.body.games[0].mode).toBe('fortune_dice_hvh')
   })
 
   it('ordena por movimientos descendentes', async () => {
@@ -415,7 +472,7 @@ describe('GET /ranking', () => {
     expect(res.status).toBe(200)
 
     const ranka = res.body.ranking.find(u => u.username === 'RankA')
-    expect(ranka.totalMoves).toBe(31) // 10+8+6+7
+    expect(ranka.totalMoves).toBe(31)
   })
 
   it('respects the limit parameter', async () => {

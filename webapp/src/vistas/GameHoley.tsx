@@ -75,9 +75,13 @@ export default function GameHoley() {
     const session = getUserSession();
     if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "HvH", result: winner === "player0" ? "won" : "lost",
-      boardSize: size, totalMoves,
-      opponent: "Jugador local (Holey)", startedBy: hvh_starter,
+      gameId,
+      mode: "holey_hvh",
+      result: winner === "player0" ? "won" : "lost",
+      boardSize: size,
+      totalMoves,
+      opponent: "Jugador local (Holey)",
+      startedBy: hvh_starter,
     });
     savedGameIdsRef.current.add(gameId);
   }
@@ -86,9 +90,13 @@ export default function GameHoley() {
     const session = getUserSession();
     if (session && !savedGameIdsRef.current.has(gameId)) {
       await recordUserGame(session.username, {
-        gameId, mode: "HvH", result: "abandoned",
-        boardSize: size, totalMoves,
-        opponent: "Jugador local (Holey)", startedBy: hvh_starter,
+        gameId,
+        mode: "holey_hvh",
+        result: "abandoned",
+        boardSize: size,
+        totalMoves,
+        opponent: "Jugador local (Holey)",
+        startedBy: hvh_starter,
       });
       savedGameIdsRef.current.add(gameId);
     }
