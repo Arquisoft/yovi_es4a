@@ -35,8 +35,10 @@ function parseBoardSize(raw: string | null): number {
   return Number.isFinite(n) && n >= 2 ? n : 7;
 }
 
-function rollDie(): number {
-  return Math.floor(Math.random() * 6) + 1;
+function rollDice(): number {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return (array[0] % 6) + 1;
 }
 
 export default function GameFortuneDice() {
@@ -47,7 +49,7 @@ export default function GameFortuneDice() {
   const hvh_starter: StarterHvH = "player0";
 
   // Número de piezas que quedan por colocar en el turno actual
-  const piecesLeftRef = useRef(rollDie());
+  const piecesLeftRef = useRef(rollDice());
   const currentPlayerRef = useRef<"player0" | "player1">("player0");
 
   const [diceValue, setDiceValue] = useState(piecesLeftRef.current);
@@ -103,7 +105,7 @@ export default function GameFortuneDice() {
       currentPlayerRef.current === "player0" ? "player1" : "player0";
     currentPlayerRef.current = nextPlayer;
 
-    const roll = rollDie();
+    const roll = rollDice();
     piecesLeftRef.current = roll;
     setDiceValue(roll);
     setPiecesLeft(roll);
@@ -112,7 +114,7 @@ export default function GameFortuneDice() {
   }, []);
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
-    const roll = rollDie();
+    const roll = rollDice();
     piecesLeftRef.current = roll;
     currentPlayerRef.current = "player0";
     setDiceValue(roll);
