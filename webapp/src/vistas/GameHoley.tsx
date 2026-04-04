@@ -44,6 +44,12 @@ function parseHvHStarter(raw: string | null): StarterHvH {
   return "player0";
 }
 
+function secureRandomInt(maxExclusive: number): number {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % maxExclusive;
+}
+
 function generateHoles(totalCells: number): Set<number> {
   const count = Math.max(1, Math.min(Math.floor(totalCells * 0.12), 15));
   const holes = new Set<number>();
@@ -51,7 +57,7 @@ function generateHoles(totalCells: number): Set<number> {
 
   // Shuffle y tomar los primeros `count`
   for (let i = allCells.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = secureRandomInt(i + 1);
     [allCells[i], allCells[j]] = [allCells[j], allCells[i]];
   }
   allCells.slice(0, count).forEach((c) => holes.add(c));
