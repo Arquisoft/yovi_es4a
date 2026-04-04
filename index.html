@@ -588,21 +588,34 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p>La app dispone de una interfaz web para jugar al juego Y.</p>
 </li>
 <li>
-<p>Se ofrecen dos modos de juego:</p>
+<p>Se ofrecen dos modos base de juego:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Partida jugador contra jugador.</p>
+<p>Partida jugador contra jugador - HvH.</p>
 </li>
 <li>
-<p>Partida jugador contra bot.</p>
+<p>Partida jugador contra bot - HvB.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>El bot tiene diferentes estrategias implementadas, y el usuario puede elegir cuál de ellas usar (nivel de dificultad).</p>
+<p>En el modo contra bot, el usuario puede seleccionar el nivel de dificultad, asociado a varias estrategias.</p>
 </li>
 </ul>
 </div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>La aplicación incorpora un flujo de selección de variante antes de configurar la partida.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>La variante clásica constituye la base principal del sistema</p>
+</li>
+<li>
+<p>Existen otras variantes adicionales como Tabu Y y Holey Y ya funcionales, y otras todavía no implementadas.</p>
 </li>
 </ul>
 </div>
@@ -611,7 +624,17 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p>El tablero tiene tamaño variable, configurable por el usuario dentro de unos límites establecidos.</p>
 </li>
 <li>
-<p>El usuario puede elegir quién empieza la partida, según el modo de juego.</p>
+<p>El usuario puede elegir quién empieza la partida:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>En HvB: El usuario, el bot, o aleatorio.</p>
+</li>
+<li>
+<p>En HvH: el Jugador 1, el Jugador 2, o aleatorio.</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
 <p>El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.</p>
@@ -620,24 +643,41 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <li>
 <p>Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).</p>
 </li>
-</ul>
-</div>
-</li>
 <li>
-<p>Se proporcionará un API externo (documentado) para que los bots puedan usar el sistema.</p>
+<p>En caso de continuar como usuario invitado (sin iniciar sesión), no se guardará el historial ni las estadísticas de las partidas.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>El API permitirá consultar/gestionar info de usuarios y partidas.</p>
+<p>Al final de cada partida, el usuario invitado podrá optar por registrarse/iniciar sesión para guardar la partida y sus estadísticas, o continuar sin guardar.</p>
 </li>
-<li>
-<p>El API tendrá un método <code>play</code> que recibe al menos <code>position</code> (en notación YEN) y devuelve el siguiente movimiento (también en YEN).</p>
+</ul>
+</div>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p>El “motor” del juego estará en un módulo/servicio aparte (implementado en Rust), y la web lo llamará por HTTP mediante JSON (usando YEN).</p>
+<p>Se proporciona un API externo (documentado) para que los bots puedan usar el sistema.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>El API permite consultar/gestionar info de usuarios y partidas.</p>
+</li>
+<li>
+<p>El API incluye un método <code>play</code> que recibe al menos una posición (en notación YEN) y devuelve el siguiente movimiento.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>El motor del juego está desacoplado de la interfaz web y se implementa como un servicio independiente en Rust.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>La comunicación entre la web y el motor se realiza mediante HTTP y mensajes JSON basados en la notación YEN.</p>
+</li>
+</ul>
+</div>
 </li>
 </ul>
 </div>
@@ -662,57 +702,93 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-01</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Registrarse / iniciar sesión</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Registrarse</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario se crea cuenta o entra con su cuenta para poder guardar partidas y ver estadísticas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario crea una cuenta en la aplicación para poder identificarse, verifica su correo y accede a funcionalidades asociadas a su perfil.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-02</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Configurar una partida</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona el modo de juego, el tamaño del tablero, el bot en caso necesario y quién comienza la partida.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Iniciar sesión</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario accede con sus credenciales para consultar su historial, estadísticas y ranking, además de guardar partidas en su cuenta.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-03</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Verificar cuenta</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario confirma su cuenta mediante el enlace de verificación enviado por correo electrónico.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Seleccionar variante del juego</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario elige la variante con la que desea jugar antes de configurar la partida.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Configurar una partida</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona el modo de juego, el tamaño del tablero, quién comienza la partida y el nivel de dificultad (si corresponde).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-06</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs jugador</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-04</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-07</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs bot</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvB, aplicando la configuración elegida y, si corresponde, realizando el primer movimiento del bot.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-05</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-08</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Jugar un turno desde la web</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona una celda válida y el sistema actualiza el estado de la partida.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona una celda válida y el sistema actualiza el estado de la partida conforme a las reglas de la variante activa.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-06</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-09</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Obtener la respuesta del bot</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Comprobar si la partida ha finalizado</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-08</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Abandonar una partida</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario decide salir de una partida en curso y el sistema cierra la sesión de juego activa, guardando el estado como "Abandonada" (si corresponde).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Guardar una partida en el historial</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Al finalizar una partida, el sistema permite registrar el resultado en la cuenta del usuario para actualizar su historial y estadísticas.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-13</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ver historial y estadísticas</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-14</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar el estado de una partida</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar ranking global</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario puede consultar la clasificación global de jugadores en función de sus resultados.</p></td>
 </tr>
 </tbody>
 </table>
@@ -946,7 +1022,7 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p><strong>webapp (React/Vite)</strong>: Aplicación frontend tipo SPA que implementa la interfaz de usuario.</p>
 </li>
 <li>
-<p><strong>users (Node/Express)</strong>: Servicio backend encargado de la gestión de usuarios.</p>
+<p><strong>users (Node/Express)</strong>: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, &#8230;&#8203;).</p>
 </li>
 <li>
 <p><strong>gamey (Rust)</strong>: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.</p>
