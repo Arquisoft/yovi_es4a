@@ -4,8 +4,8 @@ services:
     image: mongo:latest
     container_name: mongodb
     # Mongo no debería estar abierto a internet, por lo que no exponemos el puerto fuera del contenedor
-    # ports:
-    #   - "27017:27017"
+    ports:
+      - "27017:27017"
     networks:
       - monitor-net
     volumes:
@@ -33,11 +33,14 @@ services:
     build: ./users
     container_name: users
     image: ghcr.io/arquisoft/yovi_es4a-users:latest
-    # ports: - "3000:3000" <-- ELIMINADO: Ya no se accede directamente
+    # ports: - "3000:3000" ELIMINADO: Ya no se accede directamente
     depends_on:
       - mongodb
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/yovi
+      - EMAIL_USER=${EMAIL_USER}  # variables para el envío del correo
+      - EMAIL_PASS=${EMAIL_PASS}
+      - FRONTEND_URL=${FRONTEND_URL} # redirecciona a esta URL tras verificar cuenta
     networks:
       - monitor-net
 

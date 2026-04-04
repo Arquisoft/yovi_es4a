@@ -226,6 +226,10 @@ app.post('/createuser', async (req, res) => {
 
     // 4. Intentamos enviar el correo
     try {
+      const transporter = createMailTransporter();
+      if (!transporter) {
+         throw new Error("Las credenciales de correo no están configuradas en el servidor.");
+      }
       await transporter.sendMail(mailOptions);
       console.log(`[CORREO ENVIADO] Para: ${email}`);
       res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
