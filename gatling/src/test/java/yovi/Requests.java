@@ -115,11 +115,12 @@ public class Requests {
             .check(status().in(200, 204, 404))
     );
 
-    // ── Bot externo ───────────────────────────────────────────────────────────
+  // ── Bot externo ───────────────────────────────────────────────────────────
 
     public static final ChainBuilder playExternal = exec(
         http("GET /play (bot externo)")
-            .get("/play?position=%7B%22size%22%3A5%2C%22layout%22%3A%220000000000000000000000000%22%2C%22turn%22%3A0%7D&bot_id=random&api_version=v1")
+            // JSON corregido: incluye players, formato layout con '/' y '.' y bot_id=random_bot
+            .get("/play?position=%7B%22size%22%3A5%2C%22turn%22%3A0%2C%22players%22%3A%5B%22B%22%2C%22R%22%5D%2C%22layout%22%3A%22.%2F..%2F...%2F....%2F.....%22%7D&bot_id=random_bot&api_version=v1")
             .check(status().is(200))
             .check(jsonPath("$.coords").exists())
     );
