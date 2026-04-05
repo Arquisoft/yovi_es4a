@@ -38,6 +38,7 @@ When('relleno el registro con username {string}, email {string} y contraseña {s
     await this.page.fill('#register_form_username', uniqueUsername);
     await this.page.fill('#register_form_password', password);
     await this.page.fill('#register_form_confirmPassword', password);
+    
   }
 );
 
