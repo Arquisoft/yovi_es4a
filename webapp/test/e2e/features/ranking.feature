@@ -2,7 +2,7 @@ Feature: Ranking
 
   Scenario: Ver página de ranking
     Given estoy en la página de inicio
-    When navego a /ranking
+    When navego a "/ranking"
     Then veo el título del ranking
     And veo la tabla de clasificación
 

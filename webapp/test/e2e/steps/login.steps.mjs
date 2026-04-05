@@ -1,10 +1,6 @@
 import { When, Then } from '@cucumber/cucumber';
 import assert from 'assert';
 
-When('pulso {string}', async function (texto) {
-  await this.page.click(`text=${texto}`);
-});
-
 When('introduzco usuario {string} y contraseña {string}', async function (user, pass) {
   await this.page.fill('#login_form_username', user);
   await this.page.fill('#login_form_password', pass);

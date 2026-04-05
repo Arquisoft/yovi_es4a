@@ -3,9 +3,7 @@ import assert from 'assert';
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 
-When('navego a {string}', async function (ruta) {
-  await this.page.goto(`${BASE}${ruta}`);
-});
+// (ELIMINAMOS EL BLOQUE "When('navego a {string}')" QUE ESTABA AQUÍ)
 
 Then('veo el título del ranking', async function () {
   await this.page.waitForSelector('text=Ranking', { timeout: 8_000 });
