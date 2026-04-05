@@ -180,17 +180,25 @@ function createMailTransporter() {
 // ───────────────────────────────────────────────────────────────────────────────
 // REGISTRO
 app.post('/createuser', async (req, res) => {
-  const usernameValidation = validateUsername(req.body.username);
+  const { username, password, email, profilePicture } = req.body;
+  
+  // 1. Validación formato de username
+  const usernameValidation = validateUsername(username);
   if (usernameValidation.error) {
     return res.status(400).json({ error: usernameValidation.error });
   }
 
-  const username = usernameValidation.value;
-  const { password, email, profilePicture } = req.body;
+  // 2. Verificamos si el usuario ya existe (usamos el valor ya limpio/validado)
+  const existingUser = await User.findOne({ $or: [{ email }, { username: usernameValidation.value }] });
+  if (existingUser) {
+    return res.status(400).json({ error: 'El usuario o el correo ya están en uso.' });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(20).toString('hex');
 
+    // 2. Preparamos el usuario
     const user = new User({
       username,
       password: hashedPassword,
@@ -198,16 +206,17 @@ app.post('/createuser', async (req, res) => {
       profilePicture: profilePicture || 'seniora.png',
       verificationToken
     });
+    
+    // Lo guardamos temporalmente en la base de datos
     await user.save();
 
-    // Enlace que apunta al FRONTEND de React
+    // 3. Preparamos el correo
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const verificationLink = `${frontendUrl}/verify?token=${verificationToken}`;
 
-    // Configuración visual del correo electrónico
     const mailOptions = {
-      from: '"Equipo YOVI" <noreply@yovi.com>',
-      to: email,
+      from: `"Equipo YOVI" <${process.env.EMAIL_USER}>`,
+      to: email, // El correo que el usuario escribió en el formulario
       subject: 'Verifica tu cuenta de YOVI',
       html: `
         <div style="font-family: Arial, sans-serif; text-align: center; padding: 30px; background-color: #f4f4f4;">
@@ -221,27 +230,30 @@ app.post('/createuser', async (req, res) => {
       `
     };
 
-    // Enviamos el correo real
-    const transporter = createMailTransporter();
-
-    if (transporter) {
-      await transporter.sendMail(mailOptions);
-      // Se quita el correo del log, ya que no está validado ni neutralizado, por lo que podría romper el formato del log
-      console.log("[CORREO ENVIADO] 📧 Correo de verificación enviado correctamente.");
-    }
-
-    res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
-  } catch (err) {
-    // Manejo de errores de duplicados (MongoDB Error 11000)
-    if (err.code === 11000) {
-      if (err.message.includes('email')) {
-        res.status(400).json({ error: 'El correo electrónico ya está en uso.' });
-      } else {
-        res.status(400).json({ error: 'El nombre de usuario ya está registrado.' });
+// 4. Intentamos enviar el correo
+    try {
+      // Solo nos conectamos a Google si NO estamos en los tests
+      if (process.env.NODE_ENV !== 'test') {
+        const transporter = createMailTransporter();
+        if (!transporter) {
+           throw new Error("Las credenciales de correo no están configuradas en el servidor.");
+        }
+        await transporter.sendMail(mailOptions);
+        console.log(`[CORREO ENVIADO]`);
       }
-    } else {
-      res.status(400).json({ error: err.message });
+      
+      // El mensaje de éxito se envía siempre, tanto en real como en tests
+      res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
+      
+    } catch (mailError) {
+      // 5. SI FALLA EL CORREO: Borramos al usuario para que pueda volver a intentarlo
+      await User.findByIdAndDelete(user._id);
+      console.error("Error enviando correo:", mailError);
+      res.status(500).json({ error: 'Hubo un problema al enviar el correo de verificación. Por favor, asegúrate de que tu correo es válido e inténtalo de nuevo.' });
     }
+
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

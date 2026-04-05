@@ -35,8 +35,8 @@ export default function VerifyEmail() {
 
         // Tras el éxito, redirigimos a /home en 3 segundos
         setTimeout(() => {
-          navigate("/home");
-        }, 3000);
+          navigate("/login");
+        }, 4000);
       })
       .catch((err) => {
         setStatus("error");
