@@ -239,7 +239,7 @@ app.post('/createuser', async (req, res) => {
            throw new Error("Las credenciales de correo no están configuradas en el servidor.");
         }
         await transporter.sendMail(mailOptions);
-        console.log(`[CORREO ENVIADO] Para: ${email}`);
+        console.log(`[CORREO ENVIADO]`);
       }
       
       // El mensaje de éxito se envía siempre, tanto en real como en tests

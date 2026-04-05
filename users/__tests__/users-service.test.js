@@ -4,19 +4,6 @@ import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 
 process.env.NODE_ENV = 'test'
-// process.env.EMAIL_USER = 'test@yovi.com'
-// process.env.EMAIL_PASS = 'password_falsa_123'
-
-// vi.mock('nodemailer', () => ({
-//   default: {
-//     createTransport: () => ({
-//       sendMail: async () => ({}), 
-//     }),
-//   },
-//   createTransport: () => ({
-//     sendMail: async () => ({}),
-//   }),
-// }))
 
 let mongod
 let User
@@ -70,6 +57,35 @@ describe('POST /createuser', () => {
   })
 })
 
+describe('Validaciones de formato de usuario', () => {
+  it('devuelve 400 si el username tiene menos de 3 caracteres', async () => {
+    const res = await request(app)
+      .post('/createuser')
+      .send({ username: 'ab', password: '123', email: 'ab@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/al menos 3 caracteres/i)
+  })
+
+  it('devuelve 400 si el username tiene más de 20 caracteres', async () => {
+    const res = await request(app)
+      .post('/createuser')
+      .send({ username: 'usuario_extremadamente_largo', password: '123', email: 'largo@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/exceder los 20 caracteres/i)
+  })
+
+  it('devuelve 400 si falta el username', async () => {
+    const res = await request(app)
+      .post('/createuser')
+      .send({ password: '123', email: 'falta@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/obligatorio/i)
+  })
+})
+
 describe('POST /login', () => {
   beforeAll(async () => {
     await createVerifiedUser('LoginUser', 'login@test.com')
@@ -103,6 +119,16 @@ describe('POST /login', () => {
 
     expect(res.status).toBe(401)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+
+  it('devuelve 400 si no se envía la contraseña', async () => {
+    const res = await request(app)
+      .post('/login')
+      .send({ username: 'LoginUser' }) // Solo enviamos el usuario
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/La contraseña es obligatoria/i)
   })
 })
 
@@ -261,5 +287,34 @@ describe('GET /users/:username/stats', () => {
   it('returns 404 for non-existent user', async () => {
     const res = await request(app).get('/users/NoExiste/stats')
     expect(res.status).toBe(404)
+  })
+})
+
+describe('GET /verify', () => {
+  it('devuelve 400 si el token es inválido o no existe', async () => {
+    const res = await request(app).get('/verify?token=token_inventado_123')
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Token inválido o expirado/i)
+  })
+})
+
+describe('POST /users/:username/games - Validaciones', () => {
+  it('devuelve 400 si el modo de juego no es válido', async () => {
+    const res = await request(app)
+      .post('/users/StatsUser/games') 
+      .send({ gameId: 'g1', mode: 'MODO_INVENTADO', result: 'won', boardSize: 10, totalMoves: 5 })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'mode' debe ser/i)
+  })
+
+  it('devuelve 400 si el tamaño del tablero es inválido', async () => {
+    const res = await request(app)
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'g2', mode: 'HvB', result: 'won', boardSize: -5, totalMoves: 5 })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'boardSize' debe ser un número positivo/i)
   })
 })
