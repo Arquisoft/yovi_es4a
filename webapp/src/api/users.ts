@@ -168,3 +168,15 @@ export async function getUserStats(username: string) {
         stats: UserStats;
     }>(response);
 }
+
+export async function getUserProfile(username: string) {
+    const response = await fetch(
+        `${USERS_API_URL}/users/${encodeURIComponent(username)}/profile`
+    );
+ 
+    return parseJson<{
+        username: string;
+        email: string;
+        profilePicture?: string;
+    }>(response);
+}
