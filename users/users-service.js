@@ -182,8 +182,14 @@ function createMailTransporter() {
 app.post('/createuser', async (req, res) => {
   const { username, password, email, profilePicture } = req.body;
   
-  // 1. Verificamos si el usuario ya existe antes de hacer nada
-  const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+  // 1. Validación formato de username
+  const usernameValidation = validateUsername(username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+
+  // 2. Verificamos si el usuario ya existe (usamos el valor ya limpio/validado)
+  const existingUser = await User.findOne({ $or: [{ email }, { username: usernameValidation.value }] });
   if (existingUser) {
     return res.status(400).json({ error: 'El usuario o el correo ya están en uso.' });
   }
