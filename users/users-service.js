@@ -66,7 +66,7 @@ function normalizePositiveInteger(value, fallback) {
 }
 
 function validateRecordGame(body) {
-  const allowedModes = ["HvB", "HvH"];
+  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const allowedResults = ["won", "lost", "abandoned"];
 
   const gameIdValidation = validateGameId(body.gameId);
@@ -82,7 +82,7 @@ function validateRecordGame(body) {
   const totalMoves = Number(body.totalMoves);
 
   if (!allowedModes.includes(mode)) {
-    return { error: "'mode' debe ser 'HvB' o 'HvH'" };
+    return { error: "'mode' debe ser 'classic_hvb', 'classic_hvh', 'tabu_hvh', 'holey_hvh', 'fortune_dice_hvh' o 'poly_hvh'" };
   }
 
   if (!allowedResults.includes(result)) {
@@ -383,7 +383,7 @@ app.post("/users/:username/games", async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
-// HISTORIAL PAGINADO
+// HISTORIAL PAGINADO CON FILTROS Y ORDEN
 app.get("/users/:username/history", async (req, res) => {
   const usernameValidation = validateUsername(req.params.username);
   if (usernameValidation.error) {
@@ -392,6 +392,14 @@ app.get("/users/:username/history", async (req, res) => {
   const username = usernameValidation.value;
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
+
+  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
+  const validResults = ["won", "lost", "abandoned"];
+  const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
+
+  const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
+  const result = validResults.includes(req.query.result) ? req.query.result : null;
+  const sortBy = validSorts.includes(req.query.sortBy) ? req.query.sortBy : "newest";
 
   try {
     const user = await User.findOne(
@@ -402,7 +410,27 @@ app.get("/users/:username/history", async (req, res) => {
     if (!user)
       return res.status(404).json({ error: "Usuario no encontrado" });
 
-    const history = Array.isArray(user.gameHistory) ? user.gameHistory : [];
+    let history = Array.isArray(user.gameHistory) ? [...user.gameHistory] : [];
+
+    if (mode)
+      history = history.filter((game) => game.mode === mode);
+
+    if (result)
+      history = history.filter((game) => game.result === result);
+
+    history.sort((a, b) => {
+      if (sortBy === "oldest")
+        return new Date(a.finishedAt).getTime() - new Date(b.finishedAt).getTime();
+
+      if (sortBy === "movesDesc")
+        return b.totalMoves - a.totalMoves;
+
+      if (sortBy === "movesAsc")
+        return a.totalMoves - b.totalMoves;
+
+      return new Date(b.finishedAt).getTime() - new Date(a.finishedAt).getTime();
+    });
+
     const totalGames = history.length;
     const totalPages = totalGames === 0 ? 1 : Math.ceil(totalGames / pageSize);
     const safePage = Math.min(page, totalPages);
@@ -539,10 +567,4 @@ app.get('/users/:username/stats', async (req, res) => {
   }
 });
 
-if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`User Service listening at http://localhost:${port}`)
-  })
-}
-
-module.exports = app;
+app.listen(port, () => { console.log(`User service running on port ${port}`); });

@@ -10,7 +10,15 @@ import { useNavigate } from "react-router-dom";
 import { loginUser } from "../../api/users";
 import { saveUserSession } from "../../utils/session";
 
-const LoginForm: React.FC = () => {
+type LoginFormProps = {
+  redirectOnSuccess?: boolean;
+  onLoginSuccess?: () => void | Promise<void>;
+};
+
+const LoginForm: React.FC<LoginFormProps> = ({
+  redirectOnSuccess = true,
+  onLoginSuccess,
+}) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -28,7 +36,10 @@ const LoginForm: React.FC = () => {
         profilePicture: data.profilePicture,
       });
 
-      navigate("/home");
+      await onLoginSuccess?.();
+
+      if (redirectOnSuccess)
+        navigate("/home");
     } catch (err: any) {
       message.error(err.message);
     } finally {
@@ -42,7 +53,11 @@ const LoginForm: React.FC = () => {
       initialValues={{ remember: false }}
       onFinish={onFinish}
       layout="vertical"
-      style={{ width: "70%", height: "100%", margin: "0 auto" }}
+      style={{
+        width: redirectOnSuccess ? "70%" : "100%",
+        height: "100%",
+        margin: "0 auto",
+      }}
     >
       <Form.Item
         name="username"

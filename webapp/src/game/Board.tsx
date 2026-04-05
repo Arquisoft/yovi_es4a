@@ -7,6 +7,7 @@ type Props = {
   size: number;
   cells: Cell[];
   disabled?: boolean;
+  disabledCells?: Set<number>; 
   onCellClick: (cellId: number) => void;
 };
 
@@ -35,7 +36,7 @@ function playBop() {
   }
 }
 
-export default function Board({ size, cells, disabled = false, onCellClick }: Props) {
+export default function Board({ size, cells, disabled = false, disabledCells, onCellClick }: Props) {
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
 
@@ -124,10 +125,11 @@ export default function Board({ size, cells, disabled = false, onCellClick }: Pr
           >
             {rowCells.map((cell) => {
               const isEmpty = cell.value === ".";
-              const isClickable = isEmpty && !disabled;
+              const isClickable = isEmpty && !disabled && !disabledCells?.has(cell.cellId);
               const isHint = cell.hint === true;
 
               const bg =
+                disabledCells?.has(cell.cellId) ? "#555" :  // agujero
                 isHint
                   ? "#52c41a"
                   : cell.value === "B"

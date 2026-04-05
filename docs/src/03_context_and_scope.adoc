@@ -19,7 +19,7 @@ image::03_2-ContextoTecnico.png["Diagrama correspondiente al Contexto Técnico",
 * *Servidor (Docker)*: Aloja los servicios backend y el motor del juego. Contiene:
 ** *gateway (Nginx)*: Punto de entrada único al sistema. Redirige las peticiones al frontend o a los servicios backend según la ruta solicitada.
 ** *webapp (React/Vite)*: Aplicación frontend tipo SPA que implementa la interfaz de usuario.
-** *users (Node/Express)*: Servicio backend encargado de la gestión de usuarios.
+** *users (Node/Express)*: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, ...).
 ** *gamey (Rust)*: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.
 ** *MongoDB*: Servicio de persistencia utilizado por el módulo de usuarios.
 

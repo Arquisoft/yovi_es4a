@@ -9,3 +9,8 @@ webapp/.env
 gateway/certs
 
 .DS_Store
+repomix-output.xml
+
+gateway/letsencrypt/archive/
+gateway/letsencrypt/live/
+gateway/letsencrypt/renewal/

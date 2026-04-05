@@ -68,11 +68,11 @@ describe("api/users", () => {
     await getRanking("gamesWon", 10);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/ranking?sortBy=gamesWon&limit=10",
+      "/api/users/ranking?sortBy=gamesWon&limit=10"
     );
   });
 
-  it("getUserHistory encodea el username", async () => {
+  it("getUserHistory encodea el username y pasa paginación", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -87,8 +87,8 @@ describe("api/users", () => {
           winRate: 0,
         },
         pagination: {
-          page: 1,
-          pageSize: 5,
+          page: 2,
+          pageSize: 7,
           totalGames: 0,
           totalPages: 1,
         },
@@ -100,6 +100,41 @@ describe("api/users", () => {
 
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/users/users/marcelo%20diez/history?page=2&pageSize=7",
+    );
+  });
+
+  it("getUserHistory añade mode, result y sortBy cuando no son 'all'", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "marcelo",
+        profilePicture: "",
+        stats: {
+          gamesPlayed: 1,
+          gamesWon: 1,
+          gamesLost: 0,
+          gamesAbandoned: 0,
+          totalMoves: 10,
+          winRate: 100,
+        },
+        pagination: {
+          page: 1,
+          pageSize: 5,
+          totalGames: 1,
+          totalPages: 1,
+        },
+        games: [],
+      }),
+    });
+
+    await getUserHistory("marcelo", 1, 5, {
+      mode: "classic_hvb",
+      result: "won",
+      sortBy: "movesDesc",
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo/history?page=1&pageSize=5&mode=classic_hvb&result=won&sortBy=movesDesc",
     );
   });
 
@@ -115,7 +150,7 @@ describe("api/users", () => {
 
     await recordUserGame("marcelo", {
       gameId: "g1",
-      mode: "HvB",
+      mode: "classic_hvb",
       result: "won",
       boardSize: 7,
       totalMoves: 10,
@@ -130,7 +165,7 @@ describe("api/users", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           gameId: "g1",
-          mode: "HvB",
+          mode: "classic_hvb",
           result: "won",
           boardSize: 7,
           totalMoves: 10,

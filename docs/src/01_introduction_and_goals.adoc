@@ -10,18 +10,26 @@ El sistema desarrollado permite jugar al juego Y a través de una interfaz web, 
 Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 
 * La app dispone de una interfaz web para jugar al juego Y.
-* Se ofrecen dos modos de juego:
-** Partida jugador contra jugador.
-** Partida jugador contra bot.
-*** El bot tiene diferentes estrategias implementadas, y el usuario puede elegir cuál de ellas usar (nivel de dificultad).
+* Se ofrecen dos modos base de juego:
+** Partida jugador contra jugador - HvH.
+** Partida jugador contra bot - HvB.
+*** En el modo contra bot, el usuario puede seleccionar el nivel de dificultad, asociado a varias estrategias.
+* La aplicación incorpora un flujo de selección de variante antes de configurar la partida.
+** La variante clásica constituye la base principal del sistema
+** Existen otras variantes adicionales como Tabu Y y Holey Y ya funcionales, y otras todavía no implementadas.
 * El tablero tiene tamaño variable, configurable por el usuario dentro de unos límites establecidos.
-* El usuario puede elegir quién empieza la partida, según el modo de juego. 
+* El usuario puede elegir quién empieza la partida:
+** En HvB: El usuario, el bot, o aleatorio.
+** En HvH: el Jugador 1, el Jugador 2, o aleatorio.
 * El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.
 ** Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).
-* Se proporcionará un API externo (documentado) para que los bots puedan usar el sistema.
-** El API permitirá consultar/gestionar info de usuarios y partidas.
-** El API tendrá un método `play` que recibe al menos `position` (en notación YEN) y devuelve el siguiente movimiento (también en YEN).
-* El “motor” del juego estará en un módulo/servicio aparte (implementado en Rust), y la web lo llamará por HTTP mediante JSON (usando YEN).
+** En caso de continuar como usuario invitado (sin iniciar sesión), no se guardará el historial ni las estadísticas de las partidas.
+*** Al final de cada partida, el usuario invitado podrá optar por registrarse/iniciar sesión para guardar la partida y sus estadísticas, o continuar sin guardar.
+* Se proporciona un API externo (documentado) para que los bots puedan usar el sistema.
+** El API permite consultar/gestionar info de usuarios y partidas.
+** El API incluye un método `play` que recibe al menos una posición (en notación YEN) y devuelve el siguiente movimiento.
+* El motor del juego está desacoplado de la interfaz web y se implementa como un servicio independiente en Rust.
+** La comunicación entre la web y el motor se realiza mediante HTTP y mensajes JSON basados en la notación YEN.
 
 *Casos de uso:*
 
@@ -30,49 +38,79 @@ Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 | ID | Caso de uso | Actor | ¿Qué pasa?
 
 | UC-01
-| *Registrarse / iniciar sesión*
+| *Registrarse*
 | Usuario
-| El usuario se crea cuenta o entra con su cuenta para poder guardar partidas y ver estadísticas.
+| El usuario crea una cuenta en la aplicación para poder identificarse, verifica su correo y accede a funcionalidades asociadas a su perfil.
 
 | UC-02
-| *Configurar una partida*
-| Usuario
-| El usuario selecciona el modo de juego, el tamaño del tablero, el bot en caso necesario y quién comienza la partida.
+| *Iniciar sesión*
+| Usuario registrado
+| El usuario accede con sus credenciales para consultar su historial, estadísticas y ranking, además de guardar partidas en su cuenta.
 
 | UC-03
+| *Verificar cuenta*
+| Usuario registrado
+| El usuario confirma su cuenta mediante el enlace de verificación enviado por correo electrónico.
+
+| UC-04
+| *Seleccionar variante del juego*
+| Usuario
+| El usuario elige la variante con la que desea jugar antes de configurar la partida.
+
+| UC-05
+| *Configurar una partida*
+| Usuario
+| El usuario selecciona el modo de juego, el tamaño del tablero, quién comienza la partida y el nivel de dificultad (si corresponde).
+
+| UC-06
 | *Crear partida jugador vs jugador*
 | Usuario
 | El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.
 
-| UC-04
+| UC-07
 | *Crear partida jugador vs bot*
 | Usuario
 | El sistema crea una nueva sesión de juego HvB, aplicando la configuración elegida y, si corresponde, realizando el primer movimiento del bot.
 
-| UC-05
+| UC-08
 | *Jugar un turno desde la web*
 | Usuario
-| El usuario selecciona una celda válida y el sistema actualiza el estado de la partida.
+| El usuario selecciona una celda válida y el sistema actualiza el estado de la partida conforme a las reglas de la variante activa.
 
-| UC-06
+| UC-09
 | *Obtener la respuesta del bot*
 | Sistema
 | Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.
 
-| UC-07
+| UC-10
 | *Comprobar si la partida ha finalizado*
 | Sistema
 | Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.
 
-| UC-08
+| UC-11
+| *Abandonar una partida*
+| Usuario
+| El usuario decide salir de una partida en curso y el sistema cierra la sesión de juego activa, guardando el estado como "Abandonada" (si corresponde).
+
+| UC-12
+| *Guardar una partida en el historial*
+| Usuario registrado
+| Al finalizar una partida, el sistema permite registrar el resultado en la cuenta del usuario para actualizar su historial y estadísticas.
+
+| UC-13
 | *Ver historial y estadísticas*
 | Usuario registrado
 | El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.
 
-| UC-09
+| UC-14
 | *Consultar el estado de una partida*
-| Usuario
+| Usuario registrado
 | La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.
+
+| UC-15
+| *Consultar ranking global*
+| Usuario 
+| El usuario puede consultar la clasificación global de jugadores en función de sus resultados.
 |===
 
 

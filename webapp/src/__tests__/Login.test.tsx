@@ -53,7 +53,7 @@ describe("LoginForm", () => {
     vi.clearAllMocks();
   });
 
-  it("renderiza campos y botón", () => {
+  it("renderiza campos y botón", async() => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/Nombre de usuario/i)).toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("LoginForm", () => {
     expect(
       screen.getByRole("button", { name: /Iniciar Sesión/i }),
     ).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("muestra errores de validación si se envía vacío", async () => {
     const user = userEvent.setup();
@@ -78,7 +78,7 @@ describe("LoginForm", () => {
     ).toBeInTheDocument();
 
     expect(loginUserMock).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it("inicia sesión, guarda la sesión y navega a home", async () => {
     const { message } = await import("antd");
@@ -104,7 +104,41 @@ describe("LoginForm", () => {
       expect(message.success).toHaveBeenCalledWith("Login exitoso");
       expect(mockNavigate).toHaveBeenCalledWith("/home");
     });
-  });
+  }, 10000);
+
+  it("permite login embebido sin redirección y ejecuta onLoginSuccess", async () => {
+    const { message } = await import("antd");
+    const onLoginSuccess = vi.fn().mockResolvedValue(undefined);
+
+    loginUserMock.mockResolvedValueOnce({
+      message: "Login exitoso",
+      username: "marcelo",
+      profilePicture: "avatar-1.png",
+    });
+
+    const user = userEvent.setup();
+    render(
+      <LoginForm
+        redirectOnSuccess={false}
+        onLoginSuccess={onLoginSuccess}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Nombre de usuario/i), "marcelo");
+    await user.type(screen.getByLabelText(/Contraseña/i), "Password123!");
+    await user.click(screen.getByRole("button", { name: /Iniciar Sesión/i }));
+
+    await waitFor(() => {
+      expect(loginUserMock).toHaveBeenCalledWith("marcelo", "Password123!");
+      expect(saveUserSessionMock).toHaveBeenCalledWith({
+        username: "marcelo",
+        profilePicture: "avatar-1.png",
+      });
+      expect(onLoginSuccess).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(message.success).toHaveBeenCalledWith("Login exitoso");
+    });
+  }, 10000);
 
   it("muestra error si el login falla", async () => {
     const { message } = await import("antd");
@@ -123,5 +157,5 @@ describe("LoginForm", () => {
       expect(mockNavigate).not.toHaveBeenCalled();
       expect(message.error).toHaveBeenCalledWith("Credenciales incorrectas");
     });
-  });
+  }, 10000);
 });

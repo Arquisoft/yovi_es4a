@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -8,9 +7,11 @@ import {
   putConfig,
   type YEN,
 } from "../../api/gamey";
-import { recordUserGame } from "../../api/users";
+import type { RecordUserGameRequest } from "../../api/users";
 import SessionGamePage from "../../game/SessionGamePage";
+import useDeferredGameSave from "../../game/useDeferredGameSave";
 import { getUserSession } from "../../utils/session";
+import AuthModal from "../registroLogin/AuthModal";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -39,7 +40,6 @@ function getStarterLabel(hvh_starter: StarterHvH): string {
 
 export default function GameHvH() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
@@ -49,98 +49,110 @@ export default function GameHvH() {
     player1: "Player 1",
   } as const;
 
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session) return;
-    if (!winner) return;
-    if (savedGameIdsRef.current.has(gameId)) return;
-
-    const result = winner === "player0" ? "won" : "lost";
-
-    await recordUserGame(session.username, {
-      gameId,
-      mode: "HvH",
-      result,
-      boardSize: size,
-      totalMoves,
-      opponent: "Jugador local",
-      startedBy: hvh_starter,
-    });
-
-    savedGameIdsRef.current.add(gameId);
-  }
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    saveGameForCurrentSession,
+    registerFinishedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useDeferredGameSave();
 
   async function registerAbandonedGame(gameId: string, totalMoves: number) {
     const session = getUserSession();
 
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
+    if (session) {
+      await saveGameForCurrentSession({
         gameId,
-        mode: "HvH",
+        mode: "classic_hvh",
         result: "abandoned",
         boardSize: size,
         totalMoves,
         opponent: "Jugador local",
         startedBy: hvh_starter,
       });
-
-      savedGameIdsRef.current.add(gameId);
     }
 
     await deleteHvhGame(gameId);
   }
 
   return (
-    <SessionGamePage<YEN>
-      deps={[size, hvh_starter]}
-      start={async () => {
-        await putConfig({
-          size,
-          hvb_starter: "human",
-          bot_id: null,
-          hvh_starter: hvh_starter,
-        });
+    <>
+      <SessionGamePage<YEN>
+        deps={[size, hvh_starter]}
+        start={async () => {
+          await putConfig({
+            size,
+            hvb_starter: "human",
+            bot_id: null,
+            hvh_starter,
+          });
 
-        return createHvhGame({
-          size,
-          hvh_starter: hvh_starter,
-        });
-      }}
-      move={(gameId, cellId) => hvhMove(gameId, cellId)}
-      onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves);
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={{
-        title: "Juego Y — Human vs Human",
-        subtitle: `Tamaño: ${size} · Empieza: ${getStarterLabel(hvh_starter)}`,
-        abandonOkText: "Abandonar",
-        getResultTitle: () => "Partida finalizada",
-        getResultText: (winner) =>
-          winner === "player0"
-            ? `${playerLabels.player0} ha ganado la partida.`
-            : `${playerLabels.player1} ha ganado la partida.`,
-      }}
-      winnerPalette={{
-        highlightedWinner: "player0",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
-      turnConfig={{
-        textPrefix: "Turno actual:",
-        turns: {
-          player0: {
-            label: playerLabels.player0,
-            color: "#28BBF5",
+          return createHvhGame({
+            size,
+            hvh_starter,
+          });
+        }}
+        move={(gameId, cellId) => hvhMove(gameId, cellId)}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          if (!winner)
+            return;
+
+          const payload: RecordUserGameRequest = {
+            gameId,
+            mode: "classic_hvh",
+            result: winner === "player0" ? "won" : "lost",
+            boardSize: size,
+            totalMoves,
+            opponent: "Jugador local",
+            startedBy: hvh_starter,
+          };
+
+          await registerFinishedGame(payload);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={{
+          title: "Juego Y — Human vs Human",
+          subtitle: `Tamaño: ${size} · Empieza: ${getStarterLabel(hvh_starter)}`,
+          abandonOkText: "Abandonar",
+          getResultTitle: () => "Partida finalizada",
+          getResultText: (winner) =>
+            winner === "player0"
+              ? `${playerLabels.player0} ha ganado la partida.`
+              : `${playerLabels.player1} ha ganado la partida.`,
+        }}
+        winnerPalette={{
+          highlightedWinner: "player0",
+          highlightedBackground: "#28bbf532",
+          otherWinnerBackground: "#ff7b0033",
+        }}
+        turnConfig={{
+          textPrefix: "Turno actual:",
+          turns: {
+            player0: {
+              label: playerLabels.player0,
+              color: "#28BBF5",
+            },
+            player1: {
+              label: playerLabels.player1,
+              color: "#FF7B00",
+            },
           },
-          player1: {
-            label: playerLabels.player1,
-            color: "#FF7B00",
-          },
-        },
-      }}
-    />
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

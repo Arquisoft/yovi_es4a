@@ -9,12 +9,14 @@ import {
   Select,
   Space,
   Spin,
+  Tag,
   Typography,
 } from "antd";
 import {
   BuildOutlined,
   PlayCircleOutlined,
   TeamOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getMeta, type MetaResponse } from "../api/gamey";
@@ -23,6 +25,7 @@ import { getUserSession } from "../utils/session";
 import AppHeader from "./AppHeader.tsx";
 import DifficultySelect from "./Dificultyselect.tsx";
 import UserStatsSummary from "./UserStats";
+import type { Variant, VariantId } from "./VariantSelect";
 
 const { Title, Text } = Typography;
 
@@ -80,7 +83,44 @@ function clampSize(n: number, meta: MetaResponse | null) {
   return Math.min(Math.max(n, min), max);
 }
 
-export default function Home() {
+// ─── Rutas de juego por variante ─────────────────────────────────────────────
+
+function gameRouteForVariant(variantId: VariantId): string {
+  const map: Record<VariantId, string> = {
+    classic:       "/game-hvb",
+    pastel:        "/game-pastel",
+    master:        "/game-master",
+    fortune_coin:  "/game-fortune-coin",
+    fortune_dice:  "/game-fortune-dice",
+    tabu:          "/game-tabu",
+    holey:         "/game-holey",
+    why_not:       "/game-why-not",
+    poly_y:        "/game-poly-y",
+    hex:           "/game-hex",
+  };
+  return map[variantId] ?? "/game-hvb";
+}
+
+/** Ruta HvH: classic tiene su propia ruta /game-hvh; el resto usa la ruta de variante. */
+function hvhRouteForVariant(variantId: VariantId): string {
+  if (variantId === "classic") return "/game-hvh";
+  return gameRouteForVariant(variantId);
+}
+
+// Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
+const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
+const STANDALONE_VARIANTS: VariantId[] = ["hex"];
+
+// ─── Props ───────────────────────────────────────────────────────────────────
+
+type Props = {
+  variant: Variant;
+  onChangeVariant: () => void;
+};
+
+// ─── Componente ──────────────────────────────────────────────────────────────
+
+export default function Home({ variant, onChangeVariant }: Props) {
   const navigate = useNavigate();
   const session = getUserSession();
 
@@ -104,12 +144,14 @@ export default function Home() {
   useEffect(() => {
     getMeta()
       .then((c) => setMeta(c))
-      .catch(() => setMeta({
-        api_version: "v1",
-        min_board_size: 2,
-        max_board_size: 15,
-        bots: ["random_bot", "mcts_bot"],
-      }));
+      .catch(() =>
+        setMeta({
+          api_version: "v1",
+          min_board_size: 2,
+          max_board_size: 15,
+          bots: ["random_bot", "mcts_bot"],
+        })
+      );
   }, []);
 
   useEffect(() => {
@@ -153,6 +195,8 @@ export default function Home() {
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
 
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+
   function handleGoToDifficulty() {
     setShowDifficulty(true);
   }
@@ -164,7 +208,8 @@ export default function Home() {
     params.set("size", String(s));
     params.set("bot", botId);
     params.set("hvbstarter", hvbstarter);
-    navigate(`/game-hvb?${params.toString()}`);
+    params.set("variant", variant.id);
+    navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
   }
 
   function handlePlayHvH() {
@@ -173,8 +218,19 @@ export default function Home() {
     const params = new URLSearchParams();
     params.set("size", String(s));
     params.set("hvhstarter", hvhStarter);
-    navigate(`/game-hvh?${params.toString()}`);
+    params.set("variant", variant.id);
+    navigate(`${hvhRouteForVariant(variant.id)}?${params.toString()}`);
   }
+
+  function handlePlayStandalone() {
+    const s = clampSize(size, meta);
+    const params = new URLSearchParams();
+    params.set("size", String(s));
+    params.set("variant", variant.id);
+    navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
+  }
+
+  // ─── Pantalla de dificultad HvB ───────────────────────────────────────────
 
   if (showDifficulty) {
     return (
@@ -190,39 +246,82 @@ export default function Home() {
     );
   }
 
+  // ─── Variante standalone (Hex) ────────────────────────────────────────────
+
+  if (STANDALONE_VARIANTS.includes(variant.id)) {
+    return (
+      <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
+        <div style={{ width: "min(1000px, 100%)" }}>
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <AppHeader title="YOVI" />
+            <Card>
+              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
+                <Divider>Configuración</Divider>
+                <Flex justify="center" gap={16} wrap="wrap" align="end">
+                  <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
+                  <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayStandalone}>
+                    Jugar
+                  </Button>
+                </Flex>
+              </Space>
+            </Card>
+            <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
+          </Space>
+        </div>
+      </Flex>
+    );
+  }
+
+  // ─── Variantes solo HvH ───────────────────────────────────────────────────
+
+  if (HVH_ONLY_VARIANTS.includes(variant.id)) {
+    return (
+      <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
+        <div style={{ width: "min(1000px, 100%)" }}>
+          <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <AppHeader title="YOVI" />
+            <Card>
+              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
+                <Divider>Human vs. Human</Divider>
+                <Flex justify="center" gap={16} wrap="wrap" align="end">
+                  <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
+                  <StarterHvHInput hvhStarter={hvhStarter} setHvhStarter={setHvhStarter} saveLastConfigHvH={saveLastConfigHvH} size={size} />
+                  <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
+                    Jugar
+                  </Button>
+                </Flex>
+              </Space>
+            </Card>
+            <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
+          </Space>
+        </div>
+      </Flex>
+    );
+  }
+
+  // ─── Variantes completas (HvB + HvH) ─────────────────────────────────────
+
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
       <div style={{ width: "min(1000px, 100%)" }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
-
-          {/* Barra Menú */}
           <AppHeader title="YOVI" />
 
-          {/* Juego */}
           <Card>
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
-              <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <Title level={3} style={{ margin: 0 }}>Juego Y</Title>
-              </Flex>
+              <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
 
               <Divider>Human vs. Bot</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <div>
-                  <Text type="secondary"><BuildOutlined /> Tamaño [{minSize} - {maxSize}]:</Text>
-                  <div>
-                    <InputNumber
-                      min={minSize}
-                      max={maxSize}
-                      value={size}
-                      onChange={(next) => setSize(clampSize(Number(next ?? 7), meta))}
-                      style={{ width: 140 }}
-                    />
-                  </div>
-                </div>
+                <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
 
                 <div>
-                  <Text type="secondary"><TeamOutlined /> Empieza:</Text>
+                  <Text type="secondary">
+                    <TeamOutlined /> Empieza:
+                  </Text>
                   <div>
                     <Select
                       value={hvbstarter}
@@ -240,7 +339,11 @@ export default function Home() {
                   </div>
                 </div>
 
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleGoToDifficulty}>
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleGoToDifficulty}
+                >
                   Jugar
                 </Button>
               </Flex>
@@ -248,69 +351,158 @@ export default function Home() {
               <Divider>Human vs. Human</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <div>
-                  <Text type="secondary"><BuildOutlined /> Tamaño [{minSize} - {maxSize}]:</Text>
-                  <div>
-                    <InputNumber
-                      min={minSize}
-                      max={maxSize}
-                      value={size}
-                      onChange={(next) => setSize(clampSize(Number(next ?? 7), meta))}
-                      style={{ width: 140 }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Text type="secondary"><TeamOutlined /> Empieza:</Text>
-                  <div>
-                    <Select
-                      value={hvhStarter}
-                      onChange={(next) => {
-                        setHvhStarter(next);
-                        saveLastConfigHvH({ size, hvhstarter: next });
-                      }}
-                      style={{ width: 200 }}
-                      options={[
-                        { value: "player0", label: "Player 0" },
-                        { value: "player1", label: "Player 1" },
-                        { value: "random", label: "Aleatorio" },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
+                <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
+                <StarterHvHInput hvhStarter={hvhStarter} setHvhStarter={setHvhStarter} saveLastConfigHvH={saveLastConfigHvH} size={size} />
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handlePlayHvH}
+                >
                   Jugar
                 </Button>
               </Flex>
             </Space>
           </Card>
 
-          {session && (
-            <>
-              {statsError && (
-                <Alert
-                  type="error"
-                  message="No se pudieron cargar las estadísticas"
-                  description={statsError}
-                  showIcon
-                />
-              )}
-
-              {statsLoading ? (
-                <Card>
-                  <Flex justify="center" align="center" style={{ minHeight: 180 }}>
-                    <Spin size="large" />
-                  </Flex>
-                </Card>
-              ) : stats ? (
-                <UserStatsSummary stats={stats} title="Tus estadísticas" />
-              ) : null}
-            </>
-          )}
+          <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
         </Space>
       </div>
     </Flex>
+  );
+}
+
+// ─── Subcomponentes reutilizables ─────────────────────────────────────────────
+
+function VariantHeader({
+  variant,
+  onChangeVariant,
+}: {
+  variant: Variant;
+  onChangeVariant: () => void;
+}) {
+  return (
+    <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+      <Flex align="center" gap={12}>
+        <span style={{ fontSize: 28, lineHeight: 1 }}>{variant.emoji}</span>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            {variant.label}
+          </Title>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {variant.description}
+          </Text>
+        </div>
+        <Tag color={variant.tagColor}>{variant.tagLabel}</Tag>
+      </Flex>
+      <Button
+        size="small"
+        icon={<ArrowLeftOutlined />}
+        onClick={onChangeVariant}
+        data-testid="change-variant-btn"
+      >
+        Cambiar variante
+      </Button>
+    </Flex>
+  );
+}
+
+function SizeInput({
+  size,
+  setSize,
+  meta,
+  minSize,
+  maxSize,
+}: {
+  size: number;
+  setSize: (n: number) => void;
+  meta: MetaResponse | null;
+  minSize: number;
+  maxSize: number;
+}) {
+  return (
+    <div>
+      <Text type="secondary">
+        <BuildOutlined /> Tamaño [{minSize} - {maxSize}]:
+      </Text>
+      <div>
+        <InputNumber
+          min={minSize}
+          max={maxSize}
+          value={size}
+          onChange={(next) => setSize(clampSize(Number(next ?? 7), meta))}
+          style={{ width: 140 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StarterHvHInput({
+  hvhStarter,
+  setHvhStarter,
+  saveLastConfigHvH,
+  size,
+}: {
+  hvhStarter: StarterHvH;
+  setHvhStarter: (v: StarterHvH) => void;
+  saveLastConfigHvH: (cfg: LastConfigHvH) => void;
+  size: number;
+}) {
+  return (
+    <div>
+      <Text type="secondary">
+        <TeamOutlined /> Empieza:
+      </Text>
+      <div>
+        <Select
+          value={hvhStarter}
+          onChange={(next) => {
+            setHvhStarter(next);
+            saveLastConfigHvH({ size, hvhstarter: next });
+          }}
+          style={{ width: 200 }}
+          options={[
+            { value: "player0", label: "Player 0" },
+            { value: "player1", label: "Player 1" },
+            { value: "random", label: "Aleatorio" },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StatsSection({
+  session,
+  stats,
+  statsLoading,
+  statsError,
+}: {
+  session: ReturnType<typeof getUserSession>;
+  stats: UserStats | null;
+  statsLoading: boolean;
+  statsError: string | null;
+}) {
+  if (!session) return null;
+  return (
+    <>
+      {statsError && (
+        <Alert
+          type="error"
+          message="No se pudieron cargar las estadísticas"
+          description={statsError}
+          showIcon
+        />
+      )}
+      {statsLoading ? (
+        <Card>
+          <Flex justify="center" align="center" style={{ minHeight: 180 }}>
+            <Spin size="large" />
+          </Flex>
+        </Card>
+      ) : stats ? (
+        <UserStatsSummary stats={stats} title="Tus estadísticas" />
+      ) : null}
+    </>
   );
 }
