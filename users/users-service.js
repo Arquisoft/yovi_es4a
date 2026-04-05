@@ -224,15 +224,21 @@ app.post('/createuser', async (req, res) => {
       `
     };
 
-    // 4. Intentamos enviar el correo
+// 4. Intentamos enviar el correo
     try {
-      const transporter = createMailTransporter();
-      if (!transporter) {
-         throw new Error("Las credenciales de correo no están configuradas en el servidor.");
+      // Solo nos conectamos a Google si NO estamos en los tests
+      if (process.env.NODE_ENV !== 'test') {
+        const transporter = createMailTransporter();
+        if (!transporter) {
+           throw new Error("Las credenciales de correo no están configuradas en el servidor.");
+        }
+        await transporter.sendMail(mailOptions);
+        console.log(`[CORREO ENVIADO] Para: ${email}`);
       }
-      await transporter.sendMail(mailOptions);
-      console.log(`[CORREO ENVIADO] Para: ${email}`);
+      
+      // El mensaje de éxito se envía siempre, tanto en real como en tests
       res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
+      
     } catch (mailError) {
       // 5. SI FALLA EL CORREO: Borramos al usuario para que pueda volver a intentarlo
       await User.findByIdAndDelete(user._id);

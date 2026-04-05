@@ -3,24 +3,25 @@ import request from 'supertest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 
-vi.mock('nodemailer', () => ({
-  default: {
-    createTransport: () => ({
-      sendMail: vi.fn().mockResolvedValue({}),
-    }),
-  },
-  createTransport: () => ({
-    sendMail: vi.fn().mockResolvedValue({}),
-  }),
-}))
+process.env.NODE_ENV = 'test'
+// process.env.EMAIL_USER = 'test@yovi.com'
+// process.env.EMAIL_PASS = 'password_falsa_123'
+
+// vi.mock('nodemailer', () => ({
+//   default: {
+//     createTransport: () => ({
+//       sendMail: async () => ({}), 
+//     }),
+//   },
+//   createTransport: () => ({
+//     sendMail: async () => ({}),
+//   }),
+// }))
 
 let mongod
 let User
 
 beforeAll(async () => {
-  process.env.NODE_ENV = 'test'
-  process.env.EMAIL_USER = 'test@yovi.com'
-  process.env.EMAIL_PASS = 'password_falsa_123'
   mongod = await MongoMemoryServer.create()
   const uri = mongod.getUri()
   await mongoose.connect(uri)
@@ -65,7 +66,7 @@ describe('POST /createuser', () => {
       .set('Accept', 'application/json')
 
     expect(res.status).toBe(400)
-    expect(res.body.error).toMatch(/El nombre de usuario ya está registrado/i)
+    expect(res.body.error).toMatch(/El usuario o el correo ya están en uso/i)
   })
 })
 
