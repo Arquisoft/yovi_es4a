@@ -16,7 +16,7 @@
 
     "start:all": "concurrently \"npm run dev\" \"npm --prefix ../users start\"",
 
-    "start:ci": "cross-env VITE_API_PROXY_TARGET=http://localhost:8001 VITE_GAME_PROXY_TARGET=http://localhost:4000 vite",
+    "start:ci": "vite",
 
     "test:e2e": "start-server-and-test start:ci http://localhost:5173 test:e2e:run",
 
