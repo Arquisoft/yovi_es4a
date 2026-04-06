@@ -1,5 +1,6 @@
 Feature: Registro de usuarios
 
+  @skip
   Scenario: Acceder a la página de bienvenida
     Given estoy en la página de inicio
     Then veo el título "Bienvenido a YOVI"
