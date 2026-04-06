@@ -15,7 +15,9 @@ import {
   UserOutlined,
   LockOutlined,
 } from "@ant-design/icons";
+import { getUserSession } from "../utils/session";
 import { resolveAvatarSrc } from "../utils/avatar";
+import { getUserProfile, getUserStats, changePassword, changeUserEmail } from "../api/users";
 import ChangePasswordModal from "./ChangePasswordModal";
 import ChangeEmailModal from "./ChangeEmailModal";
 
@@ -34,23 +36,17 @@ type Props = {
 };
 
 export default function ProfileModal({ open, onClose, onLogout }: Props) {
-  // TEMPORAL
-  const [session, setSession] = useState({
-    username: "testuser",
-    profilePicture: "seniora.png",
-    password: "1234",
-  });
-
+  const session = getUserSession();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<{
     gamesPlayed: number;
     gamesWon: number;
     winRate: number;
   } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [changeEmailOpen, setChangeEmailOpen] = useState(false); // ← añadido
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !session) return;
@@ -59,15 +55,13 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
     setProfile(null);
     setStats(null);
 
-    const profilePromise = Promise.resolve({
-      username: "testuser",
-      email: "test@example.com",
-      profilePicture: "seniora.png",
-    });
+    const profilePromise = getUserProfile(session.username).catch(() => ({
+      username: session.username,
+      email: "—",
+      profilePicture: undefined,
+    }));
 
-    const statsPromise = Promise.resolve({
-      stats: { gamesPlayed: 10, gamesWon: 6, winRate: 60 },
-    });
+    const statsPromise = getUserStats(session.username).catch(() => null);
 
     Promise.all([profilePromise, statsPromise]).then(([prof, st]) => {
       setProfile(prof);
@@ -86,7 +80,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
   const avatarSrc = profile?.profilePicture
     ? resolveAvatarSrc(profile.profilePicture)
-    : resolveAvatarSrc(session.profilePicture);
+    : undefined;
 
   return (
     <>
@@ -185,9 +179,45 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
                       Cambiar
                     </Button>
                   </Flex>
+                  <Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>
+                    Por seguridad, la contraseña no se muestra en texto plano.
+                  </Text>
                 </Flex>
               </Flex>
             </Flex>
+
+            {/* Estadísticas */}
+            {stats && (
+              <>
+                <Divider style={{ margin: "0" }} />
+                <Flex justify="space-around" align="center">
+                  <Flex vertical align="center" gap={2}>
+                    <Text strong style={{ fontSize: 20, color: "#28BBF5" }}>
+                      {stats.gamesPlayed}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      Partidas
+                    </Text>
+                  </Flex>
+                  <Flex vertical align="center" gap={2}>
+                    <Text strong style={{ fontSize: 20, color: "#2FBF7C" }}>
+                      {stats.gamesWon}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      Victorias
+                    </Text>
+                  </Flex>
+                  <Flex vertical align="center" gap={2}>
+                    <Text strong style={{ fontSize: 20, color: "#FF7B00" }}>
+                      {stats.winRate}%
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      % Victoria
+                    </Text>
+                  </Flex>
+                </Flex>
+              </>
+            )}
 
             <Divider style={{ margin: "0" }} />
 
@@ -204,19 +234,18 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
       {/* Password modal */}
       <ChangePasswordModal
-        open={changePasswordOpen}
-        onClose={() => setChangePasswordOpen(false)}
-        onConfirm={async (oldPassword, newPassword) => {
-          if (oldPassword !== session.password) {
-            throw new Error("La contraseña actual es incorrecta.");
-          }
+      open={changePasswordOpen}
+      onClose={() => setChangePasswordOpen(false)}
+      onConfirm={async (oldPassword, newPassword) => {
+        if (!session) return;
+        try {
+          await changePassword(session.username, oldPassword, newPassword);
+        } catch (e: any) {
+          throw new Error(e?.message ?? "No se pudo cambiar la contraseña.");
+        }
+      }}
+    />
 
-          setSession((prev) => ({
-            ...prev,
-            password: newPassword,
-          }));
-        }}
-      />
 
       {/* Email modal */}
       <ChangeEmailModal
@@ -224,9 +253,14 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
         currentEmail={profile?.email ?? ""}
         onClose={() => setChangeEmailOpen(false)}
         onConfirm={async (newEmail) => {
-          setProfile((prev) =>
-            prev ? { ...prev, email: newEmail } : prev
-          );
+          if (!session) return;
+          try {
+            await changeUserEmail(session.username, newEmail);
+            // Actualizar localmente el email mostrado
+            setProfile((prev) => (prev ? { ...prev, email: newEmail } : prev));
+          } catch (e: any) {
+            throw new Error(e?.message ?? "No se pudo cambiar el correo.");
+          }
         }}
       />
     </>
