@@ -322,6 +322,21 @@ describe('POST /users/:username/games', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toBeTruthy()
   })
+
+  it('registra una partida como abandonada', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-abandoned-test',
+        mode: 'classic_hvb',
+        result: 'abandoned',
+        boardSize: 7,
+        totalMoves: 2
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
+  })
 })
 
 describe('GET /users/:username/history', () => {
