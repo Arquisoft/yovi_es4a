@@ -180,3 +180,20 @@ export async function getUserProfile(username: string) {
         profilePicture?: string;
     }>(response);
 }
+
+export async function changePassword(
+  username: string,
+  oldPassword: string,
+  newPassword: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/password`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }
+  );
+
+  return parseJson<{ message: string }>(response);
+}

@@ -46,7 +46,7 @@ export default function ChangePasswordModal({ open, onClose, onConfirm }: Props)
     }
   }, [open]);
 
-  // Actualizar medidor de fuerza en tiempo real
+  // Actualizar medidor de fuerza
   useEffect(() => {
     setStrength(
       newPassword
@@ -54,6 +54,21 @@ export default function ChangePasswordModal({ open, onClose, onConfirm }: Props)
         : { label: "", color: "transparent", width: "0%" }
     );
   }, [newPassword]);
+
+  // Limpiar error al escribir
+  useEffect(() => {
+    if (error) setError("");
+  }, [oldPassword, newPassword, confirmPassword]);
+
+  // Validación general del formulario
+  const isFormValid =
+    oldPassword.trim() &&
+    newPassword &&
+    confirmPassword &&
+    !validatePassword(newPassword) &&
+    !validateConfirmPassword(newPassword, confirmPassword) &&
+    strength.label !== "Baja" &&
+    oldPassword !== newPassword;
 
   async function handleConfirm() {
     setError("");
@@ -111,9 +126,7 @@ export default function ChangePasswordModal({ open, onClose, onConfirm }: Props)
       width={420}
     >
       <Flex vertical gap={16} style={{ paddingTop: 8 }}>
-        {error && (
-          <Alert message={error} type="error" showIcon />
-        )}
+        {error && <Alert message={error} type="error" showIcon />}
 
         {/* Contraseña actual */}
         <Flex vertical gap={4}>
@@ -168,14 +181,20 @@ export default function ChangePasswordModal({ open, onClose, onConfirm }: Props)
                   }}
                 />
               </div>
-              <Text style={{ color: strength.color, fontSize: "0.8rem", fontWeight: "bold" }}>
+              <Text
+                style={{
+                  color: strength.color,
+                  fontSize: "0.8rem",
+                  fontWeight: "bold",
+                }}
+              >
                 Nivel de seguridad: {strength.label}
               </Text>
             </Flex>
           )}
         </Flex>
 
-        {/* Repetir nueva contraseña */}
+        {/* Repetir contraseña */}
         <Flex vertical gap={4}>
           <Text strong style={{ fontSize: 13 }}>
             Repetir nueva contraseña
@@ -201,6 +220,7 @@ export default function ChangePasswordModal({ open, onClose, onConfirm }: Props)
             type="primary"
             loading={loading}
             onClick={handleConfirm}
+            disabled={!isFormValid}
           >
             Cambiar contraseña
           </Button>

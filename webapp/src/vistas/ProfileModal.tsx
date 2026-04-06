@@ -36,7 +36,11 @@ type Props = {
 
 export default function ProfileModal({ open, onClose, onLogout }: Props) {
   // TEMPORAL - quitar cuando haya BD
-  const session = { username: "testuser", profilePicture: "seniora.png" };
+  const [session, setSession] = useState({
+  username: "testuser",
+  profilePicture: "seniora.png",
+  password: "1234",
+});
   // const session = getUserSession(); // ← restaurar después
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -221,7 +225,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
               </Flex>
             </Flex>
 
-            {/* Estadísticas rápidas */}
+            {/* Estadísticas */}
             {stats && (
               <>
                 <Divider style={{ margin: "0" }} />
@@ -256,7 +260,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
             <Divider style={{ margin: "0" }} />
 
-            {/* Botones de acción */}
+            {/* Botones */}
             <Space style={{ justifyContent: "flex-end" }}>
               <Button onClick={onClose}>Volver</Button>
               <Button danger icon={<LogoutOutlined />} onClick={onLogout}>
@@ -267,13 +271,21 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
         )}
       </Modal>
 
+      {/* Modal cambiar contraseña */}
       <ChangePasswordModal
         open={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
         onConfirm={async (oldPassword, newPassword) => {
-          // TODO: conectar con el endpoint de cambio de contraseña
-          // await changePassword(session.username, oldPassword, newPassword);
-          console.log("Cambiar contraseña:", { oldPassword, newPassword });
+          if (oldPassword !== session.password) {
+            throw new Error("La contraseña actual es incorrecta.");
+          }
+
+          setSession((prev) => ({
+            ...prev,
+            password: newPassword,
+          }));
+
+          console.log("Contraseña actualizada a:", newPassword);
         }}
       />
     </>
