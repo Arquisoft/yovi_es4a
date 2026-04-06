@@ -436,6 +436,30 @@ describe('GET /users/:username/history', () => {
     const res = await api.get('/users/NoExiste/history')
     expect(res.status).toBe(404)
   })
+
+  it('usa valores por defecto si page o pageSize son inválidos', async () => {
+    const res = await api.get('/users/HistoryUser/history?page=-1&pageSize=abc')
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.page).toBe(1)
+    expect(res.body.pagination.pageSize).toBe(5) // Usa el límite por defecto
+  })
+
+  it('ordena por oldest y movesAsc', async () => {
+    const resAsc = await api.get('/users/HistoryUser/history?page=1&pageSize=10&sortBy=movesAsc')
+    expect(resAsc.status).toBe(200)
+    expect(resAsc.body.games[0].totalMoves).toBeLessThanOrEqual(resAsc.body.games[1].totalMoves)
+
+    const resOld = await api.get('/users/HistoryUser/history?page=1&pageSize=10&sortBy=oldest')
+    expect(resOld.status).toBe(200)
+  })
+
+  it('devuelve paginación correcta cuando el usuario no tiene partidas', async () => {
+    await createVerifiedUser('HistoryEmpty', 'emptyhistory@test.com')
+    const res = await api.get('/users/HistoryEmpty/history')
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.totalGames).toBe(0)
+    expect(res.body.pagination.totalPages).toBe(1)
+  })
 })
 
 describe('PATCH /users/:username/stats', () => {
