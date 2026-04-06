@@ -113,6 +113,48 @@ En esta sección se documentan las decisiones arquitectónicas fundamentales que
 ** **Heurísticas ad-hoc:** Reglas específicas del dominio (ej. priorizar el centro, bloquear al oponente). Más rápidas, pero menos efectivas para jugadores avanzados.
 * **Justificación:**
 ** **Adaptabilidad:** MCTS no requiere una función heurística definida manualmente; aprende qué movimientos son buenos simulando partidas completas aleatoriamente (*rollouts*).
-** **Escalabilidad de calidad:** Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad.
+** **Escalabilidad de calidad:** Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad, lo que permite implementar múltiples niveles (`mcts_medio`, `mcts_dificil`, `mcts_demencial`) con un único algoritmo base.
 ** **Idoneidad para el Juego Y:** MCTS ha demostrado ser efectivo en juegos de tablero de alto factor de ramificación como el Juego Y, donde minimax con poda se queda corto.
 * **Consecuencias:** El algoritmo MCTS es computacionalmente intensivo y puede causar tiempos de respuesta elevados si no se limita. Se implementa un límite de tiempo (timeout) para garantizar que el servicio `gamey` siempre responde dentro de un umbral aceptable, devolviendo el mejor movimiento encontrado hasta ese momento.
+
+=== ADR 7: Adopción de Playwright + Cucumber para tests E2E
+
+* **Estado:** Aceptada.
+* **Contexto:** El proyecto requiere tests end-to-end que verifiquen los flujos completos del usuario (registro, login, selección de variante, partida) a través del navegador, tanto en local como en CI/CD.
+* **Alternativas consideradas:**
+** **Cypress:** Framework E2E muy popular, pero con limitaciones en el soporte de múltiples pestañas y en entornos CI sin cabeza.
+** **Selenium con JUnit:** Solución clásica, pero más verbosa y con mayor coste de mantenimiento.
+** **Playwright sin Cucumber:** Posible, pero pierde la legibilidad BDD de los escenarios en Gherkin.
+* **Justificación:**
+** **Playwright** ofrece soporte nativo para múltiples navegadores (Chromium, Firefox, WebKit), ejecución sin cabeza (*headless*) en CI y una API moderna y fiable para automatización web.
+** **Cucumber** con Gherkin permite redactar los escenarios en lenguaje natural, haciendo los tests comprensibles para todos los miembros del equipo independientemente de su perfil técnico.
+** La combinación `@cucumber/cucumber` + Playwright en TypeScript se integra de forma natural con el resto del stack de la `webapp`.
+* **Consecuencias:** Los tests E2E requieren que tanto la `webapp` como el servicio `users` estén arrancados. El script `test:e2e:dev` usa `concurrently` para levantar ambos servicios automáticamente durante el desarrollo. En CI, los navegadores de Playwright deben instalarse previamente con `npx playwright install --with-deps`.
+
+=== ADR 8: Uso de Gatling (Java DSL) para pruebas de rendimiento
+
+* **Estado:** Aceptada.
+* **Contexto:** El proyecto requiere pruebas de carga y rendimiento para validar que el sistema se comporta correctamente bajo diferentes niveles de concurrencia, en línea con los requisitos de calidad de la asignatura.
+* **Alternativas consideradas:**
+** **k6:** Herramienta moderna de pruebas de carga en JavaScript, pero menos integrada con el ecosistema Java/Maven habitual en entornos académicos.
+** **JMeter:** Herramienta madura y muy extendida, pero con una interfaz gráfica pesada y configuración más compleja para pipelines de CI.
+** **Gatling con Scala DSL:** La forma canónica de usar Gatling, pero Scala supone una curva de aprendizaje adicional para el equipo.
+* **Justificación:**
+** **Gatling con Java DSL** permite escribir simulaciones en Java puro, eliminando la necesidad de aprender Scala y facilitando la integración con Maven.
+** Se definen tres niveles de simulación: `SmokeSimulation` (verificación mínima de disponibilidad), `LoadSimulation` (carga sostenida para medir tiempos de respuesta bajo uso normal) y `StressSimulation` (inyección progresiva hasta saturar el sistema).
+** La integración con Maven permite ejecutar las pruebas desde la línea de comandos y en el pipeline de CI/CD sin herramientas externas.
+* **Consecuencias:** Las pruebas de rendimiento se ejecutan contra el entorno desplegado (producción o staging), por lo que no se incluyen en el pipeline de cada PR para evitar interferencias. Se ejecutan manualmente o en releases planificadas.
+
+=== ADR 9: Terminación TLS en el gateway con Let's Encrypt
+
+* **Estado:** Aceptada.
+* **Contexto:** El sistema debe servirse por HTTPS en producción para garantizar la seguridad de las comunicaciones. Se necesita una solución que funcione tanto en producción (dominio público) como en local (sin dominio real).
+* **Alternativas consideradas:**
+** **Certificado gestionado por Azure:** Azure ofrece servicios de certificados gestionados, pero añade dependencia del proveedor cloud y coste adicional.
+** **Certificado wildcard manual:** Requiere renovación periódica manual, incompatible con un despliegue automatizado.
+** **Solo HTTP:** Inaceptable para un sistema en producción que maneja credenciales de usuario.
+* **Justificación:**
+** **Let's Encrypt** proporciona certificados TLS gratuitos y renovables automáticamente, sin dependencia del proveedor cloud.
+** El gateway (`certbot` integrado en la imagen Docker) intenta obtener el certificado en el arranque mediante el modo `--standalone`. Si falla (entorno local, IP sin DNS público), genera automáticamente un certificado autofirmado con `openssl` como fallback, garantizando que el sistema arranca en cualquier entorno sin intervención manual.
+** Esta lógica se encapsula en el `entrypoint.sh` del contenedor `gateway`, manteniendo la misma imagen Docker para todos los entornos.
+* **Consecuencias:** El puerto 80 debe estar libre en el momento del arranque del gateway para que `certbot` pueda completar el challenge de Let's Encrypt. En entorno local, el navegador mostrará una advertencia de seguridad por el certificado autofirmado, lo que es aceptable para desarrollo.
