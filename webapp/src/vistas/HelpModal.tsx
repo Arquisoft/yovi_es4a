@@ -21,9 +21,9 @@ export default function HelpModal() {
 
               <Title level={5}>Turnos</Title>
               <Paragraph>
-                Los jugadores se alternan colocando <Text strong>una ficha</Text>{" "}
-                en cualquier celda vacía del tablero.{" "}
-                No se puede mover ni quitar una ficha ya colocada.
+                Los jugadores se alternan colocando{" "}
+                <Text strong>una ficha</Text> en cualquier celda vacía del
+                tablero. No se puede mover ni quitar una ficha ya colocada.
               </Paragraph>
 
               <Title level={5}>Condición de victoria</Title>
@@ -35,8 +35,8 @@ export default function HelpModal() {
 
               <Title level={5}>Tablero</Title>
               <Paragraph>
-                El tamaño del tablero es configurable. Un
-                tablero más grande implica partidas más largas y estratégicas.
+                El tamaño del tablero es configurable. Un tablero más grande
+                implica partidas más largas y estratégicas.
               </Paragraph>
             </Typography>
           ),
@@ -67,11 +67,10 @@ export default function HelpModal() {
 
               <Title level={5}>Human vs Human (HvH)</Title>
               <Paragraph>
-                Dos jugadores humanos se turnan en el mismo dispositivo.
-                Se identifica a los jugadores como{" "}
-                <Text strong>Player 0</Text> (fichas azules) y{" "}
-                <Text strong>Player 1</Text> (fichas naranjas). Puedes elegir quién
-                coloca la primera ficha.
+                Dos jugadores humanos se turnan en el mismo dispositivo. Se
+                identifica a los jugadores como <Text strong>Player 0</Text>{" "}
+                (fichas azules) y <Text strong>Player 1</Text> (fichas
+                naranjas). Puedes elegir quién coloca la primera ficha.
               </Paragraph>
             </Typography>
           ),
@@ -83,27 +82,31 @@ export default function HelpModal() {
             <Typography>
               <Title level={5}>Pantalla de inicio</Title>
               <Paragraph>
-                Al entrar, verás la pantalla de bienvenida. Regístrate la primera vez
-                para poder guardar tus estadísticas.
+                Al entrar, verás la pantalla de bienvenida. Regístrate la
+                primera vez para poder guardar tus estadísticas.
               </Paragraph>
 
               <Title level={5}>Crear partida</Title>
               <Paragraph>
-                Elige el tamaño del tablero, el modo de juego y quién empieza, 
-                luego pulsa{" "}
-                <Text strong>Jugar</Text>.
+                Elige el tamaño del tablero, el modo de juego y quién empieza,
+                luego pulsa <Text strong>Jugar</Text>.
               </Paragraph>
 
               <Title level={5}>Durante la partida</Title>
               <Paragraph>
                 Haz clic en una celda vacía para colocar tu ficha. El turno
                 actual se muestra en la barra superior. Si quieres terminar
-                antes, pulsa <Text strong type="danger">Abandonar</Text>.
+                antes, pulsa{" "}
+                <Text strong type="danger">
+                  Abandonar
+                </Text>
+                .
               </Paragraph>
 
               <Title level={5}>Ranking y Estadísticas</Title>
               <Paragraph>
-                Consulta el ranking global y a tus propias estadísticas desde el menú de usuario.
+                Consulta el ranking global y a tus propias estadísticas desde el
+                menú de usuario.
               </Paragraph>
             </Typography>
           ),
@@ -120,9 +123,7 @@ export default function HelpModal() {
               </Paragraph>
 
               <Title level={5}>¿Qué pasa si abandono una partida?</Title>
-              <Paragraph>
-                La partida cuenta como si se hubiera perdido.
-              </Paragraph>
+              <Paragraph>La partida cuenta como abandonada.</Paragraph>
 
               <Title level={5}>¿Qué tamaño de tablero recomendáis?</Title>
               <Paragraph>
