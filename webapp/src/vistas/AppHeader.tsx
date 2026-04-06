@@ -64,7 +64,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
   function handleProfileMenuClick(key: string) {
     switch (key) {
       case "profile":
-        setProfileOpen(true);
+        //setProfileOpen(true);
         break;
       case "history":
         navigate("/historial");
@@ -91,7 +91,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
       key: "profile",
       icon: <UserOutlined />,
       label: "Ver Perfil",
-      // disabled: !session,  // ← comentar temporalmente
+      disabled: !session,
     },
     {
       key: "history",

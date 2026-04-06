@@ -22,6 +22,11 @@ vi.mock("react-router-dom", async () => {
     };
 });
 
+vi.mock("../vistas/ProfileModal", () => ({
+  default: () => null,
+}));
+
+
 vi.mock("../utils/session", () => ({
     clearUserSession: (...args: any[]) => clearUserSessionMock(...args),
     getUserSession: (...args: any[]) => getUserSessionMock(...args),
