@@ -241,14 +241,16 @@ jobs:
     needs: [update-duckdns, docker-push-users, docker-push-webapp, docker-push-gamey, docker-push-gateway]
     steps:
       - name: Deploy over SSH
-        uses: fifsky/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
-          user: ${{ secrets.DEPLOY_USER }}
+          username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
-          command: |
-            set -e
+          script_stop: true
+          script: |
+            set -euxo pipefail
             cd /opt/yovi/yovi_es4a
             git pull
             docker compose pull
             docker compose up -d --remove-orphans
+            docker compose ps

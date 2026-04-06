@@ -63,9 +63,10 @@ El sistema gira en torno a la lógica del **Juego Y**, un juego de estrategia en
 Los conceptos clave del dominio son:
 
 * **Tablero (Board):** Estructura triangular de tamaño variable (N×N casillas). Las posiciones se representan mediante **coordenadas baricéntricas** (x, y, z) donde `x + y + z = N - 1`, lo que facilita el cálculo de distancias a los lados.
-* **Partida (Game):** Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores y el historial de movimientos.
+* **Variante (Variant):** Modalidad de juego que modifica las reglas base. El sistema soporta actualmente tres variantes jugables: la **Clásica** (reglas estándar del Juego Y), **Tabu Y** (ciertas celdas quedan bloqueadas) y **Holey Y** (hay celdas con agujeros en el tablero). La selección de variante se realiza antes de configurar la partida mediante el componente `VariantSelect`.
+* **Partida (Game):** Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores, la variante activa y el historial de movimientos.
 * **Movimiento (Move):** Acción de colocar una pieza en una casilla libre. Se serializa en notación **YEN** para el intercambio entre servicios.
-* **Notación YEN (Y Exchange Notation):** Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión entre `webapp`, `users` y `gamey`.
+* **Notación YEN (Y Exchange Notation):** Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores, variante) para su almacenamiento o transmisión entre `webapp`, `users` y `gamey`.
 * **Notación YGN (Y Game Notation):** Formato de registro de la secuencia de movimientos de una partida completa, análogo al PGN del ajedrez.
 * **Usuario:** Persona registrada en el sistema con credenciales, historial de partidas y estadísticas.
 * **Bot:** Agente automático que juega partidas consumiendo el API público. Puede usar distintas estrategias de decisión.
@@ -76,6 +77,7 @@ La seguridad es un concepto transversal que afecta principalmente al servicio `u
 
 * **Registro y autenticación:** Los usuarios se registran y autentican mediante correo electrónico y contraseña. El sistema implementa una verificación en dos pasos (2FA por email) para confirmar la identidad del usuario antes de dar acceso a su cuenta.
 * **Almacenamiento seguro de contraseñas:** Las contraseñas **nunca se almacenan en texto plano**. Se guardan en MongoDB como hashes criptográficos (usando algoritmos como bcrypt), de forma que incluso un acceso no autorizado a la base de datos no exponga las credenciales reales.
+* **Cifrado en tránsito (HTTPS):** Toda la comunicación entre el cliente y el servidor pasa por el gateway, que gestiona la terminación TLS. En producción se emplea un certificado válido de **Let's Encrypt**; en entorno local se genera un certificado autofirmado como fallback automático.
 * **Validación de entradas:** El servicio `users` valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.
 * **Control de acceso a la API:** El API público para bots expone únicamente las operaciones necesarias (consultar estado, enviar movimiento), con comprobaciones de permisos para impedir acceso a datos de otros usuarios.
 * **Red interna de Docker:** MongoDB no expone puertos públicos; solo es accesible desde la red interna de contenedores (`docker network`), reduciendo la superficie de ataque.
@@ -89,14 +91,26 @@ La comunicación entre todos los componentes del sistema sigue un patrón unifor
 * **Sincronía:** Las llamadas son síncronas (petición-respuesta). La `webapp` llama al servicio `users`, que a su vez llama a `gamey` cuando necesita delegar lógica de juego.
 * **Documentación del API:** El servicio `users` expone su API documentada con **Swagger/OpenAPI**, permitiendo que los desarrolladores de bots conozcan los endpoints disponibles, sus parámetros y los formatos de respuesta esperados.
 
+=== Variantes del Juego Y
+
+El sistema implementa un mecanismo de variantes que extiende las reglas del Juego Y clásico sin alterar el núcleo del motor. La arquitectura del frontend (`webapp`) modela cada variante como un componente independiente (`GameHvH`, `GameHvB`, `GameHoley`, `GameTabu`, etc.) que comparte la interfaz de tablero base y únicamente sobreescribe las reglas específicas (celdas deshabilitadas, agujeros, restricciones). La selección de variante se realiza antes de iniciar la partida mediante el componente `VariantSelect`, que muestra las variantes disponibles y marca con "Próximamente" aquellas aún no implementadas.
+
+Las variantes actualmente jugables son:
+
+* **Clásica:** Reglas estándar del Juego Y. Base principal del sistema, tanto en modalidad humano contra humano como humano contra bot.
+* **Tabu Y:** Ciertas celdas están marcadas como tabú y no pueden utilizarse durante la partida, alterando la estrategia de conexión.
+* **Holey Y:** El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad y obligan a buscar rutas alternativas.
+
+El servicio `gamey` recibe la información de la variante activa a través de la notación YEN y aplica las restricciones correspondientes en la validación de movimientos.
+
 === Estrategias de Bot
 
-El servicio `gamey` implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad:
+El servicio `gamey` implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad. La arquitectura del módulo `gamey` separa el registro de bots (`bot/registry`) de la implementación de cada estrategia (`bot/`), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.
 
-* **Bot aleatorio:** Elige una casilla válida aleatoria. Nivel de dificultad mínimo.
-* **Bot MCTS (Monte Carlo Tree Search):** Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento posible. Es el nivel de dificultad más alto. Se implementa con un límite de tiempo de respuesta para evitar bloqueos del contenedor.
+Las estrategias disponibles son:
 
-La arquitectura del módulo `gamey` separa claramente el registro de bots (`bot/registry`) de la implementación de cada estrategia (`bot/`), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.
+* **Bot aleatorio (`random_bot`):** Elige una casilla válida aleatoria. Nivel de dificultad mínimo.
+* **Bot MCTS (Monte Carlo Tree Search):** Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (`mcts_random`, `mcts_medio`, `mcts_dificil`, `mcts_demencial`), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se implementa un límite de tiempo (timeout) para garantizar que el servicio siempre responde dentro de un umbral aceptable.
 
 === Monitorización y Observabilidad
 
@@ -112,7 +126,8 @@ La calidad del código se garantiza de forma continua y transversal mediante:
 
 * **Tests unitarios:** Cada servicio tiene su suite de tests unitarios independiente (`npm test` para `webapp` y `users`, `cargo test` para `gamey`). Se verifica la lógica de negocio de forma aislada con mocks de dependencias.
 * **Tests de integración:** Se prueba la comunicación entre servicios para verificar que los contratos del API se cumplen correctamente.
-* **Tests end-to-end:** La `webapp` incluye tests E2E (`npm run test:e2e`) que simulan la interacción completa de un usuario con el sistema a través del navegador.
+* **Tests end-to-end (Playwright + Cucumber):** La `webapp` incluye tests E2E con estilo BDD usando **Playwright** para la automatización del navegador y **Cucumber** (`@cucumber/cucumber`) para la definición de escenarios en formato Gherkin. Los tests se ejecutan con `npm run test:e2e` y están integrados en el pipeline de CI/CD.
+* **Tests de rendimiento (Gatling):** El módulo `gatling/` contiene simulaciones de carga implementadas en Java DSL que cubren tres niveles: `SmokeSimulation` (verificación básica de disponibilidad), `LoadSimulation` (carga sostenida de usuarios concurrentes) y `StressSimulation` (sobrecarga para detectar el punto de ruptura del sistema). Estas pruebas se ejecutan contra el entorno desplegado.
 * **Análisis estático (SonarCloud):** Integrado en el pipeline de CI/CD, analiza cada pull request en busca de *code smells*, duplicidades, vulnerabilidades de seguridad y cobertura de tests. Se publica un *Quality Gate* público con el estado del proyecto.
 
 === Proceso de Desarrollo y Gestión (GitHub Ecosystem)

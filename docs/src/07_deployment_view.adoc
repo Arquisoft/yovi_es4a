@@ -46,13 +46,14 @@ endif::arc42help[]
 
 La arquitectura de despliegue se basa en la contenedorización de los servicios mediante **Docker Compose**, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción. El sistema se despliega en una **máquina virtual de Microsoft Azure** accesible públicamente a través del dominio `yovies4a.duckdns.org`.
 
-image::User Interaction Pipeline-2026-03-07-174719.png["Diagrama correspondiente al Despliegue", width=50%]
+image::depview.png["Diagrama correspondiente al Despliegue", width=50%]
 
 Motivación::
 Se ha elegido Azure por su capacidad de integración con flujos de CI/CD a través de **GitHub Actions** y por la robustez de su infraestructura cloud. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de desarrollo local, evitando el clásico "en mi máquina funciona". El dominio público `yovies4a.duckdns.org` se gestiona mediante DuckDNS, un servicio de DNS dinámico que apunta a la IP pública de la máquina virtual de Azure.
 
 Características de calidad y/o rendimiento::
 * **Disponibilidad:** Azure garantiza un SLA elevado para sus servicios de computación, reduciendo el tiempo de inactividad no planificado.
+* **Seguridad (HTTPS):** El gateway gestiona la terminación TLS. En el primer arranque intenta obtener un certificado válido de **Let's Encrypt** mediante `certbot`; si falla (por ejemplo, en entorno local o sin DNS público), genera un certificado autofirmado como fallback. Esto garantiza que toda la comunicación cliente-servidor esté cifrada.
 * **Observabilidad:** La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real, con alertas configurables ante degradaciones.
 * **Escalabilidad:** Azure ofrece escalado automático (vertical y horizontal), lo que permite ajustar los recursos según la demanda del juego.
 * **Reproducibilidad:** El fichero `docker-compose.yml` en la raíz del repositorio define la topología completa del sistema, permitiendo levantar todos los servicios con un único comando (`docker-compose up --build`).
@@ -61,9 +62,10 @@ Mapeo de los bloques de construcción a la infraestructura::
 [cols="1,1,2", options="header"]
 |===
 | Bloque de Construcción | Puerto Externo | Descripción
-| webapp | 80 | Interfaz web servida por Nginx. Punto de entrada para jugadores humanos.
-| users | 3000 | API REST de gestión de usuarios y partidas. Punto de entrada para bots externos.
-| gamey | 4000 | Motor del juego en Rust. Accesible internamente y desde bots vía API.
+| gateway | 80 / 443 | Punto de entrada único. Proxy inverso Nginx con terminación TLS (Let's Encrypt o certificado autofirmado). Enruta el tráfico hacia `webapp` y hacia la API de `users`.
+| webapp | — (interno) | Aplicación React servida como contenido estático por el gateway. No expone puertos al exterior directamente.
+| users | 3000 | API REST de gestión de usuarios y partidas. Accesible desde el gateway y desde bots externos a través de este.
+| gamey | 4000 | Motor del juego en Rust. Accesible internamente desde `users` y para pruebas locales directas.
 | prometheus | 9090 | Recolector de métricas del sistema.
 | grafana | 9091 | Visualizador de dashboards de monitorización.
 | mongodb | 27017 | Base de datos documental. Solo accesible desde la red interna de Docker.
@@ -75,24 +77,35 @@ Mapeo de los bloques de construcción a la infraestructura::
 
 El despliegue en producción es completamente automatizado mediante **GitHub Actions**. Al publicar una nueva release en el repositorio, el workflow `release-deploy.yml` ejecuta las siguientes etapas en orden:
 
-. **Test:** Ejecuta los tests unitarios e integración de todos los servicios (`webapp`, `users`, `gamey`).
+. **Test:** Ejecuta los tests unitarios, de integración y E2E de todos los servicios (`webapp`, `users`, `gamey`).
 . **Build:** Construye las imágenes Docker de cada servicio y las publica en **GitHub Container Registry (GHCR)** con la etiqueta de la versión y `latest`.
 . **Publish:** Publica la imagen versionada en el registro.
 . **Deploy:** Se conecta por SSH a la máquina virtual de Azure, descarga las nuevas imágenes y reinicia los contenedores con `docker-compose pull && docker-compose up -d`.
 
 El análisis de calidad de código se realiza de forma continua mediante **SonarCloud**, que se integra en cada pull request para reportar cobertura de tests, code smells y vulnerabilidades de seguridad.
 
+==== Gateway y Terminación TLS
+
+El contenedor `gateway` está basado en **Nginx Alpine** con `openssl` y `certbot` instalados. Su comportamiento en arranque es el siguiente:
+
+. Solicita un certificado a **Let's Encrypt** vía `certbot` con el modo `--standalone` (el puerto 80 debe estar libre en ese momento).
+. Si la obtención tiene éxito, copia los certificados a `/etc/nginx/ssl/` y configura Nginx para servir HTTPS en el puerto 443.
+. Si falla (entorno local, IP no pública, etc.), verifica si existen certificados previos; en caso contrario, genera un certificado autofirmado con `openssl` como fallback.
+. Una vez configurado el TLS, arranca Nginx en primer plano.
+
+Esto permite que la misma imagen funcione tanto en producción (con certificado válido) como en desarrollo local (con certificado autofirmado) sin modificar la configuración.
+
 ==== Servicios de Aplicación
 
 Estos contenedores representan la lógica de negocio y la interfaz de usuario:
 
-* **webapp (Puerto 80):** Servidor web **Nginx** que sirve la aplicación frontend React compilada como contenido estático. La variable de entorno `VITE_API_URL` se configura en tiempo de build para apuntar al servicio `users`. Se comunica con el backend mediante peticiones HTTP al API REST.
+* **webapp:** Aplicación React/TypeScript compilada como contenido estático por Vite. El gateway la sirve directamente. La variable de entorno `VITE_API_URL` se configura en tiempo de build para apuntar al servicio `users` a través del gateway.
 
-* **users (Puerto 3000):** Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la `webapp` y del `gateway`, y delegando la lógica del juego al servicio `gamey`. Expone métricas para Prometheus en el endpoint `/metrics`.
+* **users (Puerto 3000):** Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la `webapp` y del `gateway`, y delegando la lógica del juego al servicio `gamey`. Expone métricas para Prometheus en el endpoint `/metrics`.
 
-* **gamey (Puerto 4000):** Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (incluyendo MCTS). Se comunica mediante JSON usando la notación **YEN**. Puede ejecutarse también en modo CLI para pruebas locales.
+* **gamey (Puerto 4000):** Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (aleatoria, greedy y múltiples niveles de MCTS con paralelización via `rayon`). Soporta múltiples variantes del juego (Clásica, Tabu Y, Holey Y). Se comunica mediante JSON usando la notación **YEN**. Puede ejecutarse también en modo CLI para pruebas locales.
 
-* **gateway (Puerto 443/80):** Punto de entrada único al sistema que actúa como proxy inverso. Enruta el tráfico hacia `webapp` y hacia el API de `users` según la ruta solicitada, gestionando también el acceso desde bots externos.
+* **gateway (Puertos 80/443):** Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia `webapp` y hacia la API de `users` según la ruta solicitada, gestionando también el acceso desde bots externos.
 
 ==== Servicios de Persistencia
 
@@ -111,9 +124,9 @@ Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo 
 [cols="1,1,3", options="header"]
 |===
 | Entorno | URL / Acceso | Descripción
-| **Producción** | `https://yovies4a.duckdns.org` | Máquina virtual Azure con Docker Compose. Se actualiza automáticamente con cada release mediante GitHub Actions.
-| **Desarrollo local** | `http://localhost` | Los desarrolladores levantan el entorno completo con `docker-compose up --build` o ejecutan cada servicio individualmente.
-| **Revisión (PR)** | GitHub Actions | En cada pull request se ejecutan los tests automáticamente pero no se despliega en infraestructura pública.
+| **Producción** | `https://yovies4a.duckdns.org` | Máquina virtual Azure con Docker Compose. Certificado TLS de Let's Encrypt. Se actualiza automáticamente con cada release mediante GitHub Actions.
+| **Desarrollo local** | `http://localhost` o `https://localhost` | Los desarrolladores levantan el entorno completo con `docker-compose up --build` o ejecutan cada servicio individualmente. El gateway genera un certificado autofirmado como fallback.
+| **Revisión (PR)** | GitHub Actions | En cada pull request se ejecutan los tests automáticamente (unitarios, integración y E2E con Playwright) pero no se despliega en infraestructura pública.
 |===
 
 ifdef::arc42help[]
