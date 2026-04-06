@@ -46,7 +46,7 @@ image::requisitos de calidad.png[arbol de calidad]
 *Compatibilidad*
 
 * Facilidad para interoperar: El intercambio de información entre subsistemas se realiza estrictamente mediante mensajes JSON siguiendo la notación YEN, asegurando que el API sea compatible tanto con la WebApp como con bots externos.
-* Coexistencia: Los microservicios están clasificados en sus contenedores correspondientes y facilmente se levantan y conectan entre sí en el docker-compose.yml. 
+* Coexistencia: Se implementan test E2E que garantizan el flujo correcto de funcionamiento entre todos los microservicios de la aplicación.
 
 *Usabilidad*
 
@@ -66,13 +66,13 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Seguridad*
 
-* Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas.
-* Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios, así nosotros tampoco contamos explicitamente con estas. **SC5**[[SC5, SC5]]
+* Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas mediante autenticación en dos pasos con un botón que se manda por correo.
+* Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios mediante función hash, así nosotros tampoco contamos explicitamente con estas. **SC5**[[SC5, SC5]]
 * No repudio: Se guarda en la base de datos la interacción del usuario con la aplicación junto con una serie de datos estadísticos, por lo que el correo asociado con la cuenta guarda un registro de actividad.
 
 *Mantenibilidad*
 
-* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]]
+* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]] **SC9*[[SC9]]
 
 *Portabilidad*
 
@@ -125,8 +125,8 @@ A continuación se exponen distintos escenarios de uso identificados por un cód
 |Se quiere jugar una partida rápida, el juego responde rápido a los cambios de ventana y carga de componentes visuales.
 
 |<<SC5, SC5>>
-|Seguridad
-|Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad.
+|Confidencialidad
+|Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad. Aún así, mediante una barra indicadora, la aplicación te muestra la seguridad de la contraseña para que sepas el grado de seguridad.
 
 |<<SC6, SC6>>
 |Mantenibilidad
@@ -139,6 +139,14 @@ A continuación se exponen distintos escenarios de uso identificados por un cód
 |<<SC8, SC8>>
 |Adecuación funcional
 |Un usuario quiere jugar contra otro usuario en local. El sistema establece turnos de juego para cada jugador en la misma máquina.
+
+|<<SC9, SC9>>
+|Mantenibilidad
+|Tras haber jugado al juego base se tiene un dominio que incita a necesitar más modos de juego. Se implementan entonces nuevos juegos con distintas reglas al menú de modo de juego. Cada archivo es asociado a un modo de juego nuevo.
+
+|<<SC10, SC10>>
+|No repudio
+|Se afirma no haber utilizado nunca la aplicación, en la base de datos aparece el registro asociado a un correo autenticado en dos pasos, se mantiene un registro de uso.
 
 |===
 
