@@ -74,7 +74,7 @@ describe('POST /createuser', () => {
 
 describe('Validaciones de formato de usuario', () => {
   it('devuelve 400 si el username tiene menos de 3 caracteres', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/createuser')
       .send({ username: 'ab', password: '123', email: 'ab@test.com' })
     
@@ -83,7 +83,7 @@ describe('Validaciones de formato de usuario', () => {
   })
 
   it('devuelve 400 si el username tiene más de 20 caracteres', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/createuser')
       .send({ username: 'usuario_extremadamente_largo', password: '123', email: 'largo@test.com' })
     
@@ -92,7 +92,7 @@ describe('Validaciones de formato de usuario', () => {
   })
 
   it('devuelve 400 si falta el username', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/createuser')
       .send({ password: '123', email: 'falta@test.com' })
     
@@ -158,7 +158,7 @@ describe('POST /login', () => {
   })
 
   it('devuelve 400 si no se envía la contraseña', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/login')
       .send({ username: 'LoginUser' }) // Solo enviamos el usuario
       .set('Accept', 'application/json')
@@ -545,7 +545,7 @@ describe('GET /users/:username/stats', () => {
 
 describe('GET /verify', () => {
   it('devuelve 400 si el token es inválido o no existe', async () => {
-    const res = await request(app).get('/verify?token=token_inventado_123')
+    const res = await api.get('/verify?token=token_inventado_123')
 
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Token inválido o expirado/i)
@@ -554,7 +554,7 @@ describe('GET /verify', () => {
 
 describe('POST /users/:username/games - Validaciones', () => {
   it('devuelve 400 si el modo de juego no es válido', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/users/StatsUser/games') 
       .send({ gameId: 'g1', mode: 'MODO_INVENTADO', result: 'won', boardSize: 10, totalMoves: 5 })
     
@@ -563,9 +563,9 @@ describe('POST /users/:username/games - Validaciones', () => {
   })
 
   it('devuelve 400 si el tamaño del tablero es inválido', async () => {
-    const res = await request(app)
+    const res = await api
       .post('/users/StatsUser/games')
-      .send({ gameId: 'g2', mode: 'HvB', result: 'won', boardSize: -5, totalMoves: 5 })
+      .send({ gameId: 'g2', mode: 'classic_hvb', result: 'won', boardSize: -5, totalMoves: 5 })
     
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/'boardSize' debe ser un número positivo/i)

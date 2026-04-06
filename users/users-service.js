@@ -568,3 +568,5 @@ app.get('/users/:username/stats', async (req, res) => {
 });
 
 app.listen(port, () => { console.log(`User service running on port ${port}`); });
+
+module.exports = app;
