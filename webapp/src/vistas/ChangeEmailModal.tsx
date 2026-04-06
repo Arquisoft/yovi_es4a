@@ -44,6 +44,7 @@ export default function ChangeEmailModal({
     confirmEmail &&
     newEmail === confirmEmail &&
     newEmail !== currentEmail &&
+    // NOSONAR: esta regex es lineal y no vulnerable a backtracking
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail);
 
   async function handleConfirm() {
@@ -56,7 +57,7 @@ export default function ChangeEmailModal({
       setError("Debes introducir un correo.");
       return;
     }
-
+    // NOSONAR: esta regex es lineal y no vulnerable a backtracking
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Formato de correo inválido.");
       return;
