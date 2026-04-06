@@ -8,21 +8,13 @@ import java.time.Duration;
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
-/**
- * StressSimulation — escalones 5→10→20→40→60 usuarios, 30 s cada uno.
- *
- * Azure (por defecto):
- *   mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
- *
- * Local:
- *   YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
- */
 public class StressSimulation extends Simulation {
 
     HttpProtocolBuilder httpProtocol = http
         .baseUrl(Config.BASE_URL)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json");
+
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")
@@ -56,12 +48,6 @@ public class StressSimulation extends Simulation {
         );
 
     // ── Inyección en escalones ────────────────────────────────────────────────
-    //   Escalón 1:  5 usuarios — warm-up
-    //   Escalón 2: 10 usuarios
-    //   Escalón 3: 20 usuarios
-    //   Escalón 4: 40 usuarios
-    //   Escalón 5: 60 usuarios — punto de ruptura esperado
-
     {
         Duration stepDuration = Duration.ofSeconds(30);
 
