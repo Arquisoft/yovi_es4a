@@ -101,6 +101,13 @@ describe('POST /createuser', () => {
 })
 
 describe('Validaciones de formato de usuario', () => {
+  it('devuelve 400 si el username no es un string', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 12345, password: '123', email: 'num@test.com' })
+    expect(res.status).toBe(400)
+  })
+
   it('devuelve 400 si el username tiene menos de 3 caracteres', async () => {
     const res = await api
       .post('/createuser')
