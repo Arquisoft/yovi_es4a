@@ -70,6 +70,34 @@ describe('POST /createuser', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/El usuario o el correo ya están en uso/i)
   })
+
+  it('devuelve 400 si falta la contraseña (error interno atrapado)', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'SinPass', email: 'sinpass@test.com' }) // Falta la password
+    expect(res.status).toBe(400)
+  })
+
+  it('devuelve 500 y borra el usuario si falla el envío de correo', async () => {
+    // Guardamos estado original
+    const oldEnv = process.env.NODE_ENV;
+    const oldEmail = process.env.EMAIL_USER;
+    
+    // Forzamos fallo: Le decimos al backend que no está en test, pero le quitamos las credenciales de email
+    process.env.NODE_ENV = 'development';
+    delete process.env.EMAIL_USER;
+
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'FalloCorreo', password: '123', email: 'fallo@test.com' })
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/problema al enviar el correo/i)
+
+    // Restauramos estado
+    process.env.NODE_ENV = oldEnv;
+    process.env.EMAIL_USER = oldEmail;
+  })
 })
 
 describe('Validaciones de formato de usuario', () => {
