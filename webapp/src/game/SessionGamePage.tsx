@@ -11,6 +11,9 @@ import {
   type SessionGameStartResponse,
 } from "./useSessionGame";
 import type { YEN as GameYEN } from "../api/gamey";
+import Lottie from "lottie-react"; // animaciones
+import confettiAnimation from "../assets/Confetti.json";
+import gameOverAnimation from "../assets/GameOver.json";
 
 const { Title, Text } = Typography;
 
@@ -53,7 +56,10 @@ type AbandonedGamePayload = {
 type Props<TYen extends GameYEN> = {
   deps: readonly unknown[];
   start: () => Promise<SessionGameStartResponse<TYen>>;
-  move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<TYen>>;
+  move: (
+    gameId: string,
+    cellId: number,
+  ) => Promise<SessionGameMoveResponse<TYen>>;
   botMove?: (gameId: string) => Promise<SessionGameMoveResponse<TYen>>;
   onHint?: (gameId: string) => Promise<number>;
   onGameFinished?: (payload: FinishedGamePayload) => Promise<void> | void;
@@ -66,6 +72,7 @@ type Props<TYen extends GameYEN> = {
   onGuestSaveRequested?: (payload: FinishedGamePayload) => void;
   guestSaveLoading?: boolean;
   disabledCells?: Set<number>;
+  celebrateWinner?: (winner: string | null) => boolean;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -93,6 +100,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   const [hintUsed, setHintUsed] = useState(false);
   const [hintLoading, setHintLoading] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
+  const [animationFinished, setAnimationFinished] = useState(false);
 
   const {
     yen,
@@ -116,7 +124,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     const base = yen ? parseYenToCells(yen) : [];
     if (hintCellId === null) return base;
     return base.map((c) =>
-      c.cellId === hintCellId ? { ...c, hint: true } : c
+      c.cellId === hintCellId ? { ...c, hint: true } : c,
     );
   }, [yen, hintCellId]);
 
@@ -251,7 +259,17 @@ export default function SessionGamePage<TYen extends GameYEN>({
         </Flex>
       </Card>
     );
-  }, [gameOver, activeTurn, turnConfig, onHint, hintUsed, hintLoading, loading, nextTurn, gameId]);
+  }, [
+    gameOver,
+    activeTurn,
+    turnConfig,
+    onHint,
+    hintUsed,
+    hintLoading,
+    loading,
+    nextTurn,
+    gameId,
+  ]);
 
   useEffect(() => {
     if (!botMove) return;
@@ -266,6 +284,14 @@ export default function SessionGamePage<TYen extends GameYEN>({
       botTurnInFlight.current = false;
     });
   }, [botMove, gameId, gameOver, loading, nextTurn, onBotTurn]);
+
+  useEffect(() => {
+    setAnimationFinished(false);
+  }, [gameId]);
+
+  const shouldCelebrate =
+    gameOver && winner !== null && winner !== "bot" && !animationFinished;
+  const shouldShowGameOver = gameOver && winner === "bot" && !animationFinished;
 
   return (
     <GameShell
@@ -304,6 +330,53 @@ export default function SessionGamePage<TYen extends GameYEN>({
       result={
         gameOver ? (
           <Card>
+            {shouldCelebrate && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100vh",
+                  zIndex: 9999,
+                  pointerEvents: "none",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Lottie
+                  animationData={confettiAnimation}
+                  loop={false}
+                  onComplete={() => setAnimationFinished(true)}
+                />
+              </div>
+            )}
+
+            {shouldShowGameOver && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100vh",
+                  zIndex: 9999,
+                  pointerEvents: "none",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Lottie
+                  animationData={gameOverAnimation}
+                  loop={false}
+                  onComplete={() => setAnimationFinished(true)}
+                  style={{ width: "80%", height: "80%" }}
+                />
+              </div>
+            )}
+
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={4} style={{ margin: 0 }}>

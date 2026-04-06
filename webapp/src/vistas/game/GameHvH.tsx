@@ -97,8 +97,7 @@ export default function GameHvH() {
         }}
         move={(gameId, cellId) => hvhMove(gameId, cellId)}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          if (!winner)
-            return;
+          if (!winner) return;
 
           const payload: RecordUserGameRequest = {
             gameId,
@@ -115,6 +114,7 @@ export default function GameHvH() {
         onGameAbandoned={async ({ gameId, totalMoves }) => {
           await registerAbandonedGame(gameId, totalMoves);
         }}
+        celebrateWinner={(winner) => winner !== null} // se celebra solo cuando hay un ganador
         canOfferGuestSave={canOfferGuestSave}
         onGuestSaveRequested={handleGuestSaveRequested}
         guestSaveLoading={savingPendingGame}

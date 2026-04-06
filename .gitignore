@@ -6,6 +6,7 @@ docs/build
 .env
 webapp/.env
 .vscode/
+gateway/certs
 
 .DS_Store
 repomix-output.xml

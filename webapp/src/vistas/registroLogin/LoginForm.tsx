@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, Input, Button, Checkbox, message } from "antd";
+import { Form, Input, Button, message } from "antd";
 import {
   UserOutlined,
   LockOutlined,
@@ -38,8 +38,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       await onLoginSuccess?.();
 
-      if (redirectOnSuccess)
-        navigate("/home");
+      if (redirectOnSuccess) navigate("/home");
     } catch (err: any) {
       message.error(err.message);
     } finally {
@@ -86,10 +85,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
             onVisibleChange: setPasswordVisible,
           }}
         />
-      </Form.Item>
-
-      <Form.Item name="remember" valuePropName="checked">
-        <Checkbox>Recordarme</Checkbox>
       </Form.Item>
 
       <Form.Item>

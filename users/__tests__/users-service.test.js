@@ -3,23 +3,13 @@ import request from 'supertest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 
-vi.mock('nodemailer', () => ({
-  default: {
-    createTransport: () => ({
-      sendMail: vi.fn().mockResolvedValue({}),
-    }),
-  },
-  createTransport: () => ({
-    sendMail: vi.fn().mockResolvedValue({}),
-  }),
-}))
+process.env.NODE_ENV = 'test'
 
 let mongod
 let User
 let api
 
 beforeAll(async () => {
-  process.env.NODE_ENV = 'test'
   mongod = await MongoMemoryServer.create()
   const uri = mongod.getUri()
   await mongoose.connect(uri)
@@ -78,7 +68,71 @@ describe('POST /createuser', () => {
       .set('Accept', 'application/json')
 
     expect(res.status).toBe(400)
-    expect(res.body.error).toMatch(/El nombre de usuario ya está registrado/i)
+    expect(res.body.error).toMatch(/El usuario o el correo ya están en uso/i)
+  })
+
+  it('devuelve 400 si falta la contraseña (error interno atrapado)', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'SinPass', email: 'sinpass@test.com' }) // Falta la password
+    expect(res.status).toBe(400)
+  })
+
+  it('devuelve 500 y borra el usuario si falla el envío de correo', async () => {
+    // Guardamos estado original
+    const oldEnv = process.env.NODE_ENV;
+    const oldEmail = process.env.EMAIL_USER;
+    
+    // Forzamos fallo: Le decimos al backend que no está en test, pero le quitamos las credenciales de email
+    process.env.NODE_ENV = 'development';
+    delete process.env.EMAIL_USER;
+
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'FalloCorreo', password: '123', email: 'fallo@test.com' })
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toMatch(/problema al enviar el correo/i)
+
+    // Restauramos estado
+    process.env.NODE_ENV = oldEnv;
+    process.env.EMAIL_USER = oldEmail;
+  })
+})
+
+describe('Validaciones de formato de usuario', () => {
+  it('devuelve 400 si el username no es un string', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 12345, password: '123', email: 'num@test.com' })
+    expect(res.status).toBe(400)
+  })
+
+  it('devuelve 400 si el username tiene menos de 3 caracteres', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'ab', password: '123', email: 'ab@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/al menos 3 caracteres/i)
+  })
+
+  it('devuelve 400 si el username tiene más de 20 caracteres', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ username: 'usuario_extremadamente_largo', password: '123', email: 'largo@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/exceder los 20 caracteres/i)
+  })
+
+  it('devuelve 400 si falta el username', async () => {
+    const res = await api
+      .post('/createuser')
+      .send({ password: '123', email: 'falta@test.com' })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/obligatorio/i)
   })
 
   it('devuelve 400 si el username no cumple el formato', async () => {
@@ -136,6 +190,16 @@ describe('POST /login', () => {
 
     expect(res.status).toBe(401)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+
+  it('devuelve 400 si no se envía la contraseña', async () => {
+    const res = await api
+      .post('/login')
+      .send({ username: 'LoginUser' }) // Solo enviamos el usuario
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/La contraseña es obligatoria/i)
   })
 
   it('devuelve error si el usuario no verificó el correo', async () => {
@@ -258,6 +322,21 @@ describe('POST /users/:username/games', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toBeTruthy()
   })
+
+  it('registra una partida como abandonada', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-abandoned-test',
+        mode: 'classic_hvb',
+        result: 'abandoned',
+        boardSize: 7,
+        totalMoves: 2
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
+  })
 })
 
 describe('GET /users/:username/history', () => {
@@ -356,6 +435,30 @@ describe('GET /users/:username/history', () => {
   it('devuelve 404 si el usuario no existe', async () => {
     const res = await api.get('/users/NoExiste/history')
     expect(res.status).toBe(404)
+  })
+
+  it('usa valores por defecto si page o pageSize son inválidos', async () => {
+    const res = await api.get('/users/HistoryUser/history?page=-1&pageSize=abc')
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.page).toBe(1)
+    expect(res.body.pagination.pageSize).toBe(5) // Usa el límite por defecto
+  })
+
+  it('ordena por oldest y movesAsc', async () => {
+    const resAsc = await api.get('/users/HistoryUser/history?page=1&pageSize=10&sortBy=movesAsc')
+    expect(resAsc.status).toBe(200)
+    expect(resAsc.body.games[0].totalMoves).toBeLessThanOrEqual(resAsc.body.games[1].totalMoves)
+
+    const resOld = await api.get('/users/HistoryUser/history?page=1&pageSize=10&sortBy=oldest')
+    expect(resOld.status).toBe(200)
+  })
+
+  it('devuelve paginación correcta cuando el usuario no tiene partidas', async () => {
+    await createVerifiedUser('HistoryEmpty', 'emptyhistory@test.com')
+    const res = await api.get('/users/HistoryEmpty/history')
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.totalGames).toBe(0)
+    expect(res.body.pagination.totalPages).toBe(1)
   })
 })
 
@@ -490,6 +593,12 @@ describe('GET /ranking', () => {
 
     expect(names).not.toContain('NoGames')
   })
+
+  it('ignora campos sortBy no válidos y usa winRate por defecto', async () => {
+    const res = await api.get('/ranking?sortBy=INVENTADO')
+    expect(res.status).toBe(200)
+    expect(res.body.sortBy).toBe('winRate')
+  })
 })
 
 describe('GET /users/:username/stats', () => {
@@ -511,5 +620,72 @@ describe('GET /users/:username/stats', () => {
   it('returns 404 for non-existent user', async () => {
     const res = await api.get('/users/NoExiste/stats')
     expect(res.status).toBe(404)
+  })
+})
+
+describe('GET /verify', () => {
+  it('devuelve 400 si el token es inválido o no existe', async () => {
+    const res = await api.get('/verify?token=token_inventado_123')
+
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Token inválido o expirado/i)
+  })
+})
+
+describe('POST /users/:username/games - Validaciones', () => {
+  it('devuelve 400 si el modo de juego no es válido', async () => {
+    const res = await api
+      .post('/users/StatsUser/games') 
+      .send({ gameId: 'g1', mode: 'MODO_INVENTADO', result: 'won', boardSize: 10, totalMoves: 5 })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'mode' debe ser/i)
+  })
+
+  it('devuelve 400 si el tamaño del tablero es inválido', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'g2', mode: 'classic_hvb', result: 'won', boardSize: -5, totalMoves: 5 })
+    
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'boardSize' debe ser un número positivo/i)
+  })
+  
+  it('devuelve 400 si falta el gameId', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'gameId' es obligatorio/i)
+  })
+
+  it('devuelve 400 si el gameId supera los 100 caracteres', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'a'.repeat(101), mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/no puede exceder los 100 caracteres/i)
+  })
+
+  it('devuelve 400 si el resultado no es válido', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'g-invalido', mode: 'classic_hvb', result: 'empate', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'result' debe ser/i)
+  })
+
+  it('devuelve 404 si se intenta registrar partida a un usuario que no existe', async () => {
+    const res = await api
+      .post('/users/UserFantasma123/games')
+      .send({ gameId: 'g-fantasma', mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('CORS OPTIONS', () => {
+  it('devuelve 204 para peticiones OPTIONS', async () => {
+    const res = await api.options('/login')
+    expect(res.status).toBe(204)
   })
 })
