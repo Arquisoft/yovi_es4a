@@ -12,6 +12,9 @@ import userEvent from "@testing-library/user-event";
 import { App } from "antd";
 import ProfileModal from "../vistas/ProfileModal";
 
+/* ------------------------------------------------------------------ */
+/* ✅ Entorno necesario para Ant Design                                */
+/* ------------------------------------------------------------------ */
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -34,6 +37,12 @@ beforeAll(() => {
   };
 });
 
+/* ------------------------------------------------------------------ */
+/* ✅ Mocks de API                                                     */
+/* ------------------------------------------------------------------ */
+const changePasswordMock = vi.fn().mockResolvedValue(undefined);
+const changeUserEmailMock = vi.fn().mockResolvedValue(undefined);
+
 vi.mock("../api/users", () => ({
   getUserProfile: vi.fn().mockResolvedValue({
     username: "mario",
@@ -46,16 +55,47 @@ vi.mock("../api/users", () => ({
       winRate: 60,
     },
   }),
-  changePassword: vi.fn().mockResolvedValue(undefined),
-  changeUserEmail: vi.fn().mockResolvedValue(undefined),
+  changePassword: (...args: any[]) => changePasswordMock(...args),
+  changeUserEmail: (...args: any[]) => changeUserEmailMock(...args),
 }));
 
+/* ------------------------------------------------------------------ */
+/* ✅ Mock de sesión                                                   */
+/* ------------------------------------------------------------------ */
 vi.mock("../utils/session", () => ({
   getUserSession: () => ({
     username: "mario",
   }),
 }));
 
+/* ------------------------------------------------------------------ */
+/* ✅ Mocks de modales hijos (SIN efectos en render)                   */
+/* ------------------------------------------------------------------ */
+vi.mock("../vistas/ChangePasswordModal", () => ({
+  default: ({ open, onConfirm }: any) => {
+    if (!open) return null;
+    return (
+      <button onClick={() => onConfirm("old-pass", "new-pass")}>
+        __confirm_password__
+      </button>
+    );
+  },
+}));
+
+vi.mock("../vistas/ChangeEmailModal", () => ({
+  default: ({ open, onConfirm }: any) => {
+    if (!open) return null;
+    return (
+      <button onClick={() => onConfirm("nuevo@mail.com")}>
+        __confirm_email__
+      </button>
+    );
+  },
+}));
+
+/* ------------------------------------------------------------------ */
+/* ✅ Tests                                                           */
+/* ------------------------------------------------------------------ */
 describe("ProfileModal", () => {
   const onClose = vi.fn();
   const onLogout = vi.fn();
@@ -75,7 +115,6 @@ describe("ProfileModal", () => {
   it("carga y muestra los datos del usuario", async () => {
     renderModal();
 
-    // Username aparece más de una vez → findAll
     const usernames = await screen.findAllByText("mario");
     expect(usernames.length).toBeGreaterThanOrEqual(1);
 
@@ -85,19 +124,45 @@ describe("ProfileModal", () => {
     expect(screen.getByText("60%")).toBeInTheDocument();
   });
 
-  
-    it("abre el modal de cambio de correo al pulsar Cambiar", async () => {
+  it("abre el modal de cambio de correo y ejecuta changeUserEmail", async () => {
     const user = userEvent.setup();
     renderModal();
 
     const changeButtons = await screen.findAllByText("Cambiar");
-    await user.click(changeButtons[0]); // botón de email
+    await user.click(changeButtons[0]); // botón correo
 
-    // Elemento exclusivo del ChangeEmailModal
+    await user.click(
+      await screen.findByText("__confirm_email__"),
+    );
+
+    expect(changeUserEmailMock).toHaveBeenCalledWith(
+      "mario",
+      "nuevo@mail.com",
+    );
+
+    // Se actualiza el correo mostrado
     expect(
-        await screen.findByText("Correo actual"),
+      await screen.findByText("nuevo@mail.com"),
     ).toBeInTheDocument();
-    });
+  });
+
+  it("abre el modal de cambio de contraseña y ejecuta changePassword", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    const changeButtons = await screen.findAllByText("Cambiar");
+    await user.click(changeButtons[1]); // botón contraseña
+
+    await user.click(
+      await screen.findByText("__confirm_password__"),
+    );
+
+    expect(changePasswordMock).toHaveBeenCalledWith(
+      "mario",
+      "old-pass",
+      "new-pass",
+    );
+  });
 
   it("ejecuta logout al pulsar Cerrar sesión", async () => {
     const user = userEvent.setup();

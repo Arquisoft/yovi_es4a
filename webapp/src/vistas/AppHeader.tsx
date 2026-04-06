@@ -28,7 +28,6 @@ export default function AppHeader({ title }: AppHeaderProps) {
   const session = getUserSession();
   const [profileOpen, setProfileOpen] = useState(false);
 
-  /* ---------------------- Actions ---------------------- */
 
   function handleLogout() {
     modal.confirm({
@@ -124,8 +123,6 @@ export default function AppHeader({ title }: AppHeaderProps) {
       danger: true,
     },
   ];
-
-  /* ---------------------- Render ---------------------- */
 
   return (
     <>

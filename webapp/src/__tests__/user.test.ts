@@ -8,6 +8,7 @@ import {
   registerUser,
   changePassword,
   changeUserEmail,
+  getUserProfile,
 } from "../api/users";
 
 describe("api/users", () => {
@@ -296,5 +297,40 @@ describe("api/users", () => {
     await expect(
       changeUserEmail("marcelo", "nuevo@mail.com")
     ).rejects.toThrow("Error 500");
+  });
+
+  it("getUserProfile hace GET correcto y devuelve username y email", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "marcelo",
+        email: "marcelo@test.com",
+        profilePicture: "avatar.png",
+      }),
+    });
+
+    const result = await getUserProfile("marcelo diez");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo%20diez/profile"
+    );
+
+    expect(result.username).toBe("marcelo");
+    expect(result.email).toBe("marcelo@test.com");
+    expect(result.profilePicture).toBe("avatar.png");
+  });
+
+  it("getUserProfile lanza el error del backend cuando response.ok es false", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({
+        error: "Usuario no encontrado",
+      }),
+    });
+
+    await expect(getUserProfile("inexistente")).rejects.toThrow(
+      "Usuario no encontrado"
+    );
   });
 });
