@@ -12,13 +12,21 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "test:e2e:run": "cucumber-js --import test/e2e/support/setup.mjs --import 'test/e2e/steps/**/*.mjs' test/e2e/features --format progress",
-    "test:e2e": "start-server-and-test start:all http://localhost:5173 test:e2e:run",
     "test:e2e:install-browsers": "npx playwright install",
+
     "start:all": "concurrently \"npm run dev\" \"npm --prefix ../users start\"",
+
+    "start:ci": "vite",
+
+    "test:e2e": "start-server-and-test start:ci http://localhost:5173 test:e2e:run",
+
+    "test:e2e:dev": "start-server-and-test start:all http://localhost:5173 test:e2e:run",
+
     "test:e2e:headed": "cross-env E2E_HEADLESS=false start-server-and-test start:all http://localhost:5173 test:e2e:run",
     "test:e2e:slow": "cross-env E2E_HEADLESS=false E2E_SLOW_MO=800 start-server-and-test start:all http://localhost:5173 test:e2e:run",
     "test:e2e:debug": "cross-env E2E_HEADLESS=false E2E_SLOW_MO=800 E2E_DEVTOOLS=true start-server-and-test start:all http://localhost:5173 test:e2e:run",
-"test:e2e:docker": "cross-env E2E_HEADLESS=false E2E_BASE_URL=http://localhost cucumber-js --import test/e2e/support/setup.mjs --import 'test/e2e/steps/**/*.mjs' test/e2e/features"  },
+    "test:e2e:docker": "cross-env E2E_HEADLESS=false E2E_BASE_URL=http://localhost cucumber-js --import test/e2e/support/setup.mjs --import 'test/e2e/steps/**/*.mjs' test/e2e/features"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",

@@ -8,15 +8,6 @@ import java.time.Duration;
 import static io.gatling.javaapi.core.CoreDsl.*;
 import static io.gatling.javaapi.http.HttpDsl.*;
 
-/**
- * StressSimulation — escalones 5→10→20→40→60 usuarios, 30 s cada uno.
- *
- * Azure (por defecto):
- * mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
- *
- * Local:
- * YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
- */
 public class StressSimulation extends Simulation {
 
     HttpProtocolBuilder httpProtocol = http
@@ -25,6 +16,9 @@ public class StressSimulation extends Simulation {
         .contentTypeHeader("application/json");
 
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
+    // FIX heredado de Requests.java: postHvBMove ahora envía {"cell_id":0}
+    // en lugar de {"x":0,"y":0,"z":0}, por lo que los movimientos ya no fallan
+    // con 422 en cada iteración de estrés.
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")
         .exec(session -> session.set("userId", "stress-" + session.userId()))
@@ -38,6 +32,9 @@ public class StressSimulation extends Simulation {
         .exec(Requests.deleteHvBGame);
 
     // ── Escenario ligero: meta + ranking + bot externo ────────────────────────
+    // FIX heredado de Requests.java: getRanking ahora usa ruta relativa
+    // /api/users/ranking en lugar de URL absoluta, por lo que la petición
+    // llega correctamente a través del nginx de la VM.
 
     ScenarioBuilder lightScenario = scenario("Stress — consultas ligeras")
         .exec(session -> session.set("userId", "light-" + session.userId()))
@@ -57,12 +54,6 @@ public class StressSimulation extends Simulation {
         );
 
     // ── Inyección en escalones ────────────────────────────────────────────────
-    //   Escalón 1:  5 usuarios — warm-up
-    //   Escalón 2: 10 usuarios
-    //   Escalón 3: 20 usuarios
-    //   Escalón 4: 40 usuarios
-    //   Escalón 5: 60 usuarios — punto de ruptura esperado
-
     {
         Duration stepDuration = Duration.ofSeconds(30);
 

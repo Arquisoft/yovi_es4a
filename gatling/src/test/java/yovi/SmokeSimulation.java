@@ -8,15 +8,6 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 
 import java.time.Duration;
 
-/**
- * SmokeSimulation — 1 usuario invitado, recorre todos los endpoints una vez.
- *
- * Azure (por defecto):
- *   mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
- *
- * Local:
- *   YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
- */
 public class SmokeSimulation extends Simulation {
 
     HttpProtocolBuilder httpProtocol = http
@@ -55,7 +46,12 @@ public class SmokeSimulation extends Simulation {
         .exec(Requests.deleteHvBGame)
         .pause(Duration.ofMillis(300))
 
-        // 5. Partida HvH completa: crear → leer → mover → borrar
+        // 5. Partida HvH completa: configurar → crear → leer → mover → borrar
+        // FIX: putConfigForHvH es obligatorio antes de createHvHGame porque
+        // el endpoint POST /api/v1/hvh/games lee la config guardada del cliente,
+        // no acepta parámetros en el body.
+        .exec(Requests.putConfigForHvH)
+        .pause(Duration.ofMillis(200))
         .exec(Requests.createHvHGame)
         .pause(Duration.ofMillis(300))
         .exec(Requests.getHvHGame)
