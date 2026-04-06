@@ -6,6 +6,8 @@ import {
   loginUser,
   recordUserGame,
   registerUser,
+  changePassword,
+  changeUserEmail,
 } from "../api/users";
 
 describe("api/users", () => {
@@ -221,5 +223,78 @@ describe("api/users", () => {
     });
 
     await expect(getRanking("winRate", 20)).rejects.toThrow("Error 500");
+  });
+
+  it("changePassword hace PUT correcto y devuelve el mensaje", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: "Contraseña actualizada" }),
+    });
+
+    const result = await changePassword(
+      "marcelo",
+      "oldPass123",
+      "NewPass123!"
+    );
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo/password",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oldPassword: "oldPass123",
+          newPassword: "NewPass123!",
+        }),
+      }
+    );
+
+    expect(result.message).toBe("Contraseña actualizada");
+  });
+
+  it("changePassword lanza error cuando el backend falla", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "Contraseña actual incorrecta" }),
+    });
+
+    await expect(
+      changePassword("marcelo", "wrong", "NewPass123!")
+    ).rejects.toThrow("Contraseña actual incorrecta");
+  });
+
+  it("changeUserEmail hace PATCH correcto y devuelve el mensaje", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: "Correo actualizado" }),
+    });
+
+    const result = await changeUserEmail("marcelo", "nuevo@mail.com");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo/email",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "nuevo@mail.com",
+        }),
+      }
+    );
+
+    expect(result.message).toBe("Correo actualizado");
+  });
+
+  it("changeUserEmail usa Error <status> si el backend no envía error", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+
+    await expect(
+      changeUserEmail("marcelo", "nuevo@mail.com")
+    ).rejects.toThrow("Error 500");
   });
 });
