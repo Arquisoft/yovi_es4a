@@ -494,11 +494,12 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_modelo_de_dominio">8.1. Modelo de Dominio</a></li>
 <li><a href="#_seguridad_y_autenticación">8.2. Seguridad y Autenticación</a></li>
 <li><a href="#_comunicación_entre_servicios">8.3. Comunicación entre Servicios</a></li>
-<li><a href="#_estrategias_de_bot">8.4. Estrategias de Bot</a></li>
-<li><a href="#_monitorización_y_observabilidad">8.5. Monitorización y Observabilidad</a></li>
-<li><a href="#_calidad_de_código_y_testing">8.6. Calidad de Código y Testing</a></li>
-<li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.7. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
-<li><a href="#_tecnologías">8.8. Tecnologías</a></li>
+<li><a href="#_variantes_del_juego_y">8.4. Variantes del Juego Y</a></li>
+<li><a href="#_estrategias_de_bot">8.5. Estrategias de Bot</a></li>
+<li><a href="#_monitorización_y_observabilidad">8.6. Monitorización y Observabilidad</a></li>
+<li><a href="#_calidad_de_código_y_testing">8.7. Calidad de Código y Testing</a></li>
+<li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.8. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
+<li><a href="#_tecnologías">8.9. Tecnologías</a></li>
 </ul>
 </li>
 <li><a href="#section-design-decisions">9. Decisiones de Arquitectura (ADR)</a>
@@ -509,6 +510,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_adr_4_implementación_del_motor_del_juego_en_rust">9.4. ADR 4: Implementación del motor del juego en Rust</a></li>
 <li><a href="#_adr_5_arquitectura_de_microservicios_con_tres_componentes_independientes">9.5. ADR 5: Arquitectura de microservicios con tres componentes independientes</a></li>
 <li><a href="#_adr_6_uso_de_mcts_como_estrategia_de_bot_de_máxima_dificultad">9.6. ADR 6: Uso de MCTS como estrategia de bot de máxima dificultad</a></li>
+<li><a href="#_adr_7_adopción_de_playwright_cucumber_para_tests_e2e">9.7. ADR 7: Adopción de Playwright + Cucumber para tests E2E</a></li>
+<li><a href="#_adr_8_uso_de_gatling_java_dsl_para_pruebas_de_rendimiento">9.8. ADR 8: Uso de Gatling (Java DSL) para pruebas de rendimiento</a></li>
+<li><a href="#_adr_9_terminación_tls_en_el_gateway_con_lets_encrypt">9.9. ADR 9: Terminación TLS en el gateway con Let&#8217;s Encrypt</a></li>
 </ul>
 </li>
 <li><a href="#section-quality-scenarios">10. Requisitos de Calidad</a>
@@ -1470,7 +1474,7 @@ when your infrastructure is more complex.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/User%20Interaction%20Pipeline-2026-03-07-174719.png" alt="Diagrama correspondiente al Despliegue" width="50%">
+<img src="./images/depview.png" alt="Diagrama correspondiente al Despliegue" width="50%">
 </div>
 </div>
 <div class="dlist">
@@ -1485,6 +1489,9 @@ when your infrastructure is more complex.</p>
 <ul>
 <li>
 <p><strong>Disponibilidad:</strong> Azure garantiza un SLA elevado para sus servicios de computación, reduciendo el tiempo de inactividad no planificado.</p>
+</li>
+<li>
+<p><strong>Seguridad (HTTPS):</strong> El gateway gestiona la terminación TLS. En el primer arranque intenta obtener un certificado válido de <strong>Let&#8217;s Encrypt</strong> mediante <code>certbot</code>; si falla (por ejemplo, en entorno local o sin DNS público), genera un certificado autofirmado como fallback. Esto garantiza que toda la comunicación cliente-servidor esté cifrada.</p>
 </li>
 <li>
 <p><strong>Observabilidad:</strong> La inclusión de Prometheus y Grafana directamente en la infraestructura permite monitorizar el rendimiento y la salud de los servicios en tiempo real, con alertas configurables ante degradaciones.</p>
@@ -1516,19 +1523,24 @@ when your infrastructure is more complex.</p>
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">gateway</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80 / 443</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Punto de entrada único. Proxy inverso Nginx con terminación TLS (Let&#8217;s Encrypt o certificado autofirmado). Enruta el tráfico hacia <code>webapp</code> y hacia la API de <code>users</code>.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">webapp</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">80</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interfaz web servida por Nginx. Punto de entrada para jugadores humanos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">— (interno)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aplicación React servida como contenido estático por el gateway. No expone puertos al exterior directamente.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">users</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">API REST de gestión de usuarios y partidas. Punto de entrada para bots externos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API REST de gestión de usuarios y partidas. Accesible desde el gateway y desde bots externos a través de este.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">gamey</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego en Rust. Accesible internamente y desde bots vía API.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego en Rust. Accesible internamente desde <code>users</code> y para pruebas locales directas.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">prometheus</p></td>
@@ -1558,7 +1570,7 @@ when your infrastructure is more complex.</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Test:</strong> Ejecuta los tests unitarios e integración de todos los servicios (<code>webapp</code>, <code>users</code>, <code>gamey</code>).</p>
+<p><strong>Test:</strong> Ejecuta los tests unitarios, de integración y E2E de todos los servicios (<code>webapp</code>, <code>users</code>, <code>gamey</code>).</p>
 </li>
 <li>
 <p><strong>Build:</strong> Construye las imágenes Docker de cada servicio y las publica en <strong>GitHub Container Registry (GHCR)</strong> con la etiqueta de la versión y <code>latest</code>.</p>
@@ -1576,29 +1588,54 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_servicios_de_aplicación">7.2.2. Servicios de Aplicación</h4>
+<h4 id="_gateway_y_terminación_tls">7.2.2. Gateway y Terminación TLS</h4>
+<div class="paragraph">
+<p>El contenedor <code>gateway</code> está basado en <strong>Nginx Alpine</strong> con <code>openssl</code> y <code>certbot</code> instalados. Su comportamiento en arranque es el siguiente:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Solicita un certificado a <strong>Let&#8217;s Encrypt</strong> vía <code>certbot</code> con el modo <code>--standalone</code> (el puerto 80 debe estar libre en ese momento).</p>
+</li>
+<li>
+<p>Si la obtención tiene éxito, copia los certificados a <code>/etc/nginx/ssl/</code> y configura Nginx para servir HTTPS en el puerto 443.</p>
+</li>
+<li>
+<p>Si falla (entorno local, IP no pública, etc.), verifica si existen certificados previos; en caso contrario, genera un certificado autofirmado con <code>openssl</code> como fallback.</p>
+</li>
+<li>
+<p>Una vez configurado el TLS, arranca Nginx en primer plano.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Esto permite que la misma imagen funcione tanto en producción (con certificado válido) como en desarrollo local (con certificado autofirmado) sin modificar la configuración.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_servicios_de_aplicación">7.2.3. Servicios de Aplicación</h4>
 <div class="paragraph">
 <p>Estos contenedores representan la lógica de negocio y la interfaz de usuario:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>webapp (Puerto 80):</strong> Servidor web <strong>Nginx</strong> que sirve la aplicación frontend React compilada como contenido estático. La variable de entorno <code>VITE_API_URL</code> se configura en tiempo de build para apuntar al servicio <code>users</code>. Se comunica con el backend mediante peticiones HTTP al API REST.</p>
+<p><strong>webapp:</strong> Aplicación React/TypeScript compilada como contenido estático por Vite. El gateway la sirve directamente. La variable de entorno <code>VITE_API_URL</code> se configura en tiempo de build para apuntar al servicio <code>users</code> a través del gateway.</p>
 </li>
 <li>
-<p><strong>users (Puerto 3000):</strong> Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la <code>webapp</code> y del <code>gateway</code>, y delegando la lógica del juego al servicio <code>gamey</code>. Expone métricas para Prometheus en el endpoint <code>/metrics</code>.</p>
+<p><strong>users (Puerto 3000):</strong> Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la <code>webapp</code> y del <code>gateway</code>, y delegando la lógica del juego al servicio <code>gamey</code>. Expone métricas para Prometheus en el endpoint <code>/metrics</code>.</p>
 </li>
 <li>
-<p><strong>gamey (Puerto 4000):</strong> Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (incluyendo MCTS). Se comunica mediante JSON usando la notación <strong>YEN</strong>. Puede ejecutarse también en modo CLI para pruebas locales.</p>
+<p><strong>gamey (Puerto 4000):</strong> Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (aleatoria, greedy y múltiples niveles de MCTS con paralelización via <code>rayon</code>). Soporta múltiples variantes del juego (Clásica, Tabu Y, Holey Y). Se comunica mediante JSON usando la notación <strong>YEN</strong>. Puede ejecutarse también en modo CLI para pruebas locales.</p>
 </li>
 <li>
-<p><strong>gateway (Puerto 443/80):</strong> Punto de entrada único al sistema que actúa como proxy inverso. Enruta el tráfico hacia <code>webapp</code> y hacia el API de <code>users</code> según la ruta solicitada, gestionando también el acceso desde bots externos.</p>
+<p><strong>gateway (Puertos 80/443):</strong> Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia <code>webapp</code> y hacia la API de <code>users</code> según la ruta solicitada, gestionando también el acceso desde bots externos.</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_servicios_de_persistencia">7.2.3. Servicios de Persistencia</h4>
+<h4 id="_servicios_de_persistencia">7.2.4. Servicios de Persistencia</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -1608,7 +1645,7 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_servicios_de_monitorización">7.2.4. Servicios de Monitorización</h4>
+<h4 id="_servicios_de_monitorización">7.2.5. Servicios de Monitorización</h4>
 <div class="paragraph">
 <p>Infraestructura dedicada a asegurar el correcto funcionamiento del sistema bajo carga:</p>
 </div>
@@ -1624,7 +1661,7 @@ when your infrastructure is more complex.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_entornos_de_despliegue">7.2.5. Entornos de Despliegue</h4>
+<h4 id="_entornos_de_despliegue">7.2.6. Entornos de Despliegue</h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 20%;">
@@ -1642,17 +1679,17 @@ when your infrastructure is more complex.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Producción</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="https://yovies4a.duckdns.org" class="bare">https://yovies4a.duckdns.org</a></code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Máquina virtual Azure con Docker Compose. Se actualiza automáticamente con cada release mediante GitHub Actions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Máquina virtual Azure con Docker Compose. Certificado TLS de Let&#8217;s Encrypt. Se actualiza automáticamente con cada release mediante GitHub Actions.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Desarrollo local</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost" class="bare">http://localhost</a></code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Los desarrolladores levantan el entorno completo con <code>docker-compose up --build</code> o ejecutan cada servicio individualmente.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code><a href="http://localhost" class="bare">http://localhost</a></code> o <code><a href="https://localhost" class="bare">https://localhost</a></code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Los desarrolladores levantan el entorno completo con <code>docker-compose up --build</code> o ejecutan cada servicio individualmente. El gateway genera un certificado autofirmado como fallback.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Revisión (PR)</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GitHub Actions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">En cada pull request se ejecutan los tests automáticamente pero no se despliega en infraestructura pública.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">En cada pull request se ejecutan los tests automáticamente (unitarios, integración y E2E con Playwright) pero no se despliega en infraestructura pública.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1787,13 +1824,16 @@ on this list.</p>
 <p><strong>Tablero (Board):</strong> Estructura triangular de tamaño variable (N×N casillas). Las posiciones se representan mediante <strong>coordenadas baricéntricas</strong> (x, y, z) donde <code>x + y + z = N - 1</code>, lo que facilita el cálculo de distancias a los lados.</p>
 </li>
 <li>
-<p><strong>Partida (Game):</strong> Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores y el historial de movimientos.</p>
+<p><strong>Variante (Variant):</strong> Modalidad de juego que modifica las reglas base. El sistema soporta actualmente tres variantes jugables: la <strong>Clásica</strong> (reglas estándar del Juego Y), <strong>Tabu Y</strong> (ciertas celdas quedan bloqueadas) y <strong>Holey Y</strong> (hay celdas con agujeros en el tablero). La selección de variante se realiza antes de configurar la partida mediante el componente <code>VariantSelect</code>.</p>
+</li>
+<li>
+<p><strong>Partida (Game):</strong> Sesión de juego entre dos participantes (usuarios o bots). Contiene el estado del tablero, el turno actual, los jugadores, la variante activa y el historial de movimientos.</p>
 </li>
 <li>
 <p><strong>Movimiento (Move):</strong> Acción de colocar una pieza en una casilla libre. Se serializa en notación <strong>YEN</strong> para el intercambio entre servicios.</p>
 </li>
 <li>
-<p><strong>Notación YEN (Y Exchange Notation):</strong> Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores) para su almacenamiento o transmisión entre <code>webapp</code>, <code>users</code> y <code>gamey</code>.</p>
+<p><strong>Notación YEN (Y Exchange Notation):</strong> Formato de serialización JSON inspirado en FEN (del ajedrez). Representa el estado completo de una partida (tablero, turno, jugadores, variante) para su almacenamiento o transmisión entre <code>webapp</code>, <code>users</code> y <code>gamey</code>.</p>
 </li>
 <li>
 <p><strong>Notación YGN (Y Game Notation):</strong> Formato de registro de la secuencia de movimientos de una partida completa, análogo al PGN del ajedrez.</p>
@@ -1819,6 +1859,9 @@ on this list.</p>
 </li>
 <li>
 <p><strong>Almacenamiento seguro de contraseñas:</strong> Las contraseñas <strong>nunca se almacenan en texto plano</strong>. Se guardan en MongoDB como hashes criptográficos (usando algoritmos como bcrypt), de forma que incluso un acceso no autorizado a la base de datos no exponga las credenciales reales.</p>
+</li>
+<li>
+<p><strong>Cifrado en tránsito (HTTPS):</strong> Toda la comunicación entre el cliente y el servidor pasa por el gateway, que gestiona la terminación TLS. En producción se emplea un certificado válido de <strong>Let&#8217;s Encrypt</strong>; en entorno local se genera un certificado autofirmado como fallback automático.</p>
 </li>
 <li>
 <p><strong>Validación de entradas:</strong> El servicio <code>users</code> valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.</p>
@@ -1855,26 +1898,51 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_estrategias_de_bot">8.4. Estrategias de Bot</h3>
+<h3 id="_variantes_del_juego_y">8.4. Variantes del Juego Y</h3>
 <div class="paragraph">
-<p>El servicio <code>gamey</code> implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad:</p>
+<p>El sistema implementa un mecanismo de variantes que extiende las reglas del Juego Y clásico sin alterar el núcleo del motor. La arquitectura del frontend (<code>webapp</code>) modela cada variante como un componente independiente (<code>GameHvH</code>, <code>GameHvB</code>, <code>GameHoley</code>, <code>GameTabu</code>, etc.) que comparte la interfaz de tablero base y únicamente sobreescribe las reglas específicas (celdas deshabilitadas, agujeros, restricciones). La selección de variante se realiza antes de iniciar la partida mediante el componente <code>VariantSelect</code>, que muestra las variantes disponibles y marca con "Próximamente" aquellas aún no implementadas.</p>
+</div>
+<div class="paragraph">
+<p>Las variantes actualmente jugables son:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Bot aleatorio:</strong> Elige una casilla válida aleatoria. Nivel de dificultad mínimo.</p>
+<p><strong>Clásica:</strong> Reglas estándar del Juego Y. Base principal del sistema, tanto en modalidad humano contra humano como humano contra bot.</p>
 </li>
 <li>
-<p><strong>Bot MCTS (Monte Carlo Tree Search):</strong> Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento posible. Es el nivel de dificultad más alto. Se implementa con un límite de tiempo de respuesta para evitar bloqueos del contenedor.</p>
+<p><strong>Tabu Y:</strong> Ciertas celdas están marcadas como tabú y no pueden utilizarse durante la partida, alterando la estrategia de conexión.</p>
+</li>
+<li>
+<p><strong>Holey Y:</strong> El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad y obligan a buscar rutas alternativas.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>La arquitectura del módulo <code>gamey</code> separa claramente el registro de bots (<code>bot/registry</code>) de la implementación de cada estrategia (<code>bot/</code>), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.</p>
+<p>El servicio <code>gamey</code> recibe la información de la variante activa a través de la notación YEN y aplica las restricciones correspondientes en la validación de movimientos.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_monitorización_y_observabilidad">8.5. Monitorización y Observabilidad</h3>
+<h3 id="_estrategias_de_bot">8.5. Estrategias de Bot</h3>
+<div class="paragraph">
+<p>El servicio <code>gamey</code> implementa un sistema de bot con múltiples estrategias intercambiables, que el usuario puede elegir como nivel de dificultad. La arquitectura del módulo <code>gamey</code> separa el registro de bots (<code>bot/registry</code>) de la implementación de cada estrategia (<code>bot/</code>), facilitando la incorporación de nuevas estrategias sin modificar el núcleo del juego.</p>
+</div>
+<div class="paragraph">
+<p>Las estrategias disponibles son:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Bot aleatorio (<code>random_bot</code>):</strong> Elige una casilla válida aleatoria. Nivel de dificultad mínimo.</p>
+</li>
+<li>
+<p><strong>Bot MCTS (Monte Carlo Tree Search):</strong> Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (<code>mcts_random</code>, <code>mcts_medio</code>, <code>mcts_dificil</code>, <code>mcts_demencial</code>), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se implementa un límite de tiempo (timeout) para garantizar que el servicio siempre responde dentro de un umbral aceptable.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_monitorización_y_observabilidad">8.6. Monitorización y Observabilidad</h3>
 <div class="paragraph">
 <p>Para garantizar la salud del sistema, se ha implementado una infraestructura de observabilidad transversal que cubre todos los entornos:</p>
 </div>
@@ -1893,7 +1961,7 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_calidad_de_código_y_testing">8.6. Calidad de Código y Testing</h3>
+<h3 id="_calidad_de_código_y_testing">8.7. Calidad de Código y Testing</h3>
 <div class="paragraph">
 <p>La calidad del código se garantiza de forma continua y transversal mediante:</p>
 </div>
@@ -1906,7 +1974,10 @@ on this list.</p>
 <p><strong>Tests de integración:</strong> Se prueba la comunicación entre servicios para verificar que los contratos del API se cumplen correctamente.</p>
 </li>
 <li>
-<p><strong>Tests end-to-end:</strong> La <code>webapp</code> incluye tests E2E (<code>npm run test:e2e</code>) que simulan la interacción completa de un usuario con el sistema a través del navegador.</p>
+<p><strong>Tests end-to-end (Playwright + Cucumber):</strong> La <code>webapp</code> incluye tests E2E con estilo BDD usando <strong>Playwright</strong> para la automatización del navegador y <strong>Cucumber</strong> (<code>@cucumber/cucumber</code>) para la definición de escenarios en formato Gherkin. Los tests se ejecutan con <code>npm run test:e2e</code> y están integrados en el pipeline de CI/CD.</p>
+</li>
+<li>
+<p><strong>Tests de rendimiento (Gatling):</strong> El módulo <code>gatling/</code> contiene simulaciones de carga implementadas en Java DSL que cubren tres niveles: <code>SmokeSimulation</code> (verificación básica de disponibilidad), <code>LoadSimulation</code> (carga sostenida de usuarios concurrentes) y <code>StressSimulation</code> (sobrecarga para detectar el punto de ruptura del sistema). Estas pruebas se ejecutan contra el entorno desplegado.</p>
 </li>
 <li>
 <p><strong>Análisis estático (SonarCloud):</strong> Integrado en el pipeline de CI/CD, analiza cada pull request en busca de <strong>code smells</strong>, duplicidades, vulnerabilidades de seguridad y cobertura de tests. Se publica un <strong>Quality Gate</strong> público con el estado del proyecto.</p>
@@ -1915,7 +1986,7 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_proceso_de_desarrollo_y_gestión_github_ecosystem">8.7. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</h3>
+<h3 id="_proceso_de_desarrollo_y_gestión_github_ecosystem">8.8. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</h3>
 <div class="paragraph">
 <p>Para asegurar la calidad del software y la organización del equipo, se utiliza el ecosistema de GitHub de manera integral:</p>
 </div>
@@ -1937,7 +2008,7 @@ on this list.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_tecnologías">8.8. Tecnologías</h3>
+<h3 id="_tecnologías">8.9. Tecnologías</h3>
 <div class="paragraph">
 <p>El sistema adopta un enfoque <strong>polyglot</strong> (varios lenguajes y tecnologías), seleccionando la herramienta más adecuada para cada dominio del problema:</p>
 </div>
@@ -2273,7 +2344,7 @@ There you will find links and examples about ADR.</p>
 <p><strong>Adaptabilidad:</strong> MCTS no requiere una función heurística definida manualmente; aprende qué movimientos son buenos simulando partidas completas aleatoriamente (<strong>rollouts</strong>).</p>
 </li>
 <li>
-<p><strong>Escalabilidad de calidad:</strong> Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad.</p>
+<p><strong>Escalabilidad de calidad:</strong> Cuanto más tiempo de cómputo se le concede, mejores decisiones toma. El límite de tiempo se puede ajustar para controlar el nivel de dificultad, lo que permite implementar múltiples niveles (<code>mcts_medio</code>, <code>mcts_dificil</code>, <code>mcts_demencial</code>) con un único algoritmo base.</p>
 </li>
 <li>
 <p><strong>Idoneidad para el Juego Y:</strong> MCTS ha demostrado ser efectivo en juegos de tablero de alto factor de ramificación como el Juego Y, donde minimax con poda se queda corto.</p>
@@ -2283,6 +2354,150 @@ There you will find links and examples about ADR.</p>
 </li>
 <li>
 <p><strong>Consecuencias:</strong> El algoritmo MCTS es computacionalmente intensivo y puede causar tiempos de respuesta elevados si no se limita. Se implementa un límite de tiempo (timeout) para garantizar que el servicio <code>gamey</code> siempre responde dentro de un umbral aceptable, devolviendo el mejor movimiento encontrado hasta ese momento.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_7_adopción_de_playwright_cucumber_para_tests_e2e">9.7. ADR 7: Adopción de Playwright + Cucumber para tests E2E</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El proyecto requiere tests end-to-end que verifiquen los flujos completos del usuario (registro, login, selección de variante, partida) a través del navegador, tanto en local como en CI/CD.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Cypress:</strong> Framework E2E muy popular, pero con limitaciones en el soporte de múltiples pestañas y en entornos CI sin cabeza.</p>
+</li>
+<li>
+<p><strong>Selenium con JUnit:</strong> Solución clásica, pero más verbosa y con mayor coste de mantenimiento.</p>
+</li>
+<li>
+<p><strong>Playwright sin Cucumber:</strong> Posible, pero pierde la legibilidad BDD de los escenarios en Gherkin.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Playwright</strong> ofrece soporte nativo para múltiples navegadores (Chromium, Firefox, WebKit), ejecución sin cabeza (<strong>headless</strong>) en CI y una API moderna y fiable para automatización web.</p>
+</li>
+<li>
+<p><strong>Cucumber</strong> con Gherkin permite redactar los escenarios en lenguaje natural, haciendo los tests comprensibles para todos los miembros del equipo independientemente de su perfil técnico.</p>
+</li>
+<li>
+<p>La combinación <code>@cucumber/cucumber</code> + Playwright en TypeScript se integra de forma natural con el resto del stack de la <code>webapp</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Los tests E2E requieren que tanto la <code>webapp</code> como el servicio <code>users</code> estén arrancados. El script <code>test:e2e:dev</code> usa <code>concurrently</code> para levantar ambos servicios automáticamente durante el desarrollo. En CI, los navegadores de Playwright deben instalarse previamente con <code>npx playwright install --with-deps</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_8_uso_de_gatling_java_dsl_para_pruebas_de_rendimiento">9.8. ADR 8: Uso de Gatling (Java DSL) para pruebas de rendimiento</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El proyecto requiere pruebas de carga y rendimiento para validar que el sistema se comporta correctamente bajo diferentes niveles de concurrencia, en línea con los requisitos de calidad de la asignatura.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>k6:</strong> Herramienta moderna de pruebas de carga en JavaScript, pero menos integrada con el ecosistema Java/Maven habitual en entornos académicos.</p>
+</li>
+<li>
+<p><strong>JMeter:</strong> Herramienta madura y muy extendida, pero con una interfaz gráfica pesada y configuración más compleja para pipelines de CI.</p>
+</li>
+<li>
+<p><strong>Gatling con Scala DSL:</strong> La forma canónica de usar Gatling, pero Scala supone una curva de aprendizaje adicional para el equipo.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Gatling con Java DSL</strong> permite escribir simulaciones en Java puro, eliminando la necesidad de aprender Scala y facilitando la integración con Maven.</p>
+</li>
+<li>
+<p>Se definen tres niveles de simulación: <code>SmokeSimulation</code> (verificación mínima de disponibilidad), <code>LoadSimulation</code> (carga sostenida para medir tiempos de respuesta bajo uso normal) y <code>StressSimulation</code> (inyección progresiva hasta saturar el sistema).</p>
+</li>
+<li>
+<p>La integración con Maven permite ejecutar las pruebas desde la línea de comandos y en el pipeline de CI/CD sin herramientas externas.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Las pruebas de rendimiento se ejecutan contra el entorno desplegado (producción o staging), por lo que no se incluyen en el pipeline de cada PR para evitar interferencias. Se ejecutan manualmente o en releases planificadas.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_9_terminación_tls_en_el_gateway_con_lets_encrypt">9.9. ADR 9: Terminación TLS en el gateway con Let&#8217;s Encrypt</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El sistema debe servirse por HTTPS en producción para garantizar la seguridad de las comunicaciones. Se necesita una solución que funcione tanto en producción (dominio público) como en local (sin dominio real).</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Certificado gestionado por Azure:</strong> Azure ofrece servicios de certificados gestionados, pero añade dependencia del proveedor cloud y coste adicional.</p>
+</li>
+<li>
+<p><strong>Certificado wildcard manual:</strong> Requiere renovación periódica manual, incompatible con un despliegue automatizado.</p>
+</li>
+<li>
+<p><strong>Solo HTTP:</strong> Inaceptable para un sistema en producción que maneja credenciales de usuario.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Let&#8217;s Encrypt</strong> proporciona certificados TLS gratuitos y renovables automáticamente, sin dependencia del proveedor cloud.</p>
+</li>
+<li>
+<p>El gateway (<code>certbot</code> integrado en la imagen Docker) intenta obtener el certificado en el arranque mediante el modo <code>--standalone</code>. Si falla (entorno local, IP sin DNS público), genera automáticamente un certificado autofirmado con <code>openssl</code> como fallback, garantizando que el sistema arranca en cualquier entorno sin intervención manual.</p>
+</li>
+<li>
+<p>Esta lógica se encapsula en el <code>entrypoint.sh</code> del contenedor <code>gateway</code>, manteniendo la misma imagen Docker para todos los entornos.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> El puerto 80 debe estar libre en el momento del arranque del gateway para que <code>certbot</code> pueda completar el challenge de Let&#8217;s Encrypt. En entorno local, el navegador mostrará una advertencia de seguridad por el certificado autofirmado, lo que es aceptable para desarrollo.</p>
 </li>
 </ul>
 </div>
@@ -2363,7 +2578,7 @@ concrete and measurable.</p>
 <p>Facilidad para interoperar: El intercambio de información entre subsistemas se realiza estrictamente mediante mensajes JSON siguiendo la notación YEN, asegurando que el API sea compatible tanto con la WebApp como con bots externos.</p>
 </li>
 <li>
-<p>Coexistencia: Los microservicios están clasificados en sus contenedores correspondientes y facilmente se levantan y conectan entre sí en el docker-compose.yml.</p>
+<p>Coexistencia: Se implementan test E2E que garantizan el flujo correcto de funcionamiento entre todos los microservicios de la aplicación.</p>
 </li>
 </ul>
 </div>
@@ -2417,10 +2632,10 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas.</p>
+<p>Confidencialidad: Se implementa un sistema de registro apoyado por una base de datos para almacenar a los usuarios, los cuales se autenticarán para acceder a sus cuentas mediante autenticación en dos pasos con un botón que se manda por correo.</p>
 </li>
 <li>
-<p>Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios, así nosotros tampoco contamos explicitamente con estas. <strong>SC5</strong><a id="SC5"></a></p>
+<p>Integridad: Se implementa un grado más de seguiridad cifrando las contraseñas de los usuarios mediante función hash, así nosotros tampoco contamos explicitamente con estas. <strong>SC5</strong><a id="SC5"></a></p>
 </li>
 <li>
 <p>No repudio: Se guarda en la base de datos la interacción del usuario con la aplicación junto con una serie de datos estadísticos, por lo que el correo asociado con la cuenta guarda un registro de actividad.</p>
@@ -2433,7 +2648,7 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a></p>
+<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a> <strong>*SC9</strong><a id="SC9"></a></p>
 </li>
 </ul>
 </div>
@@ -2521,8 +2736,8 @@ concrete and measurable.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC5">SC5</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Confidencialidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se accede con una clave no muy segura, se cifran las contraseñas por lo que se añade un grado de seguridad. Aún así, mediante una barra indicadora, la aplicación te muestra la seguridad de la contraseña para que sepas el grado de seguridad.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC6">SC6</a></p></td>
@@ -2538,6 +2753,16 @@ concrete and measurable.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC8">SC8</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adecuación funcional</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Un usuario quiere jugar contra otro usuario en local. El sistema establece turnos de juego para cada jugador en la misma máquina.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC9">SC9</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mantenibilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tras haber jugado al juego base se tiene un dominio que incita a necesitar más modos de juego. Se implementan entonces nuevos juegos con distintas reglas al menú de modo de juego. Cada archivo es asociado a un modo de juego nuevo.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC10">SC10</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No repudio</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se afirma no haber utilizado nunca la aplicación, en la base de datos aparece el registro asociado a un correo autenticado en dos pasos, se mantiene un registro de uso.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2639,12 +2864,17 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tiempos de carga elevados</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol, lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implementar límites de tiempo de respuesta.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implementar límites de tiempo de respuesta y pruebas de carga en la máquina virtual con la aplicación desplegada.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad en el servicio de usuarios</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real. Además de todo esto, la interfaz bloquea acciones que pueden desencadenar en error, como dejar campos vacíos.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Correcta conexión entre todas las funcionalidades de la aplicación</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El juego no consta solo de un tablero, se implementa ventana de registro, base de datos, usuarios con distintas características que van cambiando estadísticas según sus interacciones, distintos modos de juego y dinámicas con el bot y humano.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Además de unas pruebas exhaustivas con alta cobertura, se implementan tests E2E para comprobar un correcto flujo por todas las características de la aplicación.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2741,6 +2971,14 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>SMTP (Simple Mail Transfer Protocol)</strong></em></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Protocolo estándar de red utilizado para el envío de correos electrónicos desde el microservicio de usuarios hacia los clientes.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>End-to-End (E2E)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Metodología de pruebas de software que simula el flujo completo de un usuario real en una aplicación, desde el inicio hasta el fin, validando la interacción entre frontend, backend, bases de datos y servicios externos.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Pruebas de carga</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Evaluaciones de rendimiento que simulan tráfico real en aplicaciones, sitios web o estructuras para medir su comportamiento, estabilidad y resistencia bajo una carga de trabajo específica</em></p></td>
 </tr>
 </tbody>
 </table>
