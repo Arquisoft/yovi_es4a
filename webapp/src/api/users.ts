@@ -197,3 +197,19 @@ export async function changePassword(
 
   return parseJson<{ message: string }>(response);
 }
+
+export async function changeUserEmail(
+  username: string,
+  newEmail: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/email`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: newEmail }),
+    }
+  );
+
+  return parseJson<{ message: string }>(response);
+}

@@ -15,10 +15,9 @@ import {
   UserOutlined,
   LockOutlined,
 } from "@ant-design/icons";
-import { getUserSession } from "../utils/session";
 import { resolveAvatarSrc } from "../utils/avatar";
-import { getUserProfile, getUserStats } from "../api/users";
 import ChangePasswordModal from "./ChangePasswordModal";
+import ChangeEmailModal from "./ChangeEmailModal";
 
 const { Text, Title } = Typography;
 
@@ -35,13 +34,12 @@ type Props = {
 };
 
 export default function ProfileModal({ open, onClose, onLogout }: Props) {
-  // TEMPORAL - quitar cuando haya BD
+  // TEMPORAL
   const [session, setSession] = useState({
-  username: "testuser",
-  profilePicture: "seniora.png",
-  password: "1234",
-});
-  // const session = getUserSession(); // ← restaurar después
+    username: "testuser",
+    profilePicture: "seniora.png",
+    password: "1234",
+  });
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,7 +48,9 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
     gamesWon: number;
     winRate: number;
   } | null>(null);
+
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false); // ← añadido
 
   useEffect(() => {
     if (!open || !session) return;
@@ -59,25 +59,15 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
     setProfile(null);
     setStats(null);
 
-    // TEMPORAL - quitar cuando haya BD
     const profilePromise = Promise.resolve({
       username: "testuser",
       email: "test@example.com",
       profilePicture: "seniora.png",
     });
+
     const statsPromise = Promise.resolve({
       stats: { gamesPlayed: 10, gamesWon: 6, winRate: 60 },
     });
-    // FIN TEMPORAL
-
-    // ─── Restaurar cuando haya BD ────────────────────────────────────────────
-    // const profilePromise = getUserProfile(session.username).catch(() => ({
-    //   username: session.username,
-    //   email: "—",
-    //   profilePicture: session.profilePicture,
-    // }));
-    // const statsPromise = getUserStats(session.username).catch(() => null);
-    // ─────────────────────────────────────────────────────────────────────────
 
     Promise.all([profilePromise, statsPromise]).then(([prof, st]) => {
       setProfile(prof);
@@ -117,7 +107,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
           <Skeleton active avatar paragraph={{ rows: 4 }} />
         ) : (
           <Flex vertical gap={20}>
-            {/* Avatar y nombre */}
+            {/* Avatar */}
             <Flex vertical align="center" gap={12} style={{ paddingTop: 8 }}>
               <Avatar
                 size={88}
@@ -135,25 +125,14 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
             <Divider style={{ margin: "0" }} />
 
-            {/* Datos de cuenta */}
+            {/* Datos */}
             <Flex vertical gap={14}>
               {/* Usuario */}
               <Flex align="center" gap={12}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    background: "#f0f7ff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <UserOutlined style={{ color: "#28BBF5", fontSize: 16 }} />
+                <div style={box("#f0f7ff")}>
+                  <UserOutlined style={{ color: "#28BBF5" }} />
                 </div>
-                <Flex vertical gap={0} style={{ flex: 1 }}>
+                <Flex vertical>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     Nombre de usuario
                   </Text>
@@ -161,47 +140,35 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
                 </Flex>
               </Flex>
 
-              {/* Correo */}
+              {/* Email */}
               <Flex align="center" gap={12}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    background: "#fff7e6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <MailOutlined style={{ color: "#FF7B00", fontSize: 16 }} />
+                <div style={box("#fff7e6")}>
+                  <MailOutlined style={{ color: "#FF7B00" }} />
                 </div>
-                <Flex vertical gap={0} style={{ flex: 1 }}>
+                <Flex vertical style={{ flex: 1 }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     Correo electrónico
                   </Text>
-                  <Text strong>{profile?.email ?? "—"}</Text>
+                  <Flex align="center" gap={8}>
+                    <Text strong>{profile?.email ?? "—"}</Text>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => setChangeEmailOpen(true)}
+                    >
+                      Cambiar
+                    </Button>
+                  </Flex>
                 </Flex>
               </Flex>
 
-              {/* Contraseña */}
+              {/* Password */}
               <Flex align="center" gap={12}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    background: "#f9f0ff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <LockOutlined style={{ color: "#722ed1", fontSize: 16 }} />
+                <div style={box("#f9f0ff")}>
+                  <LockOutlined style={{ color: "#722ed1" }} />
                 </div>
-                <Flex vertical gap={0} style={{ flex: 1 }}>
+                <Flex vertical style={{ flex: 1 }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     Contraseña
                   </Text>
@@ -218,45 +185,9 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
                       Cambiar
                     </Button>
                   </Flex>
-                  <Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>
-                    Por seguridad, la contraseña no se muestra en texto plano.
-                  </Text>
                 </Flex>
               </Flex>
             </Flex>
-
-            {/* Estadísticas */}
-            {stats && (
-              <>
-                <Divider style={{ margin: "0" }} />
-                <Flex justify="space-around" align="center">
-                  <Flex vertical align="center" gap={2}>
-                    <Text strong style={{ fontSize: 20, color: "#28BBF5" }}>
-                      {stats.gamesPlayed}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      Partidas
-                    </Text>
-                  </Flex>
-                  <Flex vertical align="center" gap={2}>
-                    <Text strong style={{ fontSize: 20, color: "#2FBF7C" }}>
-                      {stats.gamesWon}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      Victorias
-                    </Text>
-                  </Flex>
-                  <Flex vertical align="center" gap={2}>
-                    <Text strong style={{ fontSize: 20, color: "#FF7B00" }}>
-                      {stats.winRate}%
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      % Victoria
-                    </Text>
-                  </Flex>
-                </Flex>
-              </>
-            )}
 
             <Divider style={{ margin: "0" }} />
 
@@ -271,7 +202,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
         )}
       </Modal>
 
-      {/* Modal cambiar contraseña */}
+      {/* Password modal */}
       <ChangePasswordModal
         open={changePasswordOpen}
         onClose={() => setChangePasswordOpen(false)}
@@ -284,10 +215,33 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
             ...prev,
             password: newPassword,
           }));
+        }}
+      />
 
-          console.log("Contraseña actualizada a:", newPassword);
+      {/* Email modal */}
+      <ChangeEmailModal
+        open={changeEmailOpen}
+        currentEmail={profile?.email ?? ""}
+        onClose={() => setChangeEmailOpen(false)}
+        onConfirm={async (newEmail) => {
+          setProfile((prev) =>
+            prev ? { ...prev, email: newEmail } : prev
+          );
         }}
       />
     </>
   );
+}
+
+// helper para estilos repetidos
+function box(bg: string) {
+  return {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    background: bg,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
 }
