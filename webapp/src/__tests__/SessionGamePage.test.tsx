@@ -9,6 +9,12 @@ const confirmMock = vi.fn();
 const useSessionGameMock = vi.fn();
 const parseYenToCellsMock = vi.fn();
 
+vi.mock("lottie-react", () => ({
+  default: () => (
+    <div data-testid="lottie-animation-mock">Animación Lottie</div>
+  ),
+}));
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<any>("react-router-dom");
   return {
@@ -200,7 +206,9 @@ describe("SessionGamePage", () => {
       expect(onHintMock).toHaveBeenCalledWith("g1");
     });
 
-    expect(await screen.findByRole("button", { name: "Pista usada" })).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: "Pista usada" }),
+    ).toBeDisabled();
   });
 
   it("limpia la pista al pulsar una celda", async () => {
@@ -335,7 +343,9 @@ describe("SessionGamePage", () => {
 
     expect(screen.getByText("¡Felicidades!")).toBeInTheDocument();
     expect(screen.getByText("Has ganado.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Volver a Home" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Volver a Home" }),
+    ).toBeInTheDocument();
   });
 
   it("muestra el botón de guardar partida para invitados y lo dispara con el payload correcto", async () => {
@@ -361,7 +371,9 @@ describe("SessionGamePage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Guardar esta partida" }));
+    await user.click(
+      screen.getByRole("button", { name: "Guardar esta partida" }),
+    );
 
     expect(onGuestSaveRequestedMock).toHaveBeenCalledWith({
       gameId: "g77",

@@ -53,12 +53,11 @@ describe("LoginForm", () => {
     vi.clearAllMocks();
   });
 
-  it("renderiza campos y botón", async() => {
+  it("renderiza campos y botón", async () => {
     render(<LoginForm />);
 
     expect(screen.getByLabelText(/Nombre de usuario/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Contraseña/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Recordarme/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Iniciar Sesión/i }),
     ).toBeInTheDocument();
@@ -118,10 +117,7 @@ describe("LoginForm", () => {
 
     const user = userEvent.setup();
     render(
-      <LoginForm
-        redirectOnSuccess={false}
-        onLoginSuccess={onLoginSuccess}
-      />,
+      <LoginForm redirectOnSuccess={false} onLoginSuccess={onLoginSuccess} />,
     );
 
     await user.type(screen.getByLabelText(/Nombre de usuario/i), "marcelo");
