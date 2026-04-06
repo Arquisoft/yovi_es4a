@@ -103,8 +103,7 @@ export default function GameHvB() {
         botMove={(gameId) => hvbBotMove(gameId)}
         onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          if (!winner)
-            return;
+          if (!winner) return;
 
           const payload: RecordUserGameRequest = {
             gameId,
@@ -121,6 +120,7 @@ export default function GameHvB() {
         onGameAbandoned={async ({ gameId, totalMoves }) => {
           await registerAbandonedGame(gameId, totalMoves);
         }}
+        celebrateWinner={(winner) => winner === "human"} // se celebra solo cuando gana el humano
         canOfferGuestSave={canOfferGuestSave}
         onGuestSaveRequested={handleGuestSaveRequested}
         guestSaveLoading={savingPendingGame}
@@ -128,7 +128,7 @@ export default function GameHvB() {
           title: "Juego Y — Human vs Bot",
           subtitle: `Tamaño: ${size} · Bot: ${participantLabels.bot} · Empieza: ${getStarterLabel(
             hvb_starter,
-            participantLabels.bot
+            participantLabels.bot,
           )}`,
           abandonOkText: "Sí, abandonar",
           getResultTitle: (winner) =>
