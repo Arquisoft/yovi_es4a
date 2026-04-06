@@ -12,10 +12,10 @@ import static io.gatling.javaapi.http.HttpDsl.*;
  * StressSimulation — escalones 5→10→20→40→60 usuarios, 30 s cada uno.
  *
  * Azure (por defecto):
- * mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ *   mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
  *
  * Local:
- * YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+ *   YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.StressSimulation
  */
 public class StressSimulation extends Simulation {
 
@@ -23,7 +23,6 @@ public class StressSimulation extends Simulation {
         .baseUrl(Config.BASE_URL)
         .acceptHeader("application/json")
         .contentTypeHeader("application/json");
-
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")

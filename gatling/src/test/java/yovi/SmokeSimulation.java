@@ -14,8 +14,12 @@ import java.time.Duration;
  * Azure (por defecto):
  *   mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
  *
- * Local:
- *   YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+ * Local (con nginx en localhost):
+ *   YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+ *
+ * Local (directo a gamey, sin nginx):
+ *   YOVI_BASE_URL=http://localhost:4000 YOVI_USERS_URL=http://localhost:8001 \
+ *   mvn gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
  */
 public class SmokeSimulation extends Simulation {
 

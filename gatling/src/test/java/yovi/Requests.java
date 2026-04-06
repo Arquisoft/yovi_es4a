@@ -115,21 +115,27 @@ public class Requests {
             .check(status().in(200, 204, 404))
     );
 
-  // ── Bot externo ───────────────────────────────────────────────────────────
-
+    // ── Bot externo ───────────────────────────────────────────────────────────
+    // YEN válido para tablero 5x5 vacío:
+    //   size=5, turn=0, players=["B","R"], layout="./../.../..../....."
+    //   (1+2+3+4+5 = 15 celdas, separadas por '/')
     public static final ChainBuilder playExternal = exec(
         http("GET /play (bot externo)")
-            // JSON corregido: incluye players, formato layout con '/' y '.' y bot_id=random_bot
-            .get("/play?position=%7B%22size%22%3A5%2C%22turn%22%3A0%2C%22players%22%3A%5B%22B%22%2C%22R%22%5D%2C%22layout%22%3A%22.%2F..%2F...%2F....%2F.....%22%7D&bot_id=random_bot&api_version=v1")
+            .get("/play")
+            .queryParam("position", "{\"size\":5,\"turn\":0,\"players\":[\"B\",\"R\"],\"layout\":\"./../.../..../.....\"}")
+            .queryParam("bot_id", "random_bot")
+            .queryParam("api_version", "v1")
             .check(status().is(200))
             .check(jsonPath("$.coords").exists())
     );
 
-    // ── Ranking (público) ─────────────────────────────────────────────────────
-
+    // ── Ranking (público) — usa USERS_BASE_URL ────────────────────────────────
+    // En producción/nginx se accede como /api/users/ranking.
+    // Gatling usa una URL absoluta para poder apuntar al users service
+    // directamente cuando se corre en local sin nginx.
     public static final ChainBuilder getRanking = exec(
         http("GET /ranking")
-            .get("/api/users/ranking")
+            .get(Config.USERS_BASE_URL + "/ranking")
             .queryParam("sortBy", "winRate")
             .queryParam("limit", "20")
             .check(status().is(200))

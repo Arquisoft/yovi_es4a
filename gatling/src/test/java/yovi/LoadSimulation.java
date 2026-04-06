@@ -12,14 +12,14 @@ import static io.gatling.javaapi.http.HttpDsl.*;
  * LoadSimulation — carga realista con usuarios invitados.
  *
  * Azure (por defecto):
- * mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+ *   mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
  *
- * Local:
- * YOVI_BASE_URL=https://localhost mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+ * Local (con nginx en localhost):
+ *   YOVI_BASE_URL=http://localhost mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
  *
  * Con más carga:
- * YOVI_RAMP_USERS=30 YOVI_RAMP_SECS=30 YOVI_STEADY_SECS=60 \
- * mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+ *   YOVI_RAMP_USERS=30 YOVI_RAMP_SECS=30 YOVI_STEADY_SECS=60 \
+ *   mvn gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
  */
 public class LoadSimulation extends Simulation {
 
