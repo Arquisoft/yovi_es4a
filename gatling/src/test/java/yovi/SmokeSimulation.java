@@ -46,7 +46,12 @@ public class SmokeSimulation extends Simulation {
         .exec(Requests.deleteHvBGame)
         .pause(Duration.ofMillis(300))
 
-        // 5. Partida HvH completa: crear → leer → mover → borrar
+        // 5. Partida HvH completa: configurar → crear → leer → mover → borrar
+        // FIX: putConfigForHvH es obligatorio antes de createHvHGame porque
+        // el endpoint POST /api/v1/hvh/games lee la config guardada del cliente,
+        // no acepta parámetros en el body.
+        .exec(Requests.putConfigForHvH)
+        .pause(Duration.ofMillis(200))
         .exec(Requests.createHvHGame)
         .pause(Duration.ofMillis(300))
         .exec(Requests.getHvHGame)

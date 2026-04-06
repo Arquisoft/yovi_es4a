@@ -16,6 +16,9 @@ public class StressSimulation extends Simulation {
         .contentTypeHeader("application/json");
 
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
+    // FIX heredado de Requests.java: postHvBMove ahora envía {"cell_id":0}
+    // en lugar de {"x":0,"y":0,"z":0}, por lo que los movimientos ya no fallan
+    // con 422 en cada iteración de estrés.
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")
         .exec(session -> session.set("userId", "stress-" + session.userId()))
@@ -29,6 +32,9 @@ public class StressSimulation extends Simulation {
         .exec(Requests.deleteHvBGame);
 
     // ── Escenario ligero: meta + ranking + bot externo ────────────────────────
+    // FIX heredado de Requests.java: getRanking ahora usa ruta relativa
+    // /api/users/ranking en lugar de URL absoluta, por lo que la petición
+    // llega correctamente a través del nginx de la VM.
 
     ScenarioBuilder lightScenario = scenario("Stress — consultas ligeras")
         .exec(session -> session.set("userId", "light-" + session.userId()))

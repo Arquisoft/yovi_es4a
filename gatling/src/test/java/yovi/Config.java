@@ -6,10 +6,11 @@ public class Config {
     public static final String BASE_URL =
         System.getenv().getOrDefault("YOVI_BASE_URL", "https://yovies4a.duckdns.org");
 
-    // URL base para llamadas al users service.
-    // Al añadir "/api/users" por defecto, las peticiones pasan correctamente por Nginx.
-    public static final String USERS_BASE_URL =
-        System.getenv().getOrDefault("YOVI_USERS_URL", BASE_URL + "/api/users");
+    // FIX: ruta relativa — Gatling la concatena sobre BASE_URL automáticamente.
+    // Antes era BASE_URL + "/api/users" (URL absoluta), lo que hacía que
+    // getRanking ignorase la baseUrl configurada en el protocolo HTTP.
+    public static final String USERS_BASE_PATH =
+        System.getenv().getOrDefault("YOVI_USERS_PATH", "/api/users");
 
     // ── Credenciales de prueba ────────────────────────────────────────────────
     public static final String USERNAME  = "gatling_user1";

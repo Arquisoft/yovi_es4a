@@ -61,7 +61,12 @@ public class LoadSimulation extends Simulation {
         .exec(Requests.getMeta)
         .pause(Duration.ofMillis(500))
         .repeat(2).on(
-            exec(Requests.createHvHGame)
+            // FIX: PUT /api/v1/config obligatorio antes de crear partida HvH.
+            // El endpoint POST /api/v1/hvh/games no acepta body y lee la config
+            // almacenada para el X-Client-Id del usuario virtual.
+            exec(Requests.putConfigForHvH)
+            .pause(Duration.ofMillis(200))
+            .exec(Requests.createHvHGame)
             .pause(Duration.ofMillis(500))
             .exec(Requests.getHvHGame)
             .pause(Duration.ofMillis(500))
