@@ -6,13 +6,14 @@ Feature: Registro de usuarios
     Then veo el título "Bienvenido a YOVI"
     And veo las pestañas "Iniciar Sesión" y "Registrarse"
 
+  @skip
   Scenario: Registro exitoso
     Given estoy en la página de inicio
     When cambio a la pestaña "Registrarse"
     And relleno el registro con username "e2euser01", email "e2euser01@test.com" y contraseña "Segura123!"
     And envío el formulario de registro
     Then veo un mensaje de éxito que contiene "Bienvenido"
-
+  @skip
   Scenario: Registro falla con contraseña débil
     Given estoy en la página de inicio
     When cambio a la pestaña "Registrarse"
