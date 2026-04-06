@@ -240,4 +240,18 @@ describe("AppHeader", () => {
         expect(args.title).toBe("Ayuda — Juego Y");
         expect(args.okText).toBe("Cerrar");
     });
+
+    it("al pulsar 'Ver Perfil' con sesión no navega (abre modal)", async () => {
+        getUserSessionMock.mockReturnValue({ username: "marcelo" });
+
+        const user = userEvent.setup();
+        render(<AppHeader title="YOVI" />);
+
+        await user.click(screen.getByRole("button", { name: "Ver Perfil" }));
+
+        expect(navigateMock).not.toHaveBeenCalled();
+
+        expect(confirmMock).not.toHaveBeenCalled();
+    });
+
 });

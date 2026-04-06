@@ -16,7 +16,6 @@ import { useState } from "react";
 import HelpModal from "./HelpModal";
 import ProfileModal from "./ProfileModal";
 
-
 const { Title, Text } = Typography;
 
 type AppHeaderProps = {
@@ -28,6 +27,8 @@ export default function AppHeader({ title }: AppHeaderProps) {
   const navigate = useNavigate();
   const session = getUserSession();
   const [profileOpen, setProfileOpen] = useState(false);
+
+  /* ---------------------- Actions ---------------------- */
 
   function handleLogout() {
     modal.confirm({
@@ -51,20 +52,16 @@ export default function AppHeader({ title }: AppHeaderProps) {
       icon: <QuestionCircleOutlined />,
     });
   }
-/*
+
   function handleProfile() {
-    if (!session) {
-      navigate("/", { replace: true });
-      return;
-    }
+    if (!session) return;
     setProfileOpen(true);
   }
-*/
 
   function handleProfileMenuClick(key: string) {
     switch (key) {
       case "profile":
-        //setProfileOpen(true);
+        handleProfile();
         break;
       case "history":
         navigate("/historial");
@@ -127,7 +124,9 @@ export default function AppHeader({ title }: AppHeaderProps) {
       danger: true,
     },
   ];
- 
+
+  /* ---------------------- Render ---------------------- */
+
   return (
     <>
       <Card>
@@ -135,7 +134,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
           <Title level={2} style={{ margin: 0 }}>
             {title}
           </Title>
- 
+
           <Space size={12}>
             {session ? (
               <Space size={8}>
@@ -144,7 +143,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
             ) : (
               <Text type="secondary">Invitado</Text>
             )}
- 
+
             <Dropdown
               menu={{
                 items: profileMenuItems,
@@ -160,14 +159,11 @@ export default function AppHeader({ title }: AppHeaderProps) {
                   session ? (
                     <Avatar
                       size={32}
-                      src={resolveAvatarSrc(session?.profilePicture)}
+                      src={resolveAvatarSrc(session.profilePicture)}
                       icon={<UserOutlined />}
                     />
                   ) : (
-                    <Avatar
-                      size={32}
-                      icon={<UserOutlined />}
-                    />
+                    <Avatar size={32} icon={<UserOutlined />} />
                   )
                 }
               />
@@ -175,7 +171,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
           </Space>
         </Flex>
       </Card>
- 
+
       <ProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
