@@ -106,13 +106,13 @@ describe("VerifyEmail Component", () => {
     // Primero, confirmamos que AÚN NO ha navegado
     expect(mockNavigate).not.toHaveBeenCalled();
 
-    // Avanzamos el tiempo virtual restando los 10ms que usamos arriba (3000ms - 10ms = 2990ms)
+    // Avanzamos el tiempo virtual restando los 10ms que usamos arriba (6000ms - 10ms = 5990ms)
     act(() => {
-      vi.advanceTimersByTime(2990);
+      vi.advanceTimersByTime(5990);
     });
 
-    // Ahora SÍ debió haber navegado a /home
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    // Tras validación por motivo de seguridad redirige al login para probar credenciales
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 
   it("debe manejar errores de la API si el token es inválido o expiró", async () => {

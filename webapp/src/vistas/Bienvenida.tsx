@@ -28,7 +28,7 @@ export default function Bienvenida() {
       <Flex
         justify="center"
         align="center"
-        style={{ padding: 20, minHeight: "100vh", minWidth: "200vw" }}
+        style={{ padding: 20, minHeight: "90%", minWidth: "90%" }}
       >
         <div style={{ width: "min(1000px, 100%)" }}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>

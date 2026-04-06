@@ -35,6 +35,7 @@ public class Requests {
             .post("/api/v1/hvb/games")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
+            // "starter" es el campo correcto según CreateHvbGameRequest en Rust
             .body(StringBody("{\"size\":5,\"starter\":\"human\",\"bot_id\":\"random_bot\"}"))
             .check(status().is(200))
             .check(jsonPath("$.game_id").saveAs("hvbGameId"))
@@ -48,12 +49,15 @@ public class Requests {
             .check(jsonPath("$.game_id").exists())
     );
 
+    // FIX: el backend (CellMoveRequest en Rust) espera {"cell_id": N}.
+    // Antes se enviaban coordenadas {"x":0,"y":0,"z":0} que el deserializador
+    // rechazaba con 422 Unprocessable Entity en todos los movimientos.
     public static final ChainBuilder postHvBMove = exec(
         http("POST /api/v1/hvb/games/{id}/moves")
             .post("/api/v1/hvb/games/#{hvbGameId}/moves")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{\"x\":0,\"y\":0,\"z\":0}"))
+            .body(StringBody("{\"cell_id\":0}"))
             .check(status().in(200, 409, 422))
     );
 
@@ -62,7 +66,7 @@ public class Requests {
             .post("/api/v1/hvb/games/#{hvbGameId}/bot-move")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{}"))
+            // FIX: eliminado body vacío "{}" — el endpoint no requiere body
             .check(status().in(200, 409))
     );
 
@@ -82,12 +86,30 @@ public class Requests {
 
     // ── HvH ───────────────────────────────────────────────────────────────────
 
+    // FIX: el endpoint POST /api/v1/hvh/games NO acepta body — lee la config
+    // guardada previamente para ese cliente (X-Client-Id).
+    // Hay que llamar a PUT /api/v1/config antes de crear cada partida HvH.
+    // Este chain debe ejecutarse justo antes de createHvHGame en los escenarios.
+    public static final ChainBuilder putConfigForHvH = exec(
+        http("PUT /api/v1/config (HvH setup)")
+            .put("/api/v1/config")
+            .header("Content-Type", "application/json")
+            .header("X-Client-Id", "gatling-#{userId}")
+            .body(StringBody(
+                "{\"size\":5," +
+                "\"hvb_starter\":\"human\"," +
+                "\"hvh_starter\":\"player0\"," +
+                "\"bot_id\":\"random_bot\"}"
+            ))
+            .check(status().is(200))
+    );
+
     public static final ChainBuilder createHvHGame = exec(
         http("POST /api/v1/hvh/games")
             .post("/api/v1/hvh/games")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{\"size\":5,\"starter\":\"player0\"}"))
+            // FIX: sin body — el servidor usa la config guardada por putConfigForHvH
             .check(status().is(200))
             .check(jsonPath("$.game_id").saveAs("hvhGameId"))
     );
@@ -99,12 +121,14 @@ public class Requests {
             .check(status().is(200))
     );
 
+    // FIX: el backend (CellMoveRequest en Rust) espera {"cell_id": N}.
+    // Mismo problema que postHvBMove — coordenadas xyz no son el formato correcto.
     public static final ChainBuilder postHvHMove = exec(
         http("POST /api/v1/hvh/games/{id}/moves")
             .post("/api/v1/hvh/games/#{hvhGameId}/moves")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{\"x\":0,\"y\":0,\"z\":0}"))
+            .body(StringBody("{\"cell_id\":0}"))
             .check(status().in(200, 409, 422))
     );
 
@@ -115,21 +139,27 @@ public class Requests {
             .check(status().in(200, 204, 404))
     );
 
-  // ── Bot externo ───────────────────────────────────────────────────────────
+    // ── Bot externo ───────────────────────────────────────────────────────────
 
     public static final ChainBuilder playExternal = exec(
         http("GET /play (bot externo)")
-            // JSON corregido: incluye players, formato layout con '/' y '.' y bot_id=random_bot
-            .get("/play?position=%7B%22size%22%3A5%2C%22turn%22%3A0%2C%22players%22%3A%5B%22B%22%2C%22R%22%5D%2C%22layout%22%3A%22.%2F..%2F...%2F....%2F.....%22%7D&bot_id=random_bot&api_version=v1")
+            .get("/play")
+            .queryParam("position", "{\"size\":5,\"turn\":0,\"players\":[\"B\",\"R\"],\"layout\":\"./../.../..../.....\"}") 
+            .queryParam("bot_id", "random_bot")
+            .queryParam("api_version", "v1")
             .check(status().is(200))
             .check(jsonPath("$.coords").exists())
     );
 
     // ── Ranking (público) ─────────────────────────────────────────────────────
 
+    // FIX: usar ruta relativa con USERS_BASE_PATH en lugar de URL absoluta.
+    // Antes: Config.USERS_BASE_URL + "/ranking" era una URL completa (https://...)
+    // que Gatling usaba tal cual, ignorando la baseUrl del protocolo HTTP y
+    // generando peticiones fuera del contexto del test.
     public static final ChainBuilder getRanking = exec(
-        http("GET /ranking")
-            .get("/api/users/ranking")
+        http("GET /api/users/ranking")
+            .get(Config.USERS_BASE_PATH + "/ranking")
             .queryParam("sortBy", "winRate")
             .queryParam("limit", "20")
             .check(status().is(200))
