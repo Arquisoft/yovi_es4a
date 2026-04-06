@@ -46,7 +46,7 @@ endif::arc42help[]
 
 La arquitectura de despliegue se basa en la contenedorización de los servicios mediante **Docker Compose**, permitiendo un entorno aislado y reproducible tanto en desarrollo como en producción. El sistema se despliega en una **máquina virtual de Microsoft Azure** accesible públicamente a través del dominio `yovies4a.duckdns.org`.
 
-image::User Interaction Pipeline-2026-03-07-174719.png["Diagrama correspondiente al Despliegue", width=50%]
+image::depview.png["Diagrama correspondiente al Despliegue", width=50%]
 
 Motivación::
 Se ha elegido Azure por su capacidad de integración con flujos de CI/CD a través de **GitHub Actions** y por la robustez de su infraestructura cloud. El uso de Docker garantiza que el software se comporte de la misma manera en el servidor que en los entornos de desarrollo local, evitando el clásico "en mi máquina funciona". El dominio público `yovies4a.duckdns.org` se gestiona mediante DuckDNS, un servicio de DNS dinámico que apunta a la IP pública de la máquina virtual de Azure.
