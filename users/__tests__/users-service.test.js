@@ -593,6 +593,12 @@ describe('GET /ranking', () => {
 
     expect(names).not.toContain('NoGames')
   })
+
+  it('ignora campos sortBy no válidos y usa winRate por defecto', async () => {
+    const res = await api.get('/ranking?sortBy=INVENTADO')
+    expect(res.status).toBe(200)
+    expect(res.body.sortBy).toBe('winRate')
+  })
 })
 
 describe('GET /users/:username/stats', () => {
@@ -643,5 +649,43 @@ describe('POST /users/:username/games - Validaciones', () => {
     
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/'boardSize' debe ser un número positivo/i)
+  })
+  
+  it('devuelve 400 si falta el gameId', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'gameId' es obligatorio/i)
+  })
+
+  it('devuelve 400 si el gameId supera los 100 caracteres', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'a'.repeat(101), mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/no puede exceder los 100 caracteres/i)
+  })
+
+  it('devuelve 400 si el resultado no es válido', async () => {
+    const res = await api
+      .post('/users/StatsUser/games')
+      .send({ gameId: 'g-invalido', mode: 'classic_hvb', result: 'empate', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/'result' debe ser/i)
+  })
+
+  it('devuelve 404 si se intenta registrar partida a un usuario que no existe', async () => {
+    const res = await api
+      .post('/users/UserFantasma123/games')
+      .send({ gameId: 'g-fantasma', mode: 'classic_hvb', result: 'won', boardSize: 10, totalMoves: 5 })
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('CORS OPTIONS', () => {
+  it('devuelve 204 para peticiones OPTIONS', async () => {
+    const res = await api.options('/login')
+    expect(res.status).toBe(204)
   })
 })
