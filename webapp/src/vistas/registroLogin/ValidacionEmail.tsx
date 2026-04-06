@@ -78,9 +78,9 @@ export default function VerifyEmail() {
               <Button
                 type="primary"
                 key="home"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/home")}
               >
-                Volver al Inicio de Sesión
+                Ir al Home ahora
               </Button>,
             ]}
           />
