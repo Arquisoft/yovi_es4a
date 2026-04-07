@@ -14,6 +14,8 @@ import UserHistory from "./vistas/UserHistory";
 import ProtectedRoute from "./utils/ProtectedRoute";
 import VariantSelect from "./vistas/VariantSelect";
 import type { Variant } from "./vistas/VariantSelect";
+import MultiplayerLobby from "./vistas/MultiplayerLobby";
+import GameMultiplayer from "./vistas/GameMultiplayer";
 
 // ─── Variantes de juego ──────────────────────────────────────────────────────
 import GameFortuneDice from "./vistas/GameFortuneDice";
@@ -78,6 +80,10 @@ function App() {
         <Route path="/game-hex" element={<GameHex />} />
         <Route path="/game-why-not" element={<GameHex />} />
         <Route path="/game-pastel" element={<GameHex />} />
+
+        {/* Multijugador por Sockets */}
+        <Route path="/multiplayer" element={<MultiplayerLobby />} />
+        <Route path="/multiplayer/:code" element={<GameMultiplayer />} />
 
         {/* Usuarios */}
         <Route path="/registro" element={<RegisterForm />} />

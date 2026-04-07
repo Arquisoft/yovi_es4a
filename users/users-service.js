@@ -621,6 +621,23 @@ app.get('/users/:username/stats', async (req, res) => {
   }
 });
 
-app.listen(port, () => { console.log(`User service running on port ${port}`); });
+const http = require('http');
+const { Server } = require("socket.io");
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Importar y configurar manejador de websockets
+require('./socket-handler')(io);
+
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(port, () => { console.log(`User service running on port ${port} with WebSockets`); });
+}
 
 module.exports = app;
