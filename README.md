@@ -10,8 +10,7 @@ A continuación te presentamos la estructura de la aplicación.
 ## Registro / Inicio de sesión
 - Para poder acceder a la aplicación puedes iniciar sesión si ya tienes una cuenta creada, o registrarte con un correo y verificar tu cuenta para poder guardar la información de las partidas jugadas.
 
-<img width="49%" height="auto" src="./images/InicioSesion.png">
-<img width="49%" height="auto" src="./images/Registro.png">
+<img width="49%" height="auto" src="./images/InicioSesion.png"> <img width="49%" height="auto" src="./images/Registro.png">
 
 - También puedes acceder sin cuenta, entrando como invitado.
   - Ten en cuenta que en este caso, no se guardarán tus partidas ni estadísticas!
@@ -20,8 +19,7 @@ A continuación te presentamos la estructura de la aplicación.
 - La mecánica del juego es simple, solo tienes q conseguir unir los tres laterales del tablero con un mismo camino, evitando que el jugador contrario te bloquee o lo consiga antes.
 - Aquí te dejamos varios ejemplos, donde el azul gana:
 
-<img width="25%" height="auto" src="./images/Juego1.svg">
-<img width="25%" height="auto" src="./images/Juego2.svg">
+<img width="25%" height="auto" src="./images/Juego1.svg"> <img width="25%" height="auto" src="./images/Juego2.svg">
 
 
 ## Modos de juego
@@ -41,8 +39,7 @@ Te enfrentas a un bot para poder jugar. También puedes escoger la dificultad:
 - Difícil: El bot calcula miles de partidas posibles. Ya cuesta más vencerle
 - Demencial: El bot hace simulaciones masivas de jugadas. Se lo recomendamos a los más valientes!
 
-<img width="49%" height="auto" src="./images/HvBDificultad.png">
-<img width="49%" height="auto" src="./images/HvBClasico.png">
+<img width="49%" height="auto" src="./images/HvBDificultad.png"> <img width="49%" height="auto" src="./images/HvBClasico.png">
 
 #### Human vs Human
 Sigue siendo el modo clásico de juego, pero aquí te puedes enfrentar a algún amigo que se atreva a retarte.
@@ -54,8 +51,7 @@ Aquí aumenta un poco la dificultad del juego.
 
 Según se van colocando casillas, se bloquean las adyacentes durante el siguiente turno. De esta forma, se complica el hacer un camino más rápido, ya que pueden bloquearte casillas que necesites.
 
-<img width="49%" height="auto" src="./images/HvHTabu1.png">
-<img width="49%" height="auto" src="./images/HvHTabu2.png">
+<img width="49%" height="auto" src="./images/HvHTabu1.png"> <img width="49%" height="auto" src="./images/HvHTabu2.png">
 
 ### Holey Y
 Al inicio de la partida se bloquean aleatoriamente varias casillas del tablero, por lo que no podrás pasar por ellas. 
@@ -68,8 +64,7 @@ Todos los usuarios registrados podar acceder al apartado de "Mi Historial".
 
 Aquí podréis encontrar las estadísticas de vuestras partidas, además de el registro de todos los juegos con la información correspondiente.
 
-<img width="49%" height="auto" src="./images/Historial1.png">
-<img width="49%" height="auto" src="./images/Historial2.png">
+<img width="49%" height="auto" src="./images/Historial1.png"> <img width="49%" height="auto" src="./images/Historial2.png">
 
 ## Ranking
 Tenemos disponible un ranking con todos los usuarios registrados, de forma que puedas ver quienes son los mejores jugadores e intentar batir sus puntuaciones.
