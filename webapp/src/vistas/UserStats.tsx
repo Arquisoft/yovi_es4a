@@ -115,7 +115,7 @@ export default function UserStatsSummary({
           <Card style={{ minWidth: 240 }}>
             <Statistic
               prefix={<FireOutlined />}
-              title="Racha de Partidas Panadas"
+              title="Racha de Partidas Ganadas"
               value={stats.currentWinStreak}
               valueStyle={{ color: "#FF7B00" }}
             />

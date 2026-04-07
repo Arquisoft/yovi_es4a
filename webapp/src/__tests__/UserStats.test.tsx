@@ -37,7 +37,7 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 4")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 3")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 3")).toBeInTheDocument();
-    expect(screen.getByText("Racha de Partidas Panadas: 2")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 2")).toBeInTheDocument();
   });
 
   it("renderiza un título personalizado", () => {
@@ -60,7 +60,7 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 5")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 2")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 1")).toBeInTheDocument();
-    expect(screen.getByText("Racha de Partidas Panadas: 4")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 4")).toBeInTheDocument();
   });
 
   it("soporta valores a cero", () => {
@@ -81,6 +81,6 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 0")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 0")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 0")).toBeInTheDocument();
-    expect(screen.getByText("Racha de Partidas Panadas: 0")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 0")).toBeInTheDocument();
   });
 });
