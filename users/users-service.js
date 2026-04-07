@@ -508,12 +508,14 @@ app.patch('/users/:username/stats', async (req, res) => {
  *         'gamesWon' (partidas ganadas), 'gamesPlayed' (cantidad de partidas)
  */
 app.get('/ranking', async (req, res) => {
-  const { sortBy = 'winRate', page = 1, pageSize = 20 } = req.query;
+  const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
+  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
+  const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const sizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+  const sizeNum = Math.min(100, Math.max(1, parseInt(pageSize || limit, 10) || 20));
 
   try {
-    const users = await User.find({}, { 
+    const users = await User.find({ 'stats.gamesPlayed': { $gt: 0 } }, { 
       username: 1, 
       profilePicture: 1, 
       stats: 1, 
@@ -559,7 +561,7 @@ app.get('/ranking', async (req, res) => {
       ...calculateStats(u, false)
     }));
 
-    ranked.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
+    ranked.sort((a, b) => (b[sortField] || 0) - (a[sortField] || 0));
 
     const weeklyData = users.map(u => ({
       username: u.username,
@@ -578,7 +580,7 @@ app.get('/ranking', async (req, res) => {
     const paginated = ranked.slice(startIndex, startIndex + sizeNum);
 
     res.json({ 
-      sortBy, 
+      sortBy: sortField, 
       podium,
       pagination: {
         totalItems,
