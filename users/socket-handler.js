@@ -68,11 +68,11 @@ module.exports = (io) => {
     });
 
     // Host comunica que la partida ha sido creada con gamey
-    socket.on('startGame', ({ code, gameId, hostClientId }) => {
+    socket.on('startGame', ({ code, gameId, hostClientId, extra }) => {
       const room = rooms[code];
       if (room && room.host === socket.id) {
         room.gameId = gameId;
-        io.to(code).emit('gameStarted', { gameId, hostClientId, config: room.config });
+        io.to(code).emit('gameStarted', { gameId, hostClientId, config: room.config, extra });
       }
     });
 
