@@ -1,4 +1,10 @@
 import { Card, Col, Row, Statistic } from "antd";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  StopOutlined,
+  FireOutlined,
+} from "@ant-design/icons";
 import type { UserStats } from "../api/users";
 
 type UserStatsSummaryProps = {
@@ -29,6 +35,7 @@ export default function UserStatsSummary({
           <Col xs={24} md={8}>
             <Card>
               <Statistic
+                prefix={<CheckCircleOutlined />}
                 title="Partidas Ganadas"
                 value={stats.gamesWon}
                 valueStyle={{ color: "#389e0d" }}
@@ -39,6 +46,7 @@ export default function UserStatsSummary({
           <Col xs={24} md={8}>
             <Card>
               <Statistic
+                prefix={<CloseCircleOutlined />}
                 title="Partidas Perdidas"
                 value={stats.gamesLost}
                 valueStyle={{ color: "#cf1322" }}
@@ -49,6 +57,7 @@ export default function UserStatsSummary({
           <Col xs={24} md={8}>
             <Card>
               <Statistic
+                prefix={<StopOutlined />}
                 title="Partidas Abandonadas"
                 value={stats.gamesAbandoned}
                 valueStyle={{ color: "#595959" }}
@@ -103,6 +112,14 @@ export default function UserStatsSummary({
             </div>
           </div>
 
+          <Card style={{ minWidth: 240 }}>
+            <Statistic
+              prefix={<FireOutlined />}
+              title="Racha de Partidas Panadas"
+              value={stats.currentWinStreak}
+              valueStyle={{ color: "#FF7B00" }}
+            />
+          </Card>
         </div>
       </div>
     </Card>

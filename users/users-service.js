@@ -44,11 +44,12 @@ app.use(express.json());
 // ───────────────────────────────────────────────────────────────────
 // HELPERS
 function buildUserStats(stats = {}) {
-  const gamesPlayed    = stats.gamesPlayed    || 0;
-  const gamesWon       = stats.gamesWon       || 0;
-  const gamesLost      = stats.gamesLost      || 0;
-  const gamesAbandoned = stats.gamesAbandoned || 0;
-  const totalMoves     = stats.totalMoves     || 0;
+  const gamesPlayed      = stats.gamesPlayed      || 0;
+  const gamesWon         = stats.gamesWon         || 0;
+  const gamesLost        = stats.gamesLost        || 0;
+  const gamesAbandoned   = stats.gamesAbandoned   || 0;
+  const totalMoves       = stats.totalMoves       || 0;
+  const currentWinStreak = stats.currentWinStreak || 0;
 
   return {
     gamesPlayed,
@@ -56,6 +57,7 @@ function buildUserStats(stats = {}) {
     gamesLost,
     gamesAbandoned,
     totalMoves,
+    currentWinStreak,
     winRate: gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0,
   };
 }
@@ -342,23 +344,33 @@ app.post("/users/:username/games", async (req, res) => {
       });
     }
 
+    const currentWinStreak = user.stats?.currentWinStreak || 0;
+
     const inc = {
       "stats.gamesPlayed": 1,
       "stats.totalMoves": game.totalMoves,
     };
 
+    let nextWinStreak = 0;
+
     if (game.result === "won") {
       inc["stats.gamesWon"] = 1;
+      nextWinStreak = currentWinStreak + 1;
     } else if (game.result === "lost") {
       inc["stats.gamesLost"] = 1;
+      nextWinStreak = 0;
     } else if (game.result === "abandoned") {
       inc["stats.gamesAbandoned"] = 1;
+      nextWinStreak = 0;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       {
         $inc: inc,
+        $set: {
+          "stats.currentWinStreak": nextWinStreak,
+        },
         $push: {
           gameHistory: {
             $each: [game],
@@ -472,19 +484,38 @@ app.patch('/users/:username/stats', async (req, res) => {
   }
 
   try {
+    const existingUser = await User.findOne(
+      { username },
+      { username: 1, stats: 1, _id: 1 }
+    );
+
+    if (!existingUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const currentWinStreak = existingUser.stats?.currentWinStreak || 0;
+
     const inc = {
       "stats.gamesPlayed": 1,
       "stats.totalMoves": totalMoves,
     };
+
+    let nextWinStreak = 0;
+
     if (won) {
       inc['stats.gamesWon']   = 1;
+      nextWinStreak = currentWinStreak + 1;
     } else {
       inc['stats.gamesLost'] = 1;
+      nextWinStreak = 0;
     }
 
-    const user = await User.findOneAndUpdate(
-      { username },
-      { $inc: inc },
+    const user = await User.findByIdAndUpdate(
+      existingUser._id,
+      {
+        $inc: inc,
+        $set: {
+          "stats.currentWinStreak": nextWinStreak,
+        },
+      },
       { new: true }
     );
 
