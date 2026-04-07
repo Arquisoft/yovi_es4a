@@ -20,8 +20,8 @@ A continuación te presentamos la estructura de la aplicación.
 - La mecánica del juego es simple, solo tienes q conseguir unir los tres laterales del tablero con un mismo camino, evitando que el jugador contrario te bloquee o lo consiga antes.
 - Aquí te dejamos varios ejemplos, donde el azul gana:
 
-<img width="49%" height="auto" src="./images/Juego1.svg">
-<img width="49%" height="auto" src="./images/Juego2.svg">
+<img width="25%" height="auto" src="./images/Juego1.svg">
+<img width="25%" height="auto" src="./images/Juego2.svg">
 
 
 ## Modos de juego
