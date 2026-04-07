@@ -66,4 +66,10 @@ endif::arc42help[]
 | **SMTP (Simple Mail Transfer Protocol)**
 | Protocolo estándar de red utilizado para el envío de correos electrónicos desde el microservicio de usuarios hacia los clientes.
 
+| **End-to-End (E2E)**
+| Metodología de pruebas de software que simula el flujo completo de un usuario real en una aplicación, desde el inicio hasta el fin, validando la interacción entre frontend, backend, bases de datos y servicios externos. 
+
+| **Pruebas de carga**
+| Evaluaciones de rendimiento que simulan tráfico real en aplicaciones, sitios web o estructuras para medir su comportamiento, estabilidad y resistencia bajo una carga de trabajo específica
+
 |===

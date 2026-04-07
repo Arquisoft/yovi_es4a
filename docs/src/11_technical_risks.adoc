@@ -41,9 +41,14 @@ En esta sección se describen los riesgos encontrados en el desarrollo del proye
 
 |Tiempos de carga elevados
 |El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol, lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.
-|Implementar límites de tiempo de respuesta.
+|Implementar límites de tiempo de respuesta y pruebas de carga en la máquina virtual con la aplicación desplegada.
 
 |Seguridad en el servicio de usuarios
 |Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.
 |Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real. Además de todo esto, la interfaz bloquea acciones que pueden desencadenar en error, como dejar campos vacíos.
+
+|Correcta conexión entre todas las funcionalidades de la aplicación
+|El juego no consta solo de un tablero, se implementa ventana de registro, base de datos, usuarios con distintas características que van cambiando estadísticas según sus interacciones, distintos modos de juego y dinámicas con el bot y humano.
+|Además de unas pruebas exhaustivas con alta cobertura, se implementan tests E2E para comprobar un correcto flujo por todas las características de la aplicación. 
+
 |===
