@@ -92,6 +92,20 @@ module.exports = (io) => {
       socket.leave(code);
     });
 
+    // Chat de texto
+    socket.on('sendMessage', ({ code, text }) => {
+      const room = rooms[code];
+      if (room) {
+        // Determinamos el rol del emisor
+        const sender = socket.id === room.host ? 'player0' : 'player1';
+        io.to(code).emit('chatMessage', { 
+          text, 
+          sender, 
+          timestamp: Date.now() 
+        });
+      }
+    });
+
     // Desconexión (cerrar navegador, pérdida de red)
     socket.on('disconnect', () => {
       for (const [code, room] of Object.entries(rooms)) {

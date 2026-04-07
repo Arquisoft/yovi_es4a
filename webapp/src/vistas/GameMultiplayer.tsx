@@ -1,6 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { Card, Flex, Spin, Typography, message, Button } from "antd";
+import { Card, Flex, Spin, Typography, message, Button, Input, List, Badge, Avatar, Drawer, Space } from "antd";
+import { SendOutlined, MessageOutlined } from "@ant-design/icons";
 import { socket } from "../api/socket";
 import {
   createHvhGame,
@@ -14,12 +15,19 @@ import {
 import Board from "../game/Board";
 import GameShell from "../game/GameShell";
 import { parseYenToCells } from "../game/yen";
+import { getAdjacentCells, generateHoles } from "../game/variants";
 import AppHeader from "./AppHeader";
 import Lottie from "lottie-react";
 import confettiAnimation from "../assets/Confetti.json";
 import gameOverAnimation from "../assets/GameOver.json";
 
 const { Title, Text } = Typography;
+
+interface ChatMessage {
+  text: string;
+  sender: "player0" | "player1";
+  timestamp: number;
+}
 
 export default function GameMultiplayer() {
   const { code } = useParams();
@@ -38,8 +46,24 @@ export default function GameMultiplayer() {
   const [animationFinished, setAnimationFinished] = useState(false);
   const [hostClientId, setHostClientId] = useState<string | null>(null);
 
-  // El host es player0, el guest es player1
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Variants state
+  const [disabledCells, setDisabledCells] = useState<Set<number>>(new Set());
+  const [holes, setHoles] = useState<Set<number>>(new Set());
+
   const myPlayer = role === "host" ? "player0" : "player1";
+  const myColor = myPlayer === "player0" ? "#1677ff" : "#ff7b00";
+
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Efecto principal: Inicializar partida
   useEffect(() => {
@@ -49,24 +73,37 @@ export default function GameMultiplayer() {
 
     async function initHost() {
       try {
-        await putConfig({ size: config!.size, hvb_starter: "human", hvh_starter: "player0", bot_id: null });
-        // Importante: usamos el mode configurado en el lobby
-        // Como el API de gamey espera llamadas en las rutas correctas para modos normales, vamos a usar createHvhGame
-        // que internamente llama a /api/v1/hvh/games e ignora el mode, espera, createHvhGame no admite mode?
-        // En api/gamey.ts, createHvhGame solo manda size y hvh_starter. Y asume classic_hvh o el back lo gestiona.
-        // Wait, los modos nuevos los añadimos en la ruta?
-        // Actualmente el proyecto tiene GamePolyY, GameTabu que llaman a createHvhGame, el servidor Rust usa el modo de la config o /api/v1/hvh/games.
-        // Asumiremos que el servidor acepta parámetros extra, o se guardó la confiugración correcta.
-        // Vamos a mandar solo createHvhGame estándar.
+        await putConfig({ 
+          size: config!.size, 
+          hvb_starter: "human", 
+          hvh_starter: "player0", 
+          bot_id: null 
+        });
         
         const r = await createHvhGame({ size: config!.size, hvh_starter: "player0" });
         if (!isMounted) return;
 
+        let extra: any = {};
+        if (config?.mode === "holey_hvh") {
+          const totalCells = (config.size * (config.size + 1)) / 2;
+          const generatedHoles = generateHoles(totalCells);
+          const holesArray = Array.from(generatedHoles);
+          setHoles(generatedHoles);
+          setDisabledCells(generatedHoles);
+          extra.holes = holesArray;
+        }
+
         setGameId(r.game_id);
         setYen(r.yen);
         setNextTurn(r.status.state === "ongoing" ? r.status.next! : null);
+        
         const myClientId = getOrCreateClientId();
-        socket.emit("startGame", { code, gameId: r.game_id, hostClientId: myClientId });
+        socket.emit("startGame", { 
+          code, 
+          gameId: r.game_id, 
+          hostClientId: myClientId,
+          extra
+        });
         setLoading(false);
       } catch (err: any) {
         if (isMounted) setError(err.message || String(err));
@@ -77,7 +114,6 @@ export default function GameMultiplayer() {
     if (role === "host" && config) {
       initHost();
     } else if (role === "guest") {
-      // El host nos avisará del gameId por socket
       setLoading(true);
     } else {
       navigate("/multiplayer");
@@ -90,18 +126,29 @@ export default function GameMultiplayer() {
 
   // Suscribirse a eventos de socket
   useEffect(() => {
-    function onGameStarted({ gameId, hostClientId: hId }: { gameId: string, hostClientId: string }) {
+    function onGameStarted({ gameId, hostClientId: hId, extra }: any) {
       if (role === "guest") {
         setGameId(gameId);
         setHostClientId(hId);
+        if (extra?.holes) {
+          const holesSet = new Set<number>(extra.holes);
+          setHoles(holesSet);
+          setDisabledCells(holesSet);
+        }
         refreshGameState(gameId, hId);
       }
     }
 
-    function onEnemyMove() {
-      // El rival ha movido, refrescamos el estado desde el backend
+    function onEnemyMove({ cellId }: { cellId: number }) {
       if (gameId) {
-        refreshGameState(gameId, hostClientId ?? undefined);
+        refreshGameState(gameId, hostClientId ?? undefined, cellId);
+      }
+    }
+
+    function onChatMessage(msg: ChatMessage) {
+      setMessages((prev) => [...prev, msg]);
+      if (!isChatOpen) {
+        setHasNewMessages(true);
       }
     }
     
@@ -112,22 +159,36 @@ export default function GameMultiplayer() {
 
     socket.on("gameStarted", onGameStarted);
     socket.on("enemyMove", onEnemyMove);
+    socket.on("chatMessage", onChatMessage);
     socket.on("playerDisconnected", onPlayerDisconnected);
 
     return () => {
       socket.off("gameStarted", onGameStarted);
       socket.off("enemyMove", onEnemyMove);
+      socket.off("chatMessage", onChatMessage);
       socket.off("playerDisconnected", onPlayerDisconnected);
     };
-  }, [gameId, role, hostClientId]);
+  }, [gameId, role, hostClientId, config]);
 
-  async function refreshGameState(gId: string, overrideId?: string) {
+  async function refreshGameState(gId: string, overrideId?: string, lastMoveCellId?: number) {
     try {
       const r = await getHvhGame(gId, overrideId || (role === "guest" && hostClientId ? hostClientId : undefined));
       setYen(r.yen);
+      
+      // Lógica Tabu: Si ha movido el rival, bloqueamos adyacencias para nosotros
+      if (config?.mode === "tabu_hvh" && lastMoveCellId !== undefined) {
+         setDisabledCells(getAdjacentCells(lastMoveCellId, r.yen.size));
+      } else if (config?.mode === "holey_hvh") {
+         // Mantener agujeros
+         setDisabledCells(holes);
+      } else if (config?.mode === "classic_hvh") {
+         setDisabledCells(new Set());
+      }
+
       if (r.status.state === "finished") {
         setWinner(r.status.winner ?? null);
         setNextTurn(null);
+        setDisabledCells(new Set());
       } else {
         setNextTurn(r.status.next ?? null);
       }
@@ -138,7 +199,7 @@ export default function GameMultiplayer() {
   }
 
   async function handleCellClick(cellId: number) {
-    if (nextTurn !== myPlayer || loading || winner || !!error) return;
+    if (nextTurn !== myPlayer || loading || winner || !!error || disabledCells.has(cellId)) return;
 
     setLoading(true);
     try {
@@ -146,9 +207,15 @@ export default function GameMultiplayer() {
       const r = await hvhMove(gameId!, cellId, isGuest && hostClientId ? hostClientId : undefined);
       setYen(r.yen);
       
+      // Al mover nosotros, en Tabu se limpian nuestras celdas bloqueadas (hasta el próximo turno rival)
+      if (config?.mode === "tabu_hvh") {
+          setDisabledCells(new Set());
+      }
+
       if (r.status.state === "finished") {
         setWinner(r.status.winner ?? null);
         setNextTurn(null);
+        setDisabledCells(new Set());
       } else {
         setNextTurn(r.status.next ?? null);
       }
@@ -159,6 +226,12 @@ export default function GameMultiplayer() {
       message.error(e.message);
       setLoading(false);
     }
+  }
+
+  function handleSendChat() {
+    if (!chatInput.trim()) return;
+    socket.emit("sendMessage", { code, text: chatInput.trim() });
+    setChatInput("");
   }
 
   function handleAbandon() {
@@ -173,90 +246,186 @@ export default function GameMultiplayer() {
     return yen ? parseYenToCells(yen) : [];
   }, [yen]);
 
-  const activeTurnColor = nextTurn === "player0" ? "#28BBF5" : "#FF7B00";
-  const myColor = myPlayer === "player0" ? "#28BBF5" : "#FF7B00";
+  const activeTurnColor = nextTurn === "player0" ? "#1677ff" : "#ff7b00";
 
   return (
     <>
-      <AppHeader title={`Partida Multijugador (${code})`} />
+      <AppHeader title={`Multipayer: ${config?.mode?.split('_')[0].toUpperCase() || 'YOVI'}`} />
       
       <div style={{ maxWidth: 800, margin: "20px auto", padding: "0 15px" }}>
-        {error ? (
-          <Card>
-            <Flex vertical align="center" gap={16}>
-              <Title level={4} type="danger">Error en la partida</Title>
-              <Text>{error}</Text>
-              <Button onClick={() => navigate("/multiplayer")}>Volver</Button>
-            </Flex>
-          </Card>
-        ) : !gameId ? (
-          <Card>
-            <Flex vertical align="center" gap={16} style={{ padding: 40 }}>
-              <Spin size="large" />
-              <Title level={4}>Esperando al anfitrión...</Title>
-              <Text type="secondary">La partida está siendo generada en el servidor</Text>
-            </Flex>
-          </Card>
-        ) : (
-          <GameShell
-            title="Multijugador Online"
-            subtitle={`Sala: ${code} · Eres: ${myPlayer === "player0" ? "Azul" : "Naranja"}`}
-            loading={loading}
-            error={error}
-            hasBoard={!!yen}
-            emptyText="Error de conexión al tablero"
-            onAbandon={handleAbandon}
-            abandonDisabled={false}
-            turnIndicator={
-              <Card size="small" style={{ borderLeft: `6px solid ${activeTurnColor}` }}>
-                  <Text strong>
-                    {winner ? "Partida terminada" : (
-                       nextTurn === myPlayer ? "¡Es tu turno!" : "Turno del oponente..."
-                    )}
-                  </Text>
+        <Flex gap={20} vertical align="center">
+          
+          {/* TABLERO Y CONTROLES */}
+          <div style={{ width: "100%" }}>
+            {error ? (
+              <Card>
+                <Flex vertical align="center" gap={16}>
+                  <Title level={4} type="danger">Error</Title>
+                  <Text>{error}</Text>
+                  <Button onClick={() => navigate("/multiplayer")}>Volver</Button>
+                </Flex>
               </Card>
-            }
-            board={
-              <Card
-                style={{
-                  width: "100%",
-                  overflow: "hidden",
-                  border: !winner && nextTurn === myPlayer ? `2px solid ${myColor}` : "none",
-                  boxShadow: !winner && nextTurn === myPlayer ? `0 0 0 3px ${myColor}22` : "none",
-                }}
-                bodyStyle={{ padding: "clamp(8px, 2vw, 16px)" }}
-              >
-                <Board
-                  size={yen?.size ?? config?.size ?? 11}
-                  cells={cells}
-                  disabled={loading || !!winner || nextTurn !== myPlayer}
-                  onCellClick={handleCellClick}
-                />
+            ) : !gameId ? (
+              <Card>
+                <Flex vertical align="center" gap={16} style={{ padding: 40 }}>
+                  <Spin size="large" />
+                  <Title level={4}>Iniciando partida...</Title>
+                  <Text type="secondary">Conectando con el motor de juego</Text>
+                </Flex>
               </Card>
-            }
-            result={
-              winner ? (
-                <Card>
-                  {winner === myPlayer && !animationFinished && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                      <Lottie animationData={confettiAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
-                    </div>
-                  )}
-                  {winner !== myPlayer && winner !== "draw" && !animationFinished && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                       <Lottie animationData={gameOverAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
-                    </div>
-                  )}
-                  <Flex vertical align="center" gap={16}>
-                    <Title level={4}>{winner === myPlayer ? "¡Has ganado!" : "Has perdido"}</Title>
-                    <Button type="primary" onClick={() => navigate("/multiplayer")}>Jugar otra partida</Button>
-                  </Flex>
-                </Card>
-              ) : null
-            }
-          />
-        )}
+            ) : (
+              <GameShell
+                title={config?.mode === "classic_hvh" ? "Clásico Online" : (config?.mode?.split('_')[0].toUpperCase() ?? "YOVI")}
+                subtitle={`Sala: ${code ?? ""} · Eres: ${myPlayer === "player0" ? "Azul" : "Naranja"}`}
+                loading={loading}
+                error={error}
+                hasBoard={!!yen}
+                emptyText="Error de conexión"
+                onAbandon={handleAbandon}
+                abandonDisabled={false}
+                turnIndicator={
+                  <Card size="small" style={{ borderLeft: `6px solid ${activeTurnColor}`, marginBottom: 12 }}>
+                      <Flex justify="space-between" align="center">
+                        <Text strong>
+                          {winner ? "Partida terminada" : (
+                             nextTurn === myPlayer ? "🟢 ¡TU TURNO!" : "⌛ Esperando rival..."
+                          )}
+                        </Text>
+                        <Space>
+                          {config?.mode === "tabu_hvh" && nextTurn === myPlayer && disabledCells.size > 0 && (
+                            <Badge status="error" text={`${disabledCells.size} bloqueadas`} />
+                          )}
+                          <Button 
+                            type="text" 
+                            icon={<Badge dot={hasNewMessages}><MessageOutlined /></Badge>} 
+                            onClick={() => { setIsChatOpen(true); setHasNewMessages(false); }}
+                          >
+                            Chat
+                          </Button>
+                        </Space>
+                      </Flex>
+                  </Card>
+                }
+                board={
+                  <Card
+                    style={{
+                      width: "100%",
+                      overflow: "hidden",
+                      border: !winner && nextTurn === myPlayer ? `3px solid ${myColor}` : "1px solid #f0f0f0",
+                      transition: "all 0.3s ease"
+                    }}
+                    bodyStyle={{ padding: 12 }}
+                  >
+                    <Board
+                      size={yen?.size ?? config?.size ?? 11}
+                      cells={cells}
+                      disabled={loading || !!winner || nextTurn !== myPlayer}
+                      onCellClick={handleCellClick}
+                      disabledCells={disabledCells}
+                    />
+                  </Card>
+                }
+                result={
+                  winner ? (
+                    <Card style={{ marginTop: 20, textAlign: "center" }}>
+                      {winner === myPlayer && !animationFinished && (
+                        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                          <Lottie animationData={confettiAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
+                        </div>
+                      )}
+                      {winner !== myPlayer && !animationFinished && (
+                        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                           <Lottie animationData={gameOverAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
+                        </div>
+                      )}
+                      <Title level={3}>{winner === myPlayer ? "👑 ¡HAS GANADO!" : "💀 HAS PERDIDO"}</Title>
+                      <Button type="primary" size="large" onClick={() => navigate("/multiplayer")} style={{ marginTop: 10 }}>
+                        Volver al Lobby
+                      </Button>
+                    </Card>
+                  ) : null
+                }
+              />
+            )}
+          </div>
+        </Flex>
       </div>
+
+      {/* CHAT DESPLEGABLE (DRAWER) */}
+      <import { Drawer } from "antd"; // Wait, I need to add Drawer to imports above or use it as component
+      <Drawer
+        title={<span><MessageOutlined /> Chat de Sala</span>}
+        placement="right"
+        onClose={() => setIsChatOpen(false)}
+        open={isChatOpen}
+        width={350}
+        styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
+      >
+        <div style={{ flex: 1, overflowY: "auto", padding: "15px 20px", background: "#fafafa" }}>
+          <List
+            dataSource={messages}
+            renderItem={(item) => (
+              <List.Item style={{ border: "none", padding: "4px 0", justifyContent: item.sender === myPlayer ? "flex-end" : "flex-start" }}>
+                <Flex vertical align={item.sender === myPlayer ? "end" : "start"}>
+                   <Flex align="center" gap={8} style={{ flexDirection: item.sender === myPlayer ? "row-reverse" : "row" }}>
+                      <Avatar 
+                        size="small" 
+                        style={{ backgroundColor: item.sender === "player0" ? "#1677ff" : "#ff7b00" }}
+                      >
+                        {item.sender === "player0" ? "P0" : "P1"}
+                      </Avatar>
+                      <div style={{ 
+                        background: item.sender === myPlayer ? "#1677ff" : "white", 
+                        color: item.sender === myPlayer ? "white" : "inherit",
+                        padding: "6px 12px", 
+                        borderRadius: 12,
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                        maxWidth: 240,
+                        wordWrap: 'break-word'
+                      }}>
+                        {item.text}
+                      </div>
+                   </Flex>
+                   <Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>
+                     {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                   </Text>
+                </Flex>
+              </List.Item>
+            )}
+          />
+          <div ref={chatEndRef} />
+        </div>
+        <div style={{ padding: 15, borderTop: "1px solid #f0f0f0" }}>
+          <Flex gap={10}>
+            <Input 
+              placeholder="Escribe un mensaje..." 
+              value={chatInput} 
+              onChange={e => setChatInput(e.target.value)} 
+              onPressEnter={handleSendChat}
+              autoFocus
+            />
+            <Button type="primary" icon={<SendOutlined />} onClick={handleSendChat} />
+          </Flex>
+        </div>
+      </Drawer>
+
+      {/* Botón flotante para móvil o acceso rápido */}
+      <Button
+        type="primary"
+        shape="circle"
+        icon={<Badge dot={hasNewMessages}><MessageOutlined /></Badge>}
+        size="large"
+        style={{
+          position: 'fixed',
+          bottom: 30,
+          right: 30,
+          zIndex: 1000,
+          width: 60,
+          height: 60,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}
+        onClick={() => { setIsChatOpen(true); setHasNewMessages(false); }}
+      />
     </>
   );
 }
