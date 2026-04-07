@@ -14,8 +14,7 @@ function randomId() {
 }
 
 const AVATARS = [
-  'seniora.png','joven.png','abuela.png','abuelo.png',
-  'nino.png','adulta.png','adulto.png','señorita.png',
+  'seniora.png','disco.png','rubia.png','elvis.png',
 ];
 
 const MODES = ['classic_hvb','classic_hvh','tabu_hvh','holey_hvh','fortune_dice_hvh','poly_hvh'];
@@ -31,8 +30,8 @@ const USERS = Array.from({ length: 50 }).map((_, i) => ({
 
 // Algunos usuarios hardcodeados estrella para asegurar que el podio se gane con claridad
 USERS.push(
-  { username: 'CampeonSupremo', avatar: 'abuelo.png', recent: 0.9, total: 100, winRatio: 0.95 },
-  { username: 'LuchadorDiario', avatar: 'joven.png', recent: 1.0, total: 150, winRatio: 0.50 },
+  { username: 'CampeonSupremo', avatar: 'elvis.png', recent: 0.9, total: 100, winRatio: 0.95 },
+  { username: 'LuchadorDiario', avatar: 'disco.png', recent: 1.0, total: 150, winRatio: 0.50 },
   { username: 'ElEstratega', avatar: 'seniora.png', recent: 0.8, total: 80, winRatio: 0.85 }
 );
 
