@@ -508,34 +508,86 @@ app.patch('/users/:username/stats', async (req, res) => {
  *         'gamesWon' (partidas ganadas), 'gamesPlayed' (cantidad de partidas)
  */
 app.get('/ranking', async (req, res) => {
-  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed'];
-  const sortBy = validSortFields.includes(req.query.sortBy) ? req.query.sortBy : 'winRate';
-  const limit  = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+  const { sortBy = 'winRate', page = 1, pageSize = 20 } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const sizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
 
   try {
-    const users = await User.find(
-      { 'stats.gamesPlayed': { $gt: 0 } },
-      { username: 1, profilePicture: 1, stats: 1, _id: 0 }
-    );
-
-    const ranked = users.map(u => {
-      const stats = buildUserStats(u.stats);
-
-      return {
-        username:       u.username,
-        profilePicture: u.profilePicture,
-        gamesPlayed:    stats.gamesPlayed,
-        gamesWon:       stats.gamesWon,
-        gamesLost:      stats.gamesLost,
-        gamesAbandoned: stats.gamesAbandoned,
-        totalMoves:     stats.totalMoves,
-        winRate:        stats.winRate,
-      };
+    const users = await User.find({}, { 
+      username: 1, 
+      profilePicture: 1, 
+      stats: 1, 
+      gameHistory: 1
     });
 
-    ranked.sort((a, b) => b[sortBy] - a[sortBy]);
+    const calculateStats = (user, isWeekly = false) => {
+      let stats = user.stats || {};
+      
+      if (isWeekly) {
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        const weeklyGames = (user.gameHistory || []).filter(g => new Date(g.finishedAt) >= lastWeek);
+        
+        const won = weeklyGames.filter(g => g.result === 'won').length;
+        const lost = weeklyGames.filter(g => g.result === 'lost').length;
+        const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
+        const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
-    res.json({ sortBy, ranking: ranked.slice(0, limit) });
+        return {
+          gamesPlayed: weeklyGames.length,
+          gamesWon: won,
+          gamesLost: lost,
+          gamesAbandoned: abandoned,
+          totalMoves: totalMoves,
+          winRate: weeklyGames.length > 0 ? Math.round((won / weeklyGames.length) * 100) : 0
+        };
+      }
+      
+      return {
+        gamesPlayed: stats.gamesPlayed || 0,
+        gamesWon: stats.gamesWon || 0,
+        gamesLost: stats.gamesLost || 0,
+        gamesAbandoned: stats.gamesAbandoned || 0,
+        totalMoves: stats.totalMoves || 0,
+        winRate: (stats.gamesPlayed > 0) ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0
+      };
+    };
+
+    let ranked = users.map(u => ({
+      username: u.username,
+      profilePicture: u.profilePicture,
+      ...calculateStats(u, false)
+    }));
+
+    ranked.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
+
+    const weeklyData = users.map(u => ({
+      username: u.username,
+      profilePicture: u.profilePicture,
+      stats: calculateStats(u, true)
+    })).filter(u => u.stats.gamesPlayed > 0);
+
+    const podium = {
+      mostGames: [...weeklyData].sort((a, b) => b.stats.gamesPlayed - a.stats.gamesPlayed)[0] || null,
+      mostWins: [...weeklyData].sort((a, b) => b.stats.gamesWon - a.stats.gamesWon)[0] || null,
+      bestRate: [...weeklyData].sort((a, b) => (b.stats.winRate - a.stats.winRate) || (b.stats.gamesPlayed - a.stats.gamesPlayed))[0] || null
+    };
+
+    const totalItems = ranked.length;
+    const startIndex = (pageNum - 1) * sizeNum;
+    const paginated = ranked.slice(startIndex, startIndex + sizeNum);
+
+    res.json({ 
+      sortBy, 
+      podium,
+      pagination: {
+        totalItems,
+        page: pageNum,
+        pageSize: sizeNum,
+        totalPages: Math.ceil(totalItems / sizeNum)
+      },
+      ranking: paginated
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
