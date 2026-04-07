@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
@@ -248,6 +248,7 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.gamesLost).toBe(0)
     expect(res.body.stats.gamesAbandoned).toBe(0)
     expect(res.body.stats.totalMoves).toBe(10)
+    expect(res.body.stats.currentWinStreak).toBe(1)
     expect(res.body.stats.winRate).toBe(100)
     expect(res.body.savedGame.gameId).toBe('game-1')
     expect(res.body.savedGame.mode).toBe('classic_hvb')
@@ -287,6 +288,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.savedGame.mode).toBe('fortune_dice_hvh')
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 
   it('acepta modos nuevos como poly_hvh', async () => {
@@ -305,6 +307,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.savedGame.mode).toBe('poly_hvh')
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 
   it('devuelve 400 si el body no es válido', async () => {
@@ -336,6 +339,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 })
 
@@ -390,6 +394,7 @@ describe('GET /users/:username/history', () => {
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('HistoryUser')
     expect(res.body.stats.gamesPlayed).toBe(4)
+    expect(res.body.stats.currentWinStreak).toBe(0)
     expect(res.body.pagination.page).toBe(1)
     expect(res.body.pagination.pageSize).toBe(2)
     expect(res.body.pagination.totalGames).toBe(4)
@@ -459,6 +464,7 @@ describe('GET /users/:username/history', () => {
     expect(res.status).toBe(200)
     expect(res.body.pagination.totalGames).toBe(0)
     expect(res.body.pagination.totalPages).toBe(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 })
 
@@ -478,6 +484,7 @@ describe('PATCH /users/:username/stats', () => {
     expect(res.body.stats.gamesWon).toBe(1)
     expect(res.body.stats.gamesLost).toBe(0)
     expect(res.body.stats.totalMoves).toBe(10)
+    expect(res.body.stats.currentWinStreak).toBe(1)
     expect(res.body.stats.winRate).toBe(100)
   })
 
@@ -492,6 +499,7 @@ describe('PATCH /users/:username/stats', () => {
     expect(res.body.stats.gamesWon).toBe(1)
     expect(res.body.stats.gamesLost).toBe(1)
     expect(res.body.stats.totalMoves).toBe(18)
+    expect(res.body.stats.currentWinStreak).toBe(0)
     expect(res.body.stats.winRate).toBe(50)
   })
 
@@ -612,6 +620,7 @@ describe('GET /users/:username/stats', () => {
     expect(res.body.stats).toHaveProperty('gamesLost')
     expect(res.body.stats).toHaveProperty('gamesAbandoned')
     expect(res.body.stats).toHaveProperty('totalMoves')
+    expect(res.body.stats).toHaveProperty('currentWinStreak')
     expect(res.body.stats).toHaveProperty('winRate')
     expect(res.body.stats).not.toHaveProperty('winningMoves')
     expect(res.body.stats).not.toHaveProperty('accuracy')
