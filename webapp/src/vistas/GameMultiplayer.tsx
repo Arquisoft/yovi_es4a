@@ -133,9 +133,10 @@ export default function GameMultiplayer() {
         if (extra?.holes) {
           const holesSet = new Set<number>(extra.holes);
           setHoles(holesSet);
-          setDisabledCells(holesSet);
+          refreshGameState(gameId, hId, undefined, holesSet);
+        } else {
+          refreshGameState(gameId, hId);
         }
-        refreshGameState(gameId, hId);
       }
     }
 
@@ -170,17 +171,16 @@ export default function GameMultiplayer() {
     };
   }, [gameId, role, hostClientId, config]);
 
-  async function refreshGameState(gId: string, overrideId?: string, lastMoveCellId?: number) {
+  async function refreshGameState(gId: string, overrideId?: string, lastMoveCellId?: number, forcedHoles?: Set<number>) {
     try {
       const r = await getHvhGame(gId, overrideId || (role === "guest" && hostClientId ? hostClientId : undefined));
       setYen(r.yen);
       
-      // Lógica Tabu: Si ha movido el rival, bloqueamos adyacencias para nosotros
+      // Lógica de variantes
       if (config?.mode === "tabu_hvh" && lastMoveCellId !== undefined) {
          setDisabledCells(getAdjacentCells(lastMoveCellId, r.yen.size));
       } else if (config?.mode === "holey_hvh") {
-         // Mantener agujeros
-         setDisabledCells(holes);
+         setDisabledCells(forcedHoles || holes);
       } else if (config?.mode === "classic_hvh") {
          setDisabledCells(new Set());
       }
@@ -352,13 +352,13 @@ export default function GameMultiplayer() {
       </div>
 
       {/* CHAT DESPLEGABLE (DRAWER) */}
-      <import { Drawer } from "antd"; // Wait, I need to add Drawer to imports above or use it as component
       <Drawer
         title={<span><MessageOutlined /> Chat de Sala</span>}
         placement="right"
         onClose={() => setIsChatOpen(false)}
         open={isChatOpen}
         width={350}
+        mask={false}
         styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
       >
         <div style={{ flex: 1, overflowY: "auto", padding: "15px 20px", background: "#fafafa" }}>
@@ -408,24 +408,6 @@ export default function GameMultiplayer() {
           </Flex>
         </div>
       </Drawer>
-
-      {/* Botón flotante para móvil o acceso rápido */}
-      <Button
-        type="primary"
-        shape="circle"
-        icon={<Badge dot={hasNewMessages}><MessageOutlined /></Badge>}
-        size="large"
-        style={{
-          position: 'fixed',
-          bottom: 30,
-          right: 30,
-          zIndex: 1000,
-          width: 60,
-          height: 60,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}
-        onClick={() => { setIsChatOpen(true); setHasNewMessages(false); }}
-      />
     </>
   );
 }
