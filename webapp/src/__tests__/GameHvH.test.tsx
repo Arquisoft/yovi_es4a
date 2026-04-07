@@ -91,6 +91,16 @@ describe("GameHvH", () => {
     expect(props.canOfferGuestSave).toBe(false);
   });
 
+  it("pasa shouldCountMove para contar solo jugadas de player0", () => {
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    expect(props.shouldCountMove("player0")).toBe(true);
+    expect(props.shouldCountMove("player1")).toBe(false);
+    expect(props.shouldCountMove(null)).toBe(false);
+  });
+
   it("normaliza starter random", () => {
     mockSearchParams = new URLSearchParams("size=8&hvhstarter=RaNdOm");
 
