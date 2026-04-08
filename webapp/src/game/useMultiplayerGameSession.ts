@@ -258,6 +258,13 @@ export function useMultiplayerGameSession({
         }
 
         socket.emit("playMove", { code, cellId });
+
+        if (r.status.state === "finished" && r.status.winner) {
+          socket.emit("finishGame", {
+            code,
+            winner: r.status.winner,
+          });
+        }
       }
       catch (e: any) {
         message.error(e?.message ?? String(e));
@@ -282,7 +289,7 @@ export function useMultiplayerGameSession({
   );
 
   const handleAbandon = useCallback(async () => {
-    socket.emit("leaveRoom", code);
+    socket.emit("leaveRoom", { code });
 
     if (role === "host" && gameId) {
       try {
