@@ -23,6 +23,7 @@ export type UserStats = {
     gamesLost: number;
     gamesAbandoned: number;
     totalMoves: number;
+    currentWinStreak: number;
     winRate: number;
 };
 
