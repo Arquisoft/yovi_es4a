@@ -40,10 +40,10 @@ function randomHex(bytes: number): string {
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function buildHeaders(extra?: HeadersInit): HeadersInit {
+function buildHeaders(extra?: HeadersInit, overrideClientId?: string): HeadersInit {
   const base: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Client-Id": getOrCreateClientId(),
+    "X-Client-Id": overrideClientId || getOrCreateClientId(),
   };
   return { ...base, ...(extra as any) };
 }
@@ -268,24 +268,24 @@ export async function createHvhGame(req: CreateHvhGameRequest): Promise<GameStat
   });
 }
 
-export async function getHvhGame(gameId: string): Promise<GameStateResponse> {
-  return http<GameStateResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}`, {
-    method: "GET",
-    headers: buildHeaders(),
-  });
-}
-
-export async function hvhMove(gameId: string, cellId: number): Promise<HvhMoveResponse> {
-  return http<HvhMoveResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}/moves`, {
-    method: "POST",
-    headers: buildHeaders(),
-    body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
-  });
-}
-
-export async function deleteHvhGame(gameId: string): Promise<{ deleted: boolean }> {
+export async function deleteHvhGame(gameId: string, overrideClientId?: string): Promise<{ deleted: boolean }> {
   return http<{ deleted: boolean }>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}`, {
     method: "DELETE",
-    headers: buildHeaders(),
+    headers: buildHeaders(undefined, overrideClientId),
+  });
+}
+
+export async function getHvhGame(gameId: string, overrideClientId?: string): Promise<GameStateResponse> {
+  return http<GameStateResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}`, {
+    method: "GET",
+    headers: buildHeaders(undefined, overrideClientId),
+  });
+}
+
+export async function hvhMove(gameId: string, cellId: number, overrideClientId?: string): Promise<HvhMoveResponse> {
+  return http<HvhMoveResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}/moves`, {
+    method: "POST",
+    headers: buildHeaders(undefined, overrideClientId),
+    body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
   });
 }

@@ -14,11 +14,12 @@ beforeAll(async () => {
   const uri = mongod.getUri()
   await mongoose.connect(uri)
 
-  await import('../users-service.js')
+  const service = await import('../users-service.js')
+  const app = service.default || service
   const UserModule = await import('../users-model.js')
   User = UserModule.default || UserModule
 
-  api = request('http://127.0.0.1:8001')
+  api = request(app)
 })
 
 afterAll(async () => {

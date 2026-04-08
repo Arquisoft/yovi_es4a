@@ -177,6 +177,23 @@ export default function VariantSelect({ onSelect }: Props) {
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <AppHeader title="YOVI" />
 
+          <Card
+            hoverable
+            style={{ 
+              background: "linear-gradient(135deg, #1677ff 0%, #164cff 100%)",
+              border: "none",
+              color: "white",
+              textAlign: "center",
+              cursor: "pointer"
+            }}
+            onClick={() => navigate("/multiplayer")}
+          >
+            <Title level={3} style={{ color: "white", margin: 0 }}>🌍 Multijugador Online (BETA)</Title>
+            <Text style={{ color: "rgba(255,255,255,0.8)" }}>
+              Crea o únete a salas privadas mediante códigos y juega en tiempo real.
+            </Text>
+          </Card>
+
           <Card>
             <Space direction="vertical" size={20} style={{ width: "100%" }}>
               <Flex justify="center" align="center" vertical gap={4}>
