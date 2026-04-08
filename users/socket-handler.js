@@ -13,7 +13,7 @@ function generateCode() {
   return code;
 }
 
-module.exports = (io) => {
+module.exports = function setupSocketHandler(io) {
   io.on('connection', (socket) => {
     
     // Crear sala

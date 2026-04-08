@@ -29,6 +29,123 @@ interface ChatMessage {
   timestamp: number;
 }
 
+// ── Helper: resolve the game mode title ──────────────────────────────
+function getModeTitle(mode: string | undefined): string {
+  if (mode === "classic_hvh") return "Clásico Online";
+  return mode?.split("_")[0].toUpperCase() ?? "YOVI";
+}
+
+// ── Sub-component: error card ────────────────────────────────────────
+function ErrorPanel({ errorMsg, onBack }: Readonly<{ errorMsg: string; onBack: () => void }>) {
+  return (
+    <Card>
+      <Flex vertical align="center" gap={16}>
+        <Title level={4} type="danger">Error</Title>
+        <Text>{errorMsg}</Text>
+        <Button onClick={onBack}>Volver</Button>
+      </Flex>
+    </Card>
+  );
+}
+
+// ── Sub-component: loading card ──────────────────────────────────────
+function LoadingPanel() {
+  return (
+    <Card>
+      <Flex vertical align="center" gap={16} style={{ padding: 40 }}>
+        <Spin size="large" />
+        <Title level={4}>Iniciando partida...</Title>
+        <Text type="secondary">Conectando con el motor de juego</Text>
+      </Flex>
+    </Card>
+  );
+}
+
+// ── Sub-component: turn indicator ────────────────────────────────────
+function TurnIndicator({
+  winner,
+  nextTurn,
+  myPlayer,
+  activeTurnColor,
+  mode,
+  disabledCells,
+  hasNewMessages,
+  onOpenChat,
+}: Readonly<{
+  winner: string | null;
+  nextTurn: string | null;
+  myPlayer: string;
+  activeTurnColor: string;
+  mode: string | undefined;
+  disabledCells: Set<number>;
+  hasNewMessages: boolean;
+  onOpenChat: () => void;
+}>) {
+  let turnText: string;
+  if (winner) {
+    turnText = "Partida terminada";
+  } else if (nextTurn === myPlayer) {
+    turnText = "🟢 ¡TU TURNO!";
+  } else {
+    turnText = "⌛ Esperando rival...";
+  }
+
+  return (
+    <Card size="small" style={{ borderLeft: `6px solid ${activeTurnColor}`, marginBottom: 12 }}>
+      <Flex justify="space-between" align="center">
+        <Text strong>{turnText}</Text>
+        <Space>
+          {mode === "tabu_hvh" && nextTurn === myPlayer && disabledCells.size > 0 && (
+            <Badge status="error" text={`${disabledCells.size} bloqueadas`} />
+          )}
+          <Button
+            type="text"
+            icon={<Badge dot={hasNewMessages}><MessageOutlined /></Badge>}
+            onClick={onOpenChat}
+          >
+            Chat
+          </Button>
+        </Space>
+      </Flex>
+    </Card>
+  );
+}
+
+// ── Sub-component: game result overlay ───────────────────────────────
+function GameResult({
+  winner,
+  myPlayer,
+  animationFinished,
+  onAnimationComplete,
+  onBack,
+}: Readonly<{
+  winner: string;
+  myPlayer: string;
+  animationFinished: boolean;
+  onAnimationComplete: () => void;
+  onBack: () => void;
+}>) {
+  const isWin = winner === myPlayer;
+  return (
+    <Card style={{ marginTop: 20, textAlign: "center" }}>
+      {!animationFinished && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <Lottie
+            animationData={isWin ? confettiAnimation : gameOverAnimation}
+            loop={false}
+            onComplete={onAnimationComplete}
+          />
+        </div>
+      )}
+      <Title level={3}>{isWin ? "👑 ¡HAS GANADO!" : "💀 HAS PERDIDO"}</Title>
+      <Button type="primary" size="large" onClick={onBack} style={{ marginTop: 10 }}>
+        Volver al Lobby
+      </Button>
+    </Card>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────
 export default function GameMultiplayer() {
   const { code } = useParams();
   const location = useLocation();
@@ -126,16 +243,16 @@ export default function GameMultiplayer() {
 
   // Suscribirse a eventos de socket
   useEffect(() => {
-    function onGameStarted({ gameId, hostClientId: hId, extra }: any) {
+    function onGameStarted({ gameId: gId, hostClientId: hId, extra }: any) {
       if (role === "guest") {
-        setGameId(gameId);
+        setGameId(gId);
         setHostClientId(hId);
         if (extra?.holes) {
           const holesSet = new Set<number>(extra.holes);
           setHoles(holesSet);
-          refreshGameState(gameId, hId, undefined, holesSet);
+          refreshGameState(gId, hId, undefined, holesSet);
         } else {
-          refreshGameState(gameId, hId);
+          refreshGameState(gId, hId);
         }
       }
     }
@@ -247,106 +364,86 @@ export default function GameMultiplayer() {
   }, [yen]);
 
   const activeTurnColor = nextTurn === "player0" ? "#1677ff" : "#ff7b00";
+  const goToLobby = () => navigate("/multiplayer");
+
+  // ── Render board section ───────────────────────────────────────────
+  function renderBoardSection() {
+    if (error) {
+      return <ErrorPanel errorMsg={error} onBack={goToLobby} />;
+    }
+
+    if (!gameId) {
+      return <LoadingPanel />;
+    }
+
+    const borderStyle = !winner && nextTurn === myPlayer
+      ? `3px solid ${myColor}`
+      : "1px solid #f0f0f0";
+
+    return (
+      <GameShell
+        title={getModeTitle(config?.mode)}
+        subtitle={`Sala: ${code ?? ""} · Eres: ${myPlayer === "player0" ? "Azul" : "Naranja"}`}
+        loading={loading}
+        error={error}
+        hasBoard={!!yen}
+        emptyText="Error de conexión"
+        onAbandon={handleAbandon}
+        abandonDisabled={false}
+        turnIndicator={
+          <TurnIndicator
+            winner={winner}
+            nextTurn={nextTurn}
+            myPlayer={myPlayer}
+            activeTurnColor={activeTurnColor}
+            mode={config?.mode}
+            disabledCells={disabledCells}
+            hasNewMessages={hasNewMessages}
+            onOpenChat={() => { setIsChatOpen(true); setHasNewMessages(false); }}
+          />
+        }
+        board={
+          <Card
+            style={{
+              width: "100%",
+              overflow: "hidden",
+              border: borderStyle,
+              transition: "all 0.3s ease"
+            }}
+            styles={{ body: { padding: 12 } }}
+          >
+            <Board
+              size={yen?.size ?? config?.size ?? 11}
+              cells={cells}
+              disabled={loading || !!winner || nextTurn !== myPlayer}
+              onCellClick={handleCellClick}
+              disabledCells={disabledCells}
+            />
+          </Card>
+        }
+        result={
+          winner ? (
+            <GameResult
+              winner={winner}
+              myPlayer={myPlayer}
+              animationFinished={animationFinished}
+              onAnimationComplete={() => setAnimationFinished(true)}
+              onBack={goToLobby}
+            />
+          ) : null
+        }
+      />
+    );
+  }
 
   return (
     <>
-      <AppHeader title={`Multipayer: ${config?.mode?.split('_')[0].toUpperCase() || 'YOVI'}`} />
+      <AppHeader title={`Multipayer: ${getModeTitle(config?.mode)}`} />
       
       <div style={{ maxWidth: 800, margin: "20px auto", padding: "0 15px" }}>
         <Flex gap={20} vertical align="center">
-          
-          {/* TABLERO Y CONTROLES */}
           <div style={{ width: "100%" }}>
-            {error ? (
-              <Card>
-                <Flex vertical align="center" gap={16}>
-                  <Title level={4} type="danger">Error</Title>
-                  <Text>{error}</Text>
-                  <Button onClick={() => navigate("/multiplayer")}>Volver</Button>
-                </Flex>
-              </Card>
-            ) : !gameId ? (
-              <Card>
-                <Flex vertical align="center" gap={16} style={{ padding: 40 }}>
-                  <Spin size="large" />
-                  <Title level={4}>Iniciando partida...</Title>
-                  <Text type="secondary">Conectando con el motor de juego</Text>
-                </Flex>
-              </Card>
-            ) : (
-              <GameShell
-                title={config?.mode === "classic_hvh" ? "Clásico Online" : (config?.mode?.split('_')[0].toUpperCase() ?? "YOVI")}
-                subtitle={`Sala: ${code ?? ""} · Eres: ${myPlayer === "player0" ? "Azul" : "Naranja"}`}
-                loading={loading}
-                error={error}
-                hasBoard={!!yen}
-                emptyText="Error de conexión"
-                onAbandon={handleAbandon}
-                abandonDisabled={false}
-                turnIndicator={
-                  <Card size="small" style={{ borderLeft: `6px solid ${activeTurnColor}`, marginBottom: 12 }}>
-                      <Flex justify="space-between" align="center">
-                        <Text strong>
-                          {winner ? "Partida terminada" : (
-                             nextTurn === myPlayer ? "🟢 ¡TU TURNO!" : "⌛ Esperando rival..."
-                          )}
-                        </Text>
-                        <Space>
-                          {config?.mode === "tabu_hvh" && nextTurn === myPlayer && disabledCells.size > 0 && (
-                            <Badge status="error" text={`${disabledCells.size} bloqueadas`} />
-                          )}
-                          <Button 
-                            type="text" 
-                            icon={<Badge dot={hasNewMessages}><MessageOutlined /></Badge>} 
-                            onClick={() => { setIsChatOpen(true); setHasNewMessages(false); }}
-                          >
-                            Chat
-                          </Button>
-                        </Space>
-                      </Flex>
-                  </Card>
-                }
-                board={
-                  <Card
-                    style={{
-                      width: "100%",
-                      overflow: "hidden",
-                      border: !winner && nextTurn === myPlayer ? `3px solid ${myColor}` : "1px solid #f0f0f0",
-                      transition: "all 0.3s ease"
-                    }}
-                    bodyStyle={{ padding: 12 }}
-                  >
-                    <Board
-                      size={yen?.size ?? config?.size ?? 11}
-                      cells={cells}
-                      disabled={loading || !!winner || nextTurn !== myPlayer}
-                      onCellClick={handleCellClick}
-                      disabledCells={disabledCells}
-                    />
-                  </Card>
-                }
-                result={
-                  winner ? (
-                    <Card style={{ marginTop: 20, textAlign: "center" }}>
-                      {winner === myPlayer && !animationFinished && (
-                        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                          <Lottie animationData={confettiAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
-                        </div>
-                      )}
-                      {winner !== myPlayer && !animationFinished && (
-                        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9999, pointerEvents: "none", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                           <Lottie animationData={gameOverAnimation} loop={false} onComplete={() => setAnimationFinished(true)} />
-                        </div>
-                      )}
-                      <Title level={3}>{winner === myPlayer ? "👑 ¡HAS GANADO!" : "💀 HAS PERDIDO"}</Title>
-                      <Button type="primary" size="large" onClick={() => navigate("/multiplayer")} style={{ marginTop: 10 }}>
-                        Volver al Lobby
-                      </Button>
-                    </Card>
-                  ) : null
-                }
-              />
-            )}
+            {renderBoardSection()}
           </div>
         </Flex>
       </div>
@@ -357,9 +454,11 @@ export default function GameMultiplayer() {
         placement="right"
         onClose={() => setIsChatOpen(false)}
         open={isChatOpen}
-        width={350}
+        styles={{
+          body: { padding: 0, display: 'flex', flexDirection: 'column' },
+          wrapper: { width: 350 },
+        }}
         mask={false}
-        styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
       >
         <div style={{ flex: 1, overflowY: "auto", padding: "15px 20px", background: "#fafafa" }}>
           <List

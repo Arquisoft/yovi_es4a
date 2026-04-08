@@ -621,7 +621,7 @@ app.get('/users/:username/stats', async (req, res) => {
   }
 });
 
-const http = require('http');
+const http = require('node:http');
 const { Server } = require("socket.io");
 
 const server = http.createServer(app);

@@ -19,16 +19,13 @@ export function getAdjacentCells(cellId: number, boardSize: number): Set<number>
   const candidates: [number, number, number][] = [];
 
   if (x > 0) {
-    candidates.push([x - 1, y + 1, z]);
-    candidates.push([x - 1, y, z + 1]);
+    candidates.push([x - 1, y + 1, z], [x - 1, y, z + 1]);
   }
   if (y > 0) {
-    candidates.push([x + 1, y - 1, z]);
-    candidates.push([x, y - 1, z + 1]);
+    candidates.push([x + 1, y - 1, z], [x, y - 1, z + 1]);
   }
   if (z > 0) {
-    candidates.push([x + 1, y, z - 1]);
-    candidates.push([x, y + 1, z - 1]);
+    candidates.push([x + 1, y, z - 1], [x, y + 1, z - 1]);
   }
 
   const result = new Set<number>();

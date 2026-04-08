@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Card, Flex, Input, InputNumber, Space, Typography, Spin, Select, message } from "antd";
+import { Button, Card, Flex, Input, InputNumber, Typography, Spin, Select, message } from "antd";
 import { ArrowLeftOutlined, NodeIndexOutlined, UsergroupAddOutlined, CopyOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "./AppHeader";
@@ -85,7 +85,7 @@ export default function MultiplayerLobby() {
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
       <div style={{ width: "min(720px, 100%)" }}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Flex vertical gap={16} style={{ width: "100%" }}>
           <AppHeader title="YOVI Multijugador" />
 
           {createdCode ? (
@@ -129,7 +129,7 @@ export default function MultiplayerLobby() {
                     Configura la partida, obtén un código y compártelo con tu rival.
                   </Paragraph>
                   
-                  <Space direction="vertical" style={{ width: "100%", marginTop: 10 }}>
+                  <Flex vertical style={{ width: "100%", marginTop: 10 }}>
                     <Text strong>Modo de juego:</Text>
                     <Select 
                       value={modeId} 
@@ -149,7 +149,7 @@ export default function MultiplayerLobby() {
                     <Button type="primary" size="large" block onClick={handleCreateRoom} loading={loading} style={{ marginTop: 16 }}>
                       Generar Código
                     </Button>
-                  </Space>
+                  </Flex>
                 </div>
 
                 <div style={{ width: "1px", background: "#f0f0f0" }} className="desktop-divider" />
@@ -161,7 +161,7 @@ export default function MultiplayerLobby() {
                     Si te han invitado, introduce el código de 5 dígitos para entrar.
                   </Paragraph>
                   
-                  <Space direction="vertical" style={{ width: "100%", marginTop: 10 }}>
+                  <Flex vertical style={{ width: "100%", marginTop: 10 }}>
                     <Text strong>Código de sala:</Text>
                     <Input 
                       placeholder="Ej: A4F92" 
@@ -176,7 +176,7 @@ export default function MultiplayerLobby() {
                     <Button type="default" size="large" block onClick={handleJoinRoom} loading={loading} style={{ marginTop: 16 }}>
                       Entrar a la partida
                     </Button>
-                  </Space>
+                  </Flex>
                 </div>
               </Flex>
             </Card>
@@ -189,7 +189,7 @@ export default function MultiplayerLobby() {
               </Button>
             </Flex>
           )}
-        </Space>
+        </Flex>
       </div>
     </Flex>
   );
