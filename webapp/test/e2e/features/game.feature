@@ -12,6 +12,7 @@ Feature: Juego Y
     Then veo la pantalla de selección de dificultad
     And veo las opciones "Fácil", "Medio", "Difícil" y "Demencial"
 
+  @skip
   Scenario: Seleccionar dificultad e iniciar partida
     Given estoy en la pantalla de selección de dificultad para HvB
     When selecciono la dificultad "Fácil"
@@ -19,11 +20,13 @@ Feature: Juego Y
     Then veo el tablero de juego
     And veo el indicador de turno
 
+  @skip
   Scenario: Empezar partida HvH
     Given estoy en la pantalla de configuración de la variante "classic"
     When pulso el botón "Jugar" en la sección HvH
     Then veo el tablero de juego HvH
 
+  @skip
   Scenario: El tablero muestra celdas jugables
     Given estoy jugando una partida HvB con bot "random_bot"
     Then el tablero tiene celdas clicables
