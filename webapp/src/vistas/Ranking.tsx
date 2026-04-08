@@ -91,12 +91,12 @@ function PodiumColumn({
   rank,
   valueLabel,
   color,
-}: {
+}: Readonly<{
   entry: NonNullable<RankingPodiumEntry>;
   rank: number;
   valueLabel: string;
   color: string;
-}) {
+}>) {
   const isFirst = rank === 0;
 
   return (
@@ -151,7 +151,7 @@ function PodiumColumn({
         style={{
           width: "100%",
           height: PODIUM_HEIGHTS[rank],
-          background: rank === 0 ? color : rank === 1 ? "#d9d9d9" : "#bfbfbf",
+          background: rank === 0 ? color : (rank === 1 ? "#d9d9d9" : "#bfbfbf"),
           borderRadius: "6px 6px 0 0",
           opacity: 0.7,
         }}
@@ -164,13 +164,13 @@ function PodiumColumn({
 
 function PodiumSection({
   podium,
-}: {
+}: Readonly<{
   podium: {
     mostGames: RankingPodiumEntry;
     mostWins: RankingPodiumEntry;
     bestRate: RankingPodiumEntry;
   };
-}) {
+}>) {
   if (!podium || (!podium.mostGames && !podium.mostWins && !podium.bestRate)) return null;
 
   return (
@@ -178,7 +178,7 @@ function PodiumSection({
       style={{ borderRadius: 12 }}
       styles={{ body: { paddingBottom: 20 } }}
     >
-      <Space direction="vertical" size={20} style={{ width: "100%" }}>
+      <Flex vertical gap={20} style={{ width: "100%" }}>
         <Flex align="center" gap={8}>
           <BarChartOutlined style={{ fontSize: 18, color: "#1677ff" }} />
           <Title level={4} style={{ margin: 0 }}>
@@ -232,7 +232,7 @@ function PodiumSection({
             );
           })}
         </Flex>
-      </Space>
+      </Flex>
     </Card>
   );
 }
@@ -298,12 +298,12 @@ export default function Ranking() {
           <Avatar src={resolveAvatarSrc(record.profilePicture)}>
             {record.username[0].toUpperCase()}
           </Avatar>
-          <Space direction="vertical" size={0}>
+          <Flex vertical gap={0}>
             <Text strong>{record.username}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
               {record.gamesWon}V · {record.gamesLost}D · {record.gamesAbandoned}A
             </Text>
-          </Space>
+          </Flex>
         </Space>
       ),
     },
@@ -379,7 +379,7 @@ export default function Ranking() {
   return (
     <Flex justify="center" align="start" className="ranking-page" style={{ padding: 20, minHeight: "100vh" }}>
       <div style={{ width: "min(1100px, 100%)" }}>
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Flex vertical gap={16} style={{ width: "100%" }}>
 
           <AppHeader title="🏆 Ranking" />
 
@@ -390,7 +390,7 @@ export default function Ranking() {
 
           {/* Ranking table */}
           <Card>
-            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Flex vertical gap={16} style={{ width: "100%" }}>
 
               {/* Header: title + sort control */}
               <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
@@ -443,8 +443,7 @@ export default function Ranking() {
               {error && (
                 <Alert
                   type="error"
-                  message="No se pudo cargar el ranking"
-                  description={error}
+                  description={`No se pudo cargar el ranking: ${error}`}
                 />
               )}
 
@@ -480,9 +479,9 @@ export default function Ranking() {
                   <strong>A</strong> — partidas abandonadas.
                 </Text>
               </Flex>
-            </Space>
+            </Flex>
           </Card>
-        </Space>
+        </Flex>
       </div>
     </Flex>
   );
