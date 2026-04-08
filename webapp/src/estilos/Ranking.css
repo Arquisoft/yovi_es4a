@@ -1,0 +1,66 @@
+/* ── Ranking responsive styles ─────────────────────────────────────── */
+
+/* Segmented: hide on mobile, show on desktop */
+.ranking-segmented-desktop {
+  display: block;
+}
+.ranking-select-mobile {
+  display: none;
+}
+
+/* Table: horizontal scroll on small screens */
+.ranking-table-wrapper .ant-table {
+  overflow-x: auto;
+}
+
+/* ── Mobile (<= 768px) ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Swap Segmented → Select on mobile */
+  .ranking-segmented-desktop {
+    display: none;
+  }
+  .ranking-select-mobile {
+    display: block;
+  }
+
+  /* Reduce outer padding */
+  .ranking-page {
+    padding: 10px !important;
+  }
+
+  /* Podio: stack cards vertically */
+  .ranking-podium-cards {
+    flex-direction: column !important;
+  }
+  .ranking-podium-cards > .ant-card {
+    flex: 1 1 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Hide columns that are less important on mobile */
+  .ranking-col-moves,
+  .ranking-col-lost,
+  .ranking-col-abandoned {
+    display: none;
+  }
+
+  /* Compact pagination */
+  .ranking-table-wrapper .ant-pagination {
+    justify-content: center;
+  }
+}
+
+/* ── Very small screens (<= 480px) ────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Also hide the progress bar column, keep just name + value */
+  .ranking-col-winrate .ant-progress {
+    max-width: 80px;
+  }
+
+  /* Smaller podium avatars */
+  .ranking-podium-cards .ant-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 14px !important;
+  }
+}
