@@ -511,8 +511,8 @@ app.get('/ranking', async (req, res) => {
   const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
   const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
-  const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const sizeNum = Math.min(100, Math.max(1, parseInt(pageSize || limit, 10) || 20));
+  const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
+  const sizeNum = Math.min(100, Math.max(1, Number.parseInt(pageSize || limit, 10) || 20));
 
   try {
     const users = await User.find({ 'stats.gamesPlayed': { $gt: 0 } }, { 

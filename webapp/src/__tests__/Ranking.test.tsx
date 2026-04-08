@@ -174,9 +174,8 @@ describe("Ranking", () => {
     render(<Ranking />);
 
     expect(
-      await screen.findByText("No se pudo cargar el ranking"),
+      await screen.findByText(/No se pudo cargar el ranking:? Error 500/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Error 500")).toBeInTheDocument();
   });
 
   it("tolera respuestas sin ranking array", async () => {

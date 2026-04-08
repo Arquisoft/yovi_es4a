@@ -31,7 +31,7 @@ const USERS = Array.from({ length: 50 }).map((_, i) => ({
 // Algunos usuarios hardcodeados estrella para asegurar que el podio se gane con claridad
 USERS.push(
   { username: 'CampeonSupremo', avatar: 'elvis.png', recent: 0.9, total: 100, winRatio: 0.95 },
-  { username: 'LuchadorDiario', avatar: 'disco.png', recent: 1.0, total: 150, winRatio: 0.50 },
+  { username: 'LuchadorDiario', avatar: 'disco.png', recent: 1, total: 150, winRatio: 0.5 },
   { username: 'ElEstratega', avatar: 'seniora.png', recent: 0.8, total: 80, winRatio: 0.85 }
 );
 
@@ -42,7 +42,14 @@ function buildGames(username, total, recentRatio, winRatio) {
     const daysBack = isRecent ? Math.floor(Math.random() * 6) : 8 + Math.floor(Math.random() * 90);
     
     const roll = Math.random();
-    const result = roll < winRatio ? 'won' : roll < winRatio + 0.15 ? 'abandoned' : 'lost';
+    let result;
+    if (roll < winRatio) {
+      result = 'won';
+    } else if (roll < winRatio + 0.15) {
+      result = 'abandoned';
+    } else {
+      result = 'lost';
+    }
     
     games.push({
       gameId: randomId(),
