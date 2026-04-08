@@ -94,13 +94,33 @@ export async function registerUser(body: {
     return parseJson<{ message: string }>(response);
 }
 
-export async function getRanking(sortBy: "winRate" | "gamesWon" | "gamesPlayed", limit = 20) {
+export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "totalMoves" | "gamesAbandoned";
+
+export type RankingPodiumEntry = {
+    username: string;
+    profilePicture: string;
+    stats: UserStats;
+} | null;
+
+export async function getRanking(sortBy: SortByOption = "winRate", page = 1, pageSize = 20) {
     const response = await fetch(
-        `${USERS_API_URL}/ranking?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`
+        `${USERS_API_URL}/ranking?sortBy=${encodeURIComponent(sortBy)}&page=${page}&pageSize=${pageSize}`
     );
 
     return parseJson<{
         sortBy: string;
+        period: string;
+        podium?: {
+            mostGames: RankingPodiumEntry;
+            mostWins: RankingPodiumEntry;
+            bestRate: RankingPodiumEntry;
+        };
+        pagination: {
+            totalItems: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
         ranking: Array<{
             username: string;
             profilePicture: string;

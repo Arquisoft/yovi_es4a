@@ -1,6 +1,11 @@
 <img width="15%" height="auto" src="./images/yovi-logo.png">
 
 # Yovi Game
+
+[![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
+
 Bienvenido a Yovi Game, una aplicación para el Juego Y.
 
 Aquí podras jugar al famoso Juego Y clásico, incluyendo también diferentes variaciones del juego que aportan un nivel de dificultad.
@@ -73,10 +78,6 @@ Tenemos disponible un ranking con todos los usuarios registrados, de forma que p
 
 ---
 # Yovi_es4a - Game Y at UniOvi
-
-[![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
 
 This project is a template with some basic functionality for the ASW labs.
 

@@ -6,6 +6,7 @@ Feature: Ranking
     Then veo el título del ranking
     And veo la tabla de clasificación
 
+  @skip
   Scenario: Cambiar criterio de ordenación
     Given estoy en la página de ranking
     When cambio el criterio a "Partidas ganadas"

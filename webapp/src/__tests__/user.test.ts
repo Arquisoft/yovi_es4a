@@ -59,16 +59,16 @@ describe("api/users", () => {
     });
   });
 
-  it("getRanking hace GET con sort y limit", async () => {
+  it("getRanking hace GET con sort, page y pageSize", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ sortBy: "winRate", ranking: [] }),
+      json: async () => ({ sortBy: "winRate", ranking: [], pagination: { totalItems: 0, page: 1, pageSize: 10, totalPages: 0 } }),
     });
 
-    await getRanking("gamesWon", 10);
+    await getRanking("gamesWon", 2, 10);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/ranking?sortBy=gamesWon&limit=10"
+      "/api/users/ranking?sortBy=gamesWon&page=2&pageSize=10"
     );
   });
 
@@ -223,6 +223,6 @@ describe("api/users", () => {
       json: async () => ({}),
     });
 
-    await expect(getRanking("winRate", 20)).rejects.toThrow("Error 500");
+    await expect(getRanking("winRate", 1, 20)).rejects.toThrow("Error 500");
   });
 });
