@@ -1,4 +1,4 @@
-import { vi, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { socket } from '../api/socket';
 
 describe('Socket API', () => {

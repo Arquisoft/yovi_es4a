@@ -49,7 +49,12 @@ describe('Socket Handler', () => {
 
     const callback = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       callback
     );
 
@@ -66,7 +71,12 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
@@ -74,7 +84,7 @@ describe('Socket Handler', () => {
     connectionCallback(socketGuest);
     const cbJoin = vi.fn();
     socketGuest.handlers['joinRoom'](
-      { code, username: 'guestUser' },
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
       cbJoin
     );
 
@@ -107,12 +117,20 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
 
-    socketGuest.handlers['joinRoom']({ code, username: 'guestUser' }, vi.fn());
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
 
     socketHost.handlers['sendMessage']({ code, text: 'Hola' });
     expect(io.to).toHaveBeenCalledWith(code);
@@ -131,13 +149,24 @@ describe('Socket Handler', () => {
   it('debería iniciar partida (startGame)', async () => {
     await setup();
     connectionCallback(socketHost);
+    connectionCallback(socketGuest);
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
+
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
 
     socketHost.handlers['startGame']({
       code,
@@ -152,6 +181,16 @@ describe('Socket Handler', () => {
       hostClientId: 'c1',
       config: { size: 11, mode: 'classic_hvh' },
       extra: {},
+      players: {
+        player0: {
+          username: 'hostUser',
+          profilePicture: 'host.png',
+        },
+        player1: {
+          username: 'guestUser',
+          profilePicture: 'guest.png',
+        },
+      },
     });
   });
 
@@ -161,7 +200,12 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
@@ -178,12 +222,20 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
 
-    socketGuest.handlers['joinRoom']({ code, username: 'guestUser' }, vi.fn());
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
 
     socketHost.handlers['startGame']({
       code,
@@ -206,7 +258,12 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;
@@ -227,7 +284,12 @@ describe('Socket Handler', () => {
 
     const cbCreate = vi.fn();
     socketHost.handlers['createRoom'](
-      { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
       cbCreate
     );
     const code = cbCreate.mock.calls[0][0].code;

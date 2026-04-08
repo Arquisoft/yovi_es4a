@@ -19,6 +19,16 @@ export type MultiplayerConfig = {
   mode: string;
 };
 
+export type MultiplayerPlayerProfile = {
+  username: string | null;
+  profilePicture: string | null;
+};
+
+export type MultiplayerPlayerProfiles = {
+  player0: MultiplayerPlayerProfile;
+  player1: MultiplayerPlayerProfile;
+};
+
 type UseMultiplayerGameSessionArgs = {
   code?: string;
   role?: MultiplayerRole;
@@ -43,6 +53,11 @@ export function useMultiplayerGameSession({
   const [hostClientId, setHostClientId] = useState<string | null>(null);
   const [disabledCells, setDisabledCells] = useState<Set<number>>(new Set());
   const [holes, setHoles] = useState<Set<number>>(new Set());
+  const [playerProfiles, setPlayerProfiles] =
+    useState<MultiplayerPlayerProfiles>({
+      player0: { username: null, profilePicture: null },
+      player1: { username: null, profilePicture: null },
+    });
 
   const myPlayer = useMemo(
     () => (role === "guest" ? "player1" : "player0"),
@@ -159,6 +174,10 @@ export function useMultiplayerGameSession({
     setWinner(null);
     setNextTurn(null);
     setHostClientId(null);
+    setPlayerProfiles({
+      player0: { username: null, profilePicture: null },
+      player1: { username: null, profilePicture: null },
+    });
 
     if (role === "host" && config && code)
       void initHost();
@@ -177,7 +196,19 @@ export function useMultiplayerGameSession({
       gameId: startedGameId,
       hostClientId: startedHostClientId,
       extra,
+      players,
     }: any) {
+      setPlayerProfiles({
+        player0: {
+          username: players?.player0?.username ?? null,
+          profilePicture: players?.player0?.profilePicture ?? null,
+        },
+        player1: {
+          username: players?.player1?.username ?? null,
+          profilePicture: players?.player1?.profilePicture ?? null,
+        },
+      });
+
       if (role !== "guest")
         return;
 
@@ -313,6 +344,7 @@ export function useMultiplayerGameSession({
     disabledCells,
     myPlayer,
     myColor,
+    playerProfiles,
     handleCellClick,
     handleAbandon,
   };
