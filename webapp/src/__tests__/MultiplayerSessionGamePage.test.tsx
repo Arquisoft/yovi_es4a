@@ -103,7 +103,16 @@ vi.mock("../game/Board", () => ({
 }));
 
 vi.mock("lottie-react", () => ({
-  default: () => <div>lottie</div>,
+  default: ({
+    onComplete,
+  }: {
+    onComplete?: () => void;
+  }) => (
+    <div>
+      <div>lottie</div>
+      <button onClick={onComplete}>finish-lottie</button>
+    </div>
+  ),
 }));
 
 describe("MultiplayerSessionGamePage", () => {
@@ -170,6 +179,120 @@ describe("MultiplayerSessionGamePage", () => {
     expect(onOpenChatMock).toHaveBeenCalled();
   });
 
+  it("muestra 'Esperando rival' cuando no es tu turno", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn="player1"
+        winner={null}
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.getByText("⌛ Esperando rival...")).toBeTruthy();
+  });
+
+  it("muestra badge de bloqueadas en modo tabu_hvh", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Tabú Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="tabu_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>([1, 2, 3])}
+        boardDisabled={false}
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn="player0"
+        winner={null}
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.getByText("3 bloqueadas")).toBeTruthy();
+  });
+
+  it("no renderiza indicador de turno si hay ganador", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn="player0"
+        winner="player1"
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.queryByText("Chat")).toBeNull();
+    expect(screen.queryByText("🟢 ¡TU TURNO!")).toBeNull();
+  });
+
+  it("no renderiza indicador de turno si nextTurn es null", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn={null}
+        winner={null}
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.queryByText("Chat")).toBeNull();
+    expect(screen.queryByText("🟢 ¡TU TURNO!")).toBeNull();
+  });
+
   it("delegates board clicks", () => {
     render(
       <MultiplayerSessionGamePage
@@ -230,6 +353,66 @@ describe("MultiplayerSessionGamePage", () => {
     expect(onBackMock).toHaveBeenCalled();
   });
 
+  it("muestra derrota cuando gana el rival", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn={null}
+        winner="player1"
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.getByText("💀 HAS PERDIDO")).toBeTruthy();
+  });
+
+  it("deja de renderizar la animación al completarse", () => {
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn={null}
+        winner="player0"
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    expect(screen.getByText("lottie")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("finish-lottie"));
+
+    expect(screen.queryByText("lottie")).toBeNull();
+  });
+
   it("abre el confirm de abandono", () => {
     render(
       <MultiplayerSessionGamePage
@@ -263,5 +446,39 @@ describe("MultiplayerSessionGamePage", () => {
         content: "¿Seguro que quieres abandonar la partida?",
       }),
     );
+  });
+
+  it("ejecuta onAbandon cuando se confirma el modal", async () => {
+    modalConfirmMock.mockImplementation(({ onOk }) => onOk?.());
+
+    render(
+      <MultiplayerSessionGamePage
+        title="Clásico Online"
+        subtitle="Sala: ROOM1 · Eres: Azul"
+        mode="classic_hvh"
+        loading={false}
+        error=""
+        hasBoard
+        emptyText="No se pudo cargar la partida."
+        boardSize={11}
+        cells={[]}
+        disabledCells={new Set<number>()}
+        boardDisabled={false}
+        onCellClick={onCellClickMock}
+        myPlayer="player0"
+        nextTurn="player0"
+        winner={null}
+        hasNewMessages={false}
+        onOpenChat={onOpenChatMock}
+        onAbandon={onAbandonMock}
+        onBack={onBackMock}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("abandonar-shell"));
+
+    await Promise.resolve();
+
+    expect(onAbandonMock).toHaveBeenCalled();
   });
 });
