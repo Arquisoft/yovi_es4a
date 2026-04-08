@@ -154,6 +154,10 @@ describe("useMultiplayerGameSession", () => {
 
     expect(result.current.myPlayer).toBe("player0");
     expect(result.current.nextTurn).toBe("player0");
+    expect(result.current.playerProfiles).toEqual({
+      player0: { username: null, profilePicture: null },
+      player1: { username: null, profilePicture: null },
+    });
   });
 
   it("inicializa la partida host en modo holey_hvh con holes", async () => {
@@ -265,6 +269,10 @@ describe("useMultiplayerGameSession", () => {
         gameId: "game-1",
         hostClientId: "host-999",
         extra: { holes: [2, 4] },
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
       });
     });
 
@@ -278,6 +286,53 @@ describe("useMultiplayerGameSession", () => {
     });
 
     expect(result.current.disabledCells).toEqual(new Set([2, 4]));
+    expect(result.current.playerProfiles).toEqual({
+      player0: { username: "hostUser", profilePicture: "host.png" },
+      player1: { username: "guestUser", profilePicture: "guest.png" },
+    });
+  });
+
+  it("actualiza playerProfiles aunque el evento gameStarted llegue siendo host", async () => {
+    const handlers: Record<string, (payload: any) => void> = {};
+    const config = { size: 11, mode: "classic_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    socketMock.on.mockImplementation((event: string, handler: (payload: any) => void) => {
+      handlers[event] = handler;
+      return socketMock;
+    });
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    await act(async () => {
+      handlers.gameStarted?.({
+        gameId: "game-1",
+        hostClientId: "host-999",
+        extra: {},
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
+      });
+    });
+
+    expect(result.current.playerProfiles).toEqual({
+      player0: { username: "hostUser", profilePicture: "host.png" },
+      player1: { username: "guestUser", profilePicture: "guest.png" },
+    });
   });
 
   it("actualiza disabledCells con adyacentes al recibir enemyMove en modo tabu_hvh", async () => {
@@ -305,6 +360,10 @@ describe("useMultiplayerGameSession", () => {
       handlers.gameStarted?.({
         gameId: "game-1",
         hostClientId: "host-123",
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
       });
     });
 
@@ -450,6 +509,10 @@ describe("useMultiplayerGameSession", () => {
       handlers.gameStarted?.({
         gameId: "game-1",
         hostClientId: "host-123",
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
       });
     });
 

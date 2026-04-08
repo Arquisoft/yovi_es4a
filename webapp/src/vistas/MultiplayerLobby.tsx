@@ -49,11 +49,16 @@ export default function MultiplayerLobby() {
 
   const handleCreateRoom = () => {
     setLoading(true);
-    const username = getUserSession()?.username ?? null;
+    const session = getUserSession();
 
     socket.emit(
       "createRoom",
-      { size, mode: MODE_MAP[modeId], username },
+      {
+        size,
+        mode: MODE_MAP[modeId],
+        username: session?.username ?? null,
+        profilePicture: session?.profilePicture ?? null,
+      },
       (res: any) => {
         setLoading(false);
         if (res.success) {
@@ -69,11 +74,15 @@ export default function MultiplayerLobby() {
   const handleJoinRoom = () => {
     if (!joinCode.trim()) return;
     setLoading(true);
-    const username = getUserSession()?.username ?? null;
+    const session = getUserSession();
 
     socket.emit(
       "joinRoom",
-      { code: joinCode.trim(), username },
+      {
+        code: joinCode.trim(),
+        username: session?.username ?? null,
+        profilePicture: session?.profilePicture ?? null,
+      },
       (res: any) => {
         setLoading(false);
         if (res.success) {

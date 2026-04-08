@@ -80,17 +80,24 @@ vi.mock("../vistas/MultiplayerChatDrawer", () => ({
   default: ({
     open,
     messages,
+    playerProfiles,
     onClose,
     onSendMessage,
   }: {
     open: boolean;
     messages: Array<{ text: string }>;
+    playerProfiles: {
+      player0: { username: string | null; profilePicture: string | null };
+      player1: { username: string | null; profilePicture: string | null };
+    };
     onClose: () => void;
     onSendMessage: (text: string) => void;
   }) => (
     <div>
       <div>{`chat-open:${String(open)}`}</div>
       <div>{`chat-messages:${messages.length}`}</div>
+      <div>{`player0-avatar:${playerProfiles.player0.profilePicture ?? "none"}`}</div>
+      <div>{`player1-avatar:${playerProfiles.player1.profilePicture ?? "none"}`}</div>
       <button onClick={onClose}>cerrar-chat</button>
       <button onClick={() => onSendMessage("hola chat")}>send-chat</button>
     </div>
@@ -120,6 +127,10 @@ describe("GameMultiplayer", () => {
       disabledCells: new Set<number>(),
       myPlayer: "player0",
       myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
     });
@@ -139,7 +150,7 @@ describe("GameMultiplayer", () => {
   it("renderiza el título y subtítulo de la partida", () => {
     render(<GameMultiplayer />);
 
-    expect(screen.getByText("Clásico Online")).toBeTruthy();
+    expect(screen.getByText("Clásico Online vs. guestUser")).toBeTruthy();
     expect(screen.getByText("Sala: ROOM1 · Eres: Azul")).toBeTruthy();
   });
 
@@ -151,7 +162,7 @@ describe("GameMultiplayer", () => {
 
     render(<GameMultiplayer />);
 
-    expect(screen.getByText("TABU")).toBeTruthy();
+    expect(screen.getByText("TABU vs. guestUser")).toBeTruthy();
   });
 
   it("usa YOVI como fallback si no hay modo", () => {
@@ -162,7 +173,7 @@ describe("GameMultiplayer", () => {
 
     render(<GameMultiplayer />);
 
-    expect(screen.getByText("YOVI")).toBeTruthy();
+    expect(screen.getByText("YOVI vs. guestUser")).toBeTruthy();
   });
 
   it("muestra Naranja para player1", () => {
@@ -176,13 +187,49 @@ describe("GameMultiplayer", () => {
       disabledCells: new Set<number>(),
       myPlayer: "player1",
       myColor: "#ff7b00",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
     });
 
     render(<GameMultiplayer />);
 
+    expect(screen.getByText("Clásico Online vs. hostUser")).toBeTruthy();
     expect(screen.getByText("Sala: ROOM1 · Eres: Naranja")).toBeTruthy();
+  });
+
+  it("usa 'Jugador online' si el rival no tiene username", () => {
+    mockedUseMultiplayerGameSession.mockReturnValue({
+      gameId: "game-1",
+      yen: { size: 11, layout: "B/.R/..." },
+      loading: false,
+      winner: null,
+      nextTurn: "player0",
+      error: "",
+      disabledCells: new Set<number>(),
+      myPlayer: "player0",
+      myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: null, profilePicture: "guest.png" },
+      },
+      handleCellClick: vi.fn(),
+      handleAbandon: vi.fn(),
+    });
+
+    render(<GameMultiplayer />);
+
+    expect(screen.getByText("Clásico Online vs. Jugador online")).toBeTruthy();
+  });
+
+  it("pasa playerProfiles al chat", () => {
+    render(<GameMultiplayer />);
+
+    expect(screen.getByText("player0-avatar:host.png")).toBeTruthy();
+    expect(screen.getByText("player1-avatar:guest.png")).toBeTruthy();
   });
 
   it("abre el chat y limpia la marca de mensajes nuevos", async () => {
@@ -307,6 +354,10 @@ describe("GameMultiplayer", () => {
       disabledCells: new Set<number>(),
       myPlayer: "player0",
       myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
     });

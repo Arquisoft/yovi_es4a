@@ -39,6 +39,12 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
+vi.mock("../utils/avatar", () => ({
+  resolveAvatarSrc: vi.fn((file?: string | null) =>
+    file ? `/avatars/${file}` : "/avatars/seniora.png"
+  ),
+}));
+
 vi.mock("antd", async () => {
   const actual = await vi.importActual<any>("antd");
 
@@ -59,12 +65,24 @@ vi.mock("antd", async () => {
           {children}
         </div>
       ) : null,
+    Avatar: ({
+      src,
+      children,
+    }: {
+      src?: string;
+      children?: React.ReactNode;
+    }) => <div>{`avatar:${src ?? "no-src"}:${children ?? ""}`}</div>,
   };
 });
 
 describe("MultiplayerChatDrawer", () => {
   const onClose = vi.fn();
   const onSendMessage = vi.fn();
+
+  const playerProfiles = {
+    player0: { username: "hostUser", profilePicture: "host.png" },
+    player1: { username: "guestUser", profilePicture: "guest.png" },
+  } as const;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,6 +105,7 @@ describe("MultiplayerChatDrawer", () => {
             timestamp: new Date("2026-04-08T10:01:00Z").getTime(),
           },
         ]}
+        playerProfiles={playerProfiles}
         onClose={onClose}
         onSendMessage={onSendMessage}
       />,
@@ -97,12 +116,64 @@ describe("MultiplayerChatDrawer", () => {
     expect(screen.getByText("qué tal")).toBeTruthy();
   });
 
+  it("usa las fotos reales de perfil en los avatares", () => {
+    render(
+      <MultiplayerChatDrawer
+        open
+        myPlayer="player0"
+        messages={[
+          {
+            text: "hola",
+            sender: "player0",
+            timestamp: new Date("2026-04-08T10:00:00Z").getTime(),
+          },
+          {
+            text: "qué tal",
+            sender: "player1",
+            timestamp: new Date("2026-04-08T10:01:00Z").getTime(),
+          },
+        ]}
+        playerProfiles={playerProfiles}
+        onClose={onClose}
+        onSendMessage={onSendMessage}
+      />,
+    );
+
+    expect(screen.getByText("avatar:/avatars/host.png:H")).toBeTruthy();
+    expect(screen.getByText("avatar:/avatars/guest.png:G")).toBeTruthy();
+  });
+
+  it("usa fallback con inicial si falta la foto", () => {
+    render(
+      <MultiplayerChatDrawer
+        open
+        myPlayer="player0"
+        messages={[
+          {
+            text: "sin foto",
+            sender: "player1",
+            timestamp: new Date("2026-04-08T10:01:00Z").getTime(),
+          },
+        ]}
+        playerProfiles={{
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: null },
+        }}
+        onClose={onClose}
+        onSendMessage={onSendMessage}
+      />,
+    );
+
+    expect(screen.getByText("avatar:no-src:G")).toBeTruthy();
+  });
+
   it("envía el mensaje al pulsar Enter", () => {
     render(
       <MultiplayerChatDrawer
         open
         myPlayer="player0"
         messages={[]}
+        playerProfiles={playerProfiles}
         onClose={onClose}
         onSendMessage={onSendMessage}
       />,
@@ -125,6 +196,7 @@ describe("MultiplayerChatDrawer", () => {
         open
         myPlayer="player0"
         messages={[]}
+        playerProfiles={playerProfiles}
         onClose={onClose}
         onSendMessage={onSendMessage}
       />,
@@ -146,6 +218,7 @@ describe("MultiplayerChatDrawer", () => {
         open
         myPlayer="player0"
         messages={[]}
+        playerProfiles={playerProfiles}
         onClose={onClose}
         onSendMessage={onSendMessage}
       />,
@@ -167,6 +240,7 @@ describe("MultiplayerChatDrawer", () => {
         open={false}
         myPlayer="player0"
         messages={[]}
+        playerProfiles={playerProfiles}
         onClose={onClose}
         onSendMessage={onSendMessage}
       />,

@@ -30,6 +30,14 @@ function normalizeUsername(username) {
   return trimmed ? trimmed : null;
 }
 
+function normalizeProfilePicture(profilePicture) {
+  if (typeof profilePicture !== 'string')
+    return null;
+
+  const trimmed = profilePicture.trim();
+  return trimmed ? trimmed : null;
+}
+
 async function saveGameForUser(username, game) {
   if (!username)
     return;
@@ -134,6 +142,8 @@ module.exports = function setupSocketHandler(io) {
         guest: null,
         hostUsername: normalizeUsername(config.username),
         guestUsername: null,
+        hostProfilePicture: normalizeProfilePicture(config.profilePicture),
+        guestProfilePicture: null,
         config: {
           size: config.size,
           mode: config.mode,
@@ -166,6 +176,10 @@ module.exports = function setupSocketHandler(io) {
         ? null
         : normalizeUsername(payload?.username);
 
+      const profilePicture = typeof payload === 'string'
+        ? null
+        : normalizeProfilePicture(payload?.profilePicture);
+
       const room = rooms[code];
       
       if (!room) {
@@ -183,6 +197,7 @@ module.exports = function setupSocketHandler(io) {
 
       room.guest = socket.id;
       room.guestUsername = username;
+      room.guestProfilePicture = profilePicture;
       room.status = 'playing';
       socket.join(code);
       
@@ -197,7 +212,22 @@ module.exports = function setupSocketHandler(io) {
       const room = rooms[code];
       if (room && room.host === socket.id) {
         room.gameId = gameId;
-        io.to(code).emit('gameStarted', { gameId, hostClientId, config: room.config, extra });
+        io.to(code).emit('gameStarted', {
+          gameId,
+          hostClientId,
+          config: room.config,
+          extra,
+          players: {
+            player0: {
+              username: room.hostUsername,
+              profilePicture: room.hostProfilePicture,
+            },
+            player1: {
+              username: room.guestUsername,
+              profilePicture: room.guestProfilePicture,
+            },
+          },
+        });
       }
     });
 

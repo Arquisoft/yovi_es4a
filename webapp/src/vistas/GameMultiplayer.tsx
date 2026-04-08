@@ -46,6 +46,7 @@ export default function GameMultiplayer() {
     error,
     disabledCells,
     myPlayer,
+    playerProfiles,
     handleCellClick,
     handleAbandon,
   } = useMultiplayerGameSession({
@@ -77,10 +78,19 @@ export default function GameMultiplayer() {
     return yen ? parseYenToCells(yen) : [];
   }, [yen]);
 
+  const opponentName = useMemo(() => {
+    const opponent =
+      myPlayer === "player0"
+        ? playerProfiles.player1
+        : playerProfiles.player0;
+
+    return opponent.username?.trim() || "Jugador online";
+  }, [myPlayer, playerProfiles]);
+
   return (
     <>
       <MultiplayerSessionGamePage
-        title={getModeTitle(config?.mode)}
+        title={`${getModeTitle(config?.mode)} vs. ${opponentName}`}
         subtitle={`Sala: ${code ?? ""} · Eres: ${
           myPlayer === "player0" ? "Azul" : "Naranja"
         }`}
@@ -110,6 +120,7 @@ export default function GameMultiplayer() {
         open={isChatOpen}
         myPlayer={myPlayer}
         messages={messages}
+        playerProfiles={playerProfiles}
         onClose={() => setIsChatOpen(false)}
         onSendMessage={handleSendChat}
       />
