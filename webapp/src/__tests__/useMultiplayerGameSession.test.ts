@@ -207,6 +207,50 @@ describe("useMultiplayerGameSession", () => {
     });
   });
 
+  it("emite finishGame cuando la jugada termina la partida", async () => {
+    mockedHvhMove.mockResolvedValueOnce({
+      yen: { size: 11, layout: "FINAL" },
+      status: { state: "finished", winner: "player0" },
+    } as any);
+
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+    const config = { size: 11, mode: "classic_hvh" } as const;
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    await act(async () => {
+      await result.current.handleCellClick(9);
+    });
+
+    expect(mockedSocket.emit).toHaveBeenCalledWith("playMove", {
+      code: "ROOM1",
+      cellId: 9,
+    });
+
+    expect(mockedSocket.emit).toHaveBeenCalledWith("finishGame", {
+      code: "ROOM1",
+      winner: "player0",
+    });
+
+    await waitFor(() => {
+      expect(result.current.winner).toBe("player0");
+      expect(result.current.nextTurn).toBeNull();
+    });
+  });
+
   it("abandona la sala y borra la partida si es host", async () => {
     const onInvalidState = vi.fn();
     const onLeaveLobby = vi.fn();
@@ -230,7 +274,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleAbandon();
     });
 
-    expect(mockedSocket.emit).toHaveBeenCalledWith("leaveRoom", "ROOM1");
+    expect(mockedSocket.emit).toHaveBeenCalledWith("leaveRoom", { code: "ROOM1" });
     expect(mockedDeleteHvhGame).toHaveBeenCalledWith("game-1");
     expect(onLeaveLobby).toHaveBeenCalled();
   });
