@@ -70,6 +70,13 @@ export default function GameMultiplayer() {
     };
   }, [isChatOpen]);
 
+  useEffect(() => {
+    if (error) {
+      setIsChatOpen(false);
+      setHasNewMessages(false);
+    }
+  }, [error]);
+
   function handleSendChat(text: string) {
     socket.emit("sendMessage", { code, text });
   }

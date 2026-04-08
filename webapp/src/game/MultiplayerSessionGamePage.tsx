@@ -154,12 +154,37 @@ export default function MultiplayerSessionGamePage({
     });
   }
 
+  if (error) {
+    return (
+      <Flex
+        justify="center"
+        align="start"
+        style={{
+          padding: "clamp(10px, 3vw, 20px)",
+          minHeight: "100vh",
+        }}
+      >
+        <div style={{ width: "min(1000px, 100%)" }}>
+          <Card>
+            <Flex vertical align="center" gap={16}>
+              <Title level={4} type="danger" style={{ margin: 0 }}>
+                El oponente se ha desconectado de la partida
+              </Title>
+              <Text>{"Esta partida no se guardará en tu historial."}</Text>
+              <Button onClick={onBack}>Volver</Button>
+            </Flex>
+          </Card>
+        </div>
+      </Flex>
+    );
+  }
+
   return (
     <GameShell
       title={title}
       subtitle={subtitle}
       loading={loading}
-      error={error}
+      error={""}
       hasBoard={hasBoard}
       emptyText={emptyText}
       onAbandon={handleAbandonGame}
