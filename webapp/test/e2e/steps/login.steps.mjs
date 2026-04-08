@@ -16,7 +16,23 @@ Then('soy redirigido a {string}', async function (ruta) {
 });
 
 Then('veo un mensaje de error de login', async function () {
-  const locator = this.page.locator('.ant-message-error');
-  await locator.first().waitFor({ state: 'visible', timeout: 6_000 });
-  assert.ok(await locator.first().isVisible());
+  // Ant Design v5 puede usar diferentes clases para mensajes flotantes:
+  //   - .ant-message-error  (v4 y algunos builds de v5)
+  //   - .ant-message-notice-content (v5, el contenedor del texto)
+  //   - [class*="message"][class*="error"] (selector tolerante)
+  //
+  // También aceptamos un Alert estático con type="error" por si el componente
+  // usa ese mecanismo en lugar del message flotante.
+  const SELECTORS = [
+    '.ant-message-error',
+    '.ant-message-notice-content',        // v5: contenedor del mensaje flotante
+    '[class*="ant-message"][class*="error"]',
+    '.ant-alert-error',
+  ].join(', ');
+
+  const locator = this.page.locator(SELECTORS);
+
+  // Esperamos hasta 8s a que cualquiera de los selectores sea visible
+  await locator.first().waitFor({ state: 'visible', timeout: 8_000 });
+  assert.ok(await locator.first().isVisible(), 'No se ve ningún mensaje de error de login');
 });

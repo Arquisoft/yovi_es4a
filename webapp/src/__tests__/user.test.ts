@@ -84,6 +84,7 @@ describe("api/users", () => {
           gamesLost: 0,
           gamesAbandoned: 0,
           totalMoves: 0,
+          currentWinStreak: 0,
           winRate: 0,
         },
         pagination: {
@@ -115,6 +116,7 @@ describe("api/users", () => {
           gamesLost: 0,
           gamesAbandoned: 0,
           totalMoves: 10,
+          currentWinStreak: 1,
           winRate: 100,
         },
         pagination: {
@@ -188,6 +190,7 @@ describe("api/users", () => {
           gamesLost: 1,
           gamesAbandoned: 1,
           totalMoves: 18,
+          currentWinStreak: 2,
           winRate: 50,
         },
       }),

@@ -113,6 +113,7 @@ describe("SessionGamePage", () => {
   const onGuestSaveRequestedMock = vi.fn();
   const onCellClickMock = vi.fn();
   const onBotTurnMock = vi.fn().mockResolvedValue(undefined);
+  const shouldCountMoveMock = vi.fn();
 
   const baseProps = {
     deps: [7, "random_bot", "human"] as const,
@@ -144,6 +145,7 @@ describe("SessionGamePage", () => {
         bot: { label: "random_bot", color: "#FF7B00" },
       },
     },
+    shouldCountMove: shouldCountMoveMock,
   };
 
   beforeEach(() => {
@@ -167,7 +169,7 @@ describe("SessionGamePage", () => {
     });
   });
 
-  it("llama a useSessionGame con deps/start/move/botMove", () => {
+  it("llama a useSessionGame con deps/start/move/botMove y shouldCountMove", () => {
     render(<SessionGamePage {...baseProps} />);
 
     expect(useSessionGameMock).toHaveBeenCalledWith({
@@ -175,6 +177,7 @@ describe("SessionGamePage", () => {
       start: startMock,
       move: moveMock,
       botMove: botMoveMock,
+      shouldCountMove: shouldCountMoveMock,
     });
   });
 

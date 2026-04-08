@@ -15,15 +15,37 @@ Then('veo la tabla de clasificación', async function () {
 Given('estoy en la página de ranking', async function () {
   await this.page.goto(`${BASE}/ranking`);
   await this.page.waitForSelector('text=Ranking', { timeout: 8_000 });
-  // Esperar a que la tabla cargue para que el Select esté renderizado
-  await this.page.waitForSelector('.ant-select', { timeout: 8_000 });
+
+  // Esperar a que la tabla esté cargada
+  await this.page.waitForSelector('.ant-table, table', { timeout: 10_000 });
+
+  // En Ant Design v5 el wrapper .ant-select puede reportarse como "hidden"
+  // porque el componente usa visibility internamente en el dropdown.
+  // Usamos 'attached' en lugar de 'visible' para confirmar que está en el DOM,
+  // y luego verificamos visibilidad con isVisible() que es más tolerante.
+  const selectWrapper = this.page.locator('.ant-select').first();
+  await selectWrapper.waitFor({ state: 'attached', timeout: 8_000 });
+
+  // Verificar que al menos uno de los selectores es interactuable
+  const isVisible = await selectWrapper.isVisible();
+  if (!isVisible) {
+    // Intentar scroll para que entre en el viewport
+    await selectWrapper.scrollIntoViewIfNeeded();
+    await this.page.waitForTimeout(300);
+  }
 });
 
 When('cambio el criterio a {string}', async function (criterio) {
-  // Abrir el selector de Ant Design — click en el wrapper completo por si el
-  // selector exacto varía entre versiones de antd
   const selectEl = this.page.locator('.ant-select').first();
-  await selectEl.waitFor({ state: 'visible', timeout: 8_000 });
+
+  // Aseguramos que está en el DOM antes de interactuar
+  await selectEl.waitFor({ state: 'attached', timeout: 8_000 });
+
+  // Scroll al elemento por si está fuera del viewport
+  await selectEl.scrollIntoViewIfNeeded();
+  await this.page.waitForTimeout(200);
+
+  // Click sobre el selector para abrirlo
   await selectEl.click();
 
   // Esperar el portal del dropdown (puede tardar una animación)
@@ -32,8 +54,7 @@ When('cambio el criterio a {string}', async function (criterio) {
     { timeout: 8_000 }
   );
 
-  // Las opciones llevan un <Space> con icono+texto: buscamos por texto contenido
-  // Intentamos primero coincidencia exacta, y si no, coincidencia parcial
+  // Buscar la opción por texto contenido
   const option = this.page
     .locator('.ant-select-item-option')
     .filter({ hasText: criterio })

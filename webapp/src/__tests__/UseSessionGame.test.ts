@@ -21,13 +21,18 @@ describe("useSessionGame", () => {
             : { state: "finished" as const },
     });
 
-    function mount(deps: readonly unknown[] = [7], botMove = botMoveMock) {
+    function mount(
+        deps: readonly unknown[] = [7],
+        botMove = botMoveMock,
+        shouldCountMove?: (turn: string | null) => boolean,
+    ) {
         return renderHook(() =>
             useSessionGame({
                 deps,
                 start: startMock,
                 move: moveMock,
                 botMove,
+                shouldCountMove,
             }),
         );
     }
@@ -124,14 +129,15 @@ describe("useSessionGame", () => {
         expect(result.current.nextTurn).toBe("bot");
     });
 
-    it("onCellClick actualiza yen, turno y moveCount", async () => {
+    it("onCellClick actualiza yen, turno y moveCount si shouldCountMove permite contar", async () => {
         startMock.mockResolvedValueOnce(ongoing("human"));
         moveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "x" },
             status: { state: "ongoing", next: "bot" },
         });
 
-        const { result } = mount();
+        const shouldCountMove = vi.fn((turn) => turn === "human");
+        const { result } = mount([7], botMoveMock, shouldCountMove);
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -142,9 +148,32 @@ describe("useSessionGame", () => {
         });
 
         expect(moveMock).toHaveBeenCalledWith("g1", 3);
+        expect(shouldCountMove).toHaveBeenCalledWith("human");
         expect(result.current.yen).toEqual({ size: 7, layout: "x" });
         expect(result.current.nextTurn).toBe("bot");
         expect(result.current.moveCount).toBe(1);
+    });
+
+    it("onCellClick no incrementa moveCount si shouldCountMove devuelve false", async () => {
+        startMock.mockResolvedValueOnce(ongoing("player1"));
+        moveMock.mockResolvedValueOnce({
+            yen: { size: 7, layout: "x" },
+            status: { state: "ongoing", next: "player0" },
+        });
+
+        const shouldCountMove = vi.fn((turn) => turn === "player0");
+        const { result } = mount([7], botMoveMock, shouldCountMove);
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        await act(async () => {
+            await result.current.onCellClick(3);
+        });
+
+        expect(shouldCountMove).toHaveBeenCalledWith("player1");
+        expect(result.current.moveCount).toBe(0);
     });
 
     it("onCellClick ignora clicks si no hay partida o ya acabó", async () => {
@@ -163,14 +192,15 @@ describe("useSessionGame", () => {
         expect(moveMock).not.toHaveBeenCalled();
     });
 
-    it("onBotTurn actualiza estado y moveCount", async () => {
+    it("onBotTurn incrementa moveCount si shouldCountMove permite contar", async () => {
         startMock.mockResolvedValueOnce(ongoing("bot"));
         botMoveMock.mockResolvedValueOnce({
             yen: { size: 7, layout: "after-bot" },
             status: { state: "ongoing", next: "human" },
         });
 
-        const { result } = mount();
+        const shouldCountMove = vi.fn((turn) => turn === "bot");
+        const { result } = mount([7], botMoveMock, shouldCountMove);
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -181,8 +211,51 @@ describe("useSessionGame", () => {
         });
 
         expect(botMoveMock).toHaveBeenCalledWith("g1");
+        expect(shouldCountMove).toHaveBeenCalledWith("bot");
         expect(result.current.yen).toEqual({ size: 7, layout: "after-bot" });
         expect(result.current.nextTurn).toBe("human");
+        expect(result.current.moveCount).toBe(1);
+    });
+
+    it("onBotTurn no incrementa moveCount si shouldCountMove devuelve false", async () => {
+        startMock.mockResolvedValueOnce(ongoing("bot"));
+        botMoveMock.mockResolvedValueOnce({
+            yen: { size: 7, layout: "after-bot" },
+            status: { state: "ongoing", next: "human" },
+        });
+
+        const shouldCountMove = vi.fn(() => false);
+        const { result } = mount([7], botMoveMock, shouldCountMove);
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        await act(async () => {
+            await result.current.onBotTurn();
+        });
+
+        expect(shouldCountMove).toHaveBeenCalledWith("bot");
+        expect(result.current.moveCount).toBe(0);
+    });
+
+    it("sin shouldCountMove sigue contando por defecto", async () => {
+        startMock.mockResolvedValueOnce(ongoing("human"));
+        moveMock.mockResolvedValueOnce({
+            yen: { size: 7, layout: "x" },
+            status: { state: "ongoing", next: "bot" },
+        });
+
+        const { result } = mount();
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        await act(async () => {
+            await result.current.onCellClick(3);
+        });
+
         expect(result.current.moveCount).toBe(1);
     });
 

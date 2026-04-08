@@ -21,13 +21,15 @@ type UseSessionGameArgs<YEN> = {
     start: () => Promise<SessionGameStartResponse<YEN>>;
     move: (gameId: string, cellId: number) => Promise<SessionGameMoveResponse<YEN>>;
     botMove?: (gameId: string) => Promise<SessionGameMoveResponse<YEN>>;
+    shouldCountMove?: (turn: string | null) => boolean;
 };
 
 export function useSessionGame<YEN>({
     deps,
     start,
     move,
-    botMove
+    botMove,
+    shouldCountMove,
 }: UseSessionGameArgs<YEN>) {
     const [yen, setYen] = useState<YEN | null>(null);
     const [gameId, setGameId] = useState<string | null>(null);
@@ -89,9 +91,12 @@ export function useSessionGame<YEN>({
             setLoading(true);
 
             try {
+                const currentTurn = nextTurn;
                 const r = await move(gameId, cellId);
                 setYen(r.yen);
-                setMoveCount((prev) => prev + 1);
+
+                if (!shouldCountMove || shouldCountMove(currentTurn))
+                    setMoveCount((prev) => prev + 1);
 
                 if (r.status.state === "finished") {
                     setGameOver(true);
@@ -108,7 +113,7 @@ export function useSessionGame<YEN>({
                 setLoading(false);
             }
         },
-        [yen, gameId, gameOver, move],
+        [yen, gameId, gameOver, move, nextTurn, shouldCountMove],
     );
 
     const onBotTurn = useCallback(async () => {
@@ -118,9 +123,12 @@ export function useSessionGame<YEN>({
         setLoading(true);
 
         try {
+            const currentTurn = nextTurn;
             const r = await botMove(gameId);
             setYen(r.yen);
-            setMoveCount((prev) => prev + 1);
+
+            if (!shouldCountMove || shouldCountMove(currentTurn))
+                setMoveCount((prev) => prev + 1);
 
             if (r.status.state === "finished") {
                 setGameOver(true);
@@ -136,7 +144,7 @@ export function useSessionGame<YEN>({
         } finally {
             setLoading(false);
         }
-    }, [botMove, gameId, gameOver]);
+    }, [botMove, gameId, gameOver, nextTurn, shouldCountMove]);
 
     const resetState = useMemo(
         () => ({

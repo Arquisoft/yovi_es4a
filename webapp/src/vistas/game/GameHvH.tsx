@@ -96,6 +96,7 @@ export default function GameHvH() {
           });
         }}
         move={(gameId, cellId) => hvhMove(gameId, cellId)}
+        shouldCountMove={(turn) => turn === "player0"}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
           if (!winner) return;
 
