@@ -6,7 +6,6 @@ import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
 import AppHeader from "./AppHeader";
 
 const { Title, Text, Paragraph } = Typography;
@@ -158,10 +157,10 @@ export const DEFAULT_VARIANT = VARIANTS[0];
 
 type Props = {
   onSelect: (variant: Variant) => void;
+  onBack: () => void;
 };
 
-export default function VariantSelect({ onSelect }: Props) {
-  const navigate = useNavigate();
+export default function VariantSelect({ onSelect, onBack }: Props) {
   const [selected, setSelected] = useState<VariantId>("classic");
   const [expanded, setExpanded] = useState<VariantId | null>(null);
 
@@ -176,23 +175,6 @@ export default function VariantSelect({ onSelect }: Props) {
       <div style={{ width: "min(720px, 100%)" }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <AppHeader title="YOVI" />
-
-          <Card
-            hoverable
-            style={{ 
-              background: "linear-gradient(135deg, #1677ff 0%, #164cff 100%)",
-              border: "none",
-              color: "white",
-              textAlign: "center",
-              cursor: "pointer"
-            }}
-            onClick={() => navigate("/multiplayer")}
-          >
-            <Title level={3} style={{ color: "white", margin: 0 }}>🌍 Multijugador Online (BETA)</Title>
-            <Text style={{ color: "rgba(255,255,255,0.8)" }}>
-              Crea o únete a salas privadas mediante códigos y juega en tiempo real.
-            </Text>
-          </Card>
 
           <Card>
             <Space direction="vertical" size={20} style={{ width: "100%" }}>
@@ -320,7 +302,7 @@ export default function VariantSelect({ onSelect }: Props) {
               <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
                 <Button
                   icon={<ArrowLeftOutlined />}
-                  onClick={() => navigate("/")}
+                  onClick={onBack}
                 >
                   Volver
                 </Button>

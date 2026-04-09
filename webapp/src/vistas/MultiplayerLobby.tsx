@@ -66,8 +66,8 @@ export default function MultiplayerLobby() {
       setLoading(false);
       if (res.success) {
         message.success("Unido correctamente");
-        navigate(`/multiplayer/${joinCode.trim().toUpperCase()}`, { 
-          state: { role: 'guest', config: res.roomConfig } 
+        navigate(`/multiplayer/${joinCode.trim().toUpperCase()}`, {
+          state: { role: "guest", config: res.roomConfig }
         });
       } else {
         message.error(res.error || "Error al unirse a la sala");
@@ -184,7 +184,7 @@ export default function MultiplayerLobby() {
 
           {!createdCode && (
             <Flex justify="flex-start">
-              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/")}>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/home")}>
                 Volver al Menú
               </Button>
             </Flex>

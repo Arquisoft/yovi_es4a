@@ -24,7 +24,7 @@ import GameHoley from "./vistas/GameHoley";
 import GamePolyY from "./vistas/GamePolyY";
 import GameHex from "./vistas/GameHex";
 
-// ─── Flujo /home: selección de variante → configuración ─────────────────────
+// ─── Flujo /home: configuración → selección de variante ─────────────────────
 
 const CLASSIC_VARIANT: Variant = {
   id: "classic",
@@ -39,7 +39,7 @@ const CLASSIC_VARIANT: Variant = {
 };
 
 function HomeFlow() {
-  const [step, setStep] = useState<"variant" | "config">("variant");
+  const [step, setStep] = useState<"variant" | "config">("config");
   const [variant, setVariant] = useState<Variant>(CLASSIC_VARIANT);
 
   function handleVariantSelect(v: Variant) {
@@ -48,7 +48,7 @@ function HomeFlow() {
   }
 
   if (step === "variant") {
-    return <VariantSelect onSelect={handleVariantSelect} />;
+    return <VariantSelect onSelect={handleVariantSelect} onBack={() => setStep("config")} />;
   }
 
   return (
