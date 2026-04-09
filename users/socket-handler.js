@@ -61,17 +61,29 @@ async function saveGameForUser(username, game) {
     "stats.totalMoves": game.totalMoves,
   };
 
-  if (game.result === "won")
+  const currentWinStreak = user.stats?.currentWinStreak || 0;
+  let nextWinStreak = 0;
+
+  if (game.result === "won") {
     inc["stats.gamesWon"] = 1;
-  else if (game.result === "lost")
+    nextWinStreak = currentWinStreak + 1;
+  }
+  else if (game.result === "lost") {
     inc["stats.gamesLost"] = 1;
-  else if (game.result === "abandoned")
+    nextWinStreak = 0;
+  }
+  else if (game.result === "abandoned") {
     inc["stats.gamesAbandoned"] = 1;
+    nextWinStreak = 0;
+  }
 
   await User.findByIdAndUpdate(
     user._id,
     {
       $inc: inc,
+      $set: {
+        "stats.currentWinStreak": nextWinStreak,
+      },
       $push: {
         gameHistory: {
           $each: [{

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import User from '../users-model.js';
 
 describe('Socket Handler', () => {
   let io;
@@ -21,10 +22,10 @@ describe('Socket Handler', () => {
   });
 
   beforeEach(() => {
-    vi.resetModules();
+    vi.restoreAllMocks();
 
-    findOneMock = vi.fn();
-    findByIdAndUpdateMock = vi.fn();
+    findOneMock = vi.spyOn(User, 'findOne');
+    findByIdAndUpdateMock = vi.spyOn(User, 'findByIdAndUpdate');
 
     io = {
       on: vi.fn((event, cb) => {
@@ -39,16 +40,8 @@ describe('Socket Handler', () => {
   });
 
   const setup = async () => {
-    vi.doMock('../users-model', () => ({
-      default: {
-        findOne: findOneMock,
-        findByIdAndUpdate: findByIdAndUpdateMock,
-      },
-      findOne: findOneMock,
-      findByIdAndUpdate: findByIdAndUpdateMock,
-    }));
-
-    const setupSocketHandler = (await import('../socket-handler.js')).default;
+    const imported = await import('../socket-handler.js');
+    const setupSocketHandler = imported.default || imported;
     setupSocketHandler(io);
   };
 
@@ -234,13 +227,13 @@ describe('Socket Handler', () => {
       .mockResolvedValueOnce({
         _id: 'u1',
         username: 'hostUser',
-        stats: {},
+        stats: { currentWinStreak: 2 },
         gameHistory: [],
       })
       .mockResolvedValueOnce({
         _id: 'u2',
         username: 'guestUser',
-        stats: {},
+        stats: { currentWinStreak: 5 },
         gameHistory: [],
       });
 
@@ -280,6 +273,38 @@ describe('Socket Handler', () => {
     await expect(
       socketHost.handlers['finishGame']({ code, winner: 'player0' })
     ).resolves.toBeUndefined();
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      1,
+      'u1',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesWon': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 3,
+        },
+      }),
+      expect.any(Object)
+    );
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      2,
+      'u2',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesLost': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
   }, 100000);
 
   it('debería abandonar sala proactivamente (leaveRoom)', async () => {
@@ -312,7 +337,7 @@ describe('Socket Handler', () => {
     findOneMock.mockResolvedValueOnce({
       _id: 'u1',
       username: 'hostUser',
-      stats: {},
+      stats: { currentWinStreak: 4 },
       gameHistory: [],
     });
     findByIdAndUpdateMock.mockResolvedValue({});
@@ -364,6 +389,9 @@ describe('Socket Handler', () => {
           'stats.gamesAbandoned': 1,
           'stats.totalMoves': 1,
         }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
       }),
       expect.any(Object)
     );
@@ -398,7 +426,7 @@ describe('Socket Handler', () => {
     findOneMock.mockResolvedValueOnce({
       _id: 'u2',
       username: 'guestUser',
-      stats: {},
+      stats: { currentWinStreak: 6 },
       gameHistory: [],
     });
     findByIdAndUpdateMock.mockResolvedValue({});
@@ -450,6 +478,9 @@ describe('Socket Handler', () => {
           'stats.gamesAbandoned': 1,
           'stats.totalMoves': 1,
         }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
       }),
       expect.any(Object)
     );
