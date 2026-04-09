@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import AppHeader from "./AppHeader";
 import { socket } from "../api/socket";
 import { VARIANTS } from "./VariantSelect";
+import { getUserSession } from "../utils/session";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -48,36 +49,58 @@ export default function MultiplayerLobby() {
 
   const handleCreateRoom = () => {
     setLoading(true);
-    socket.emit("createRoom", { size, mode: MODE_MAP[modeId] }, (res: any) => {
-      setLoading(false);
-      if (res.success) {
-        setCreatedCode(res.code);
-        message.info(`Sala creada: ${res.code}. Esperando rival...`);
-      } else {
-        message.error("Error al crear la sala");
+    const session = getUserSession();
+
+    socket.emit(
+      "createRoom",
+      {
+        size,
+        mode: MODE_MAP[modeId],
+        username: session?.username ?? null,
+        profilePicture: session?.profilePicture ?? null,
+      },
+      (res: any) => {
+        setLoading(false);
+        if (res.success) {
+          setCreatedCode(res.code);
+          message.info(`Sala creada: ${res.code}. Esperando rival...`);
+        } else {
+          message.error("Error al crear la sala");
+        }
       }
-    });
+    );
   };
 
   const handleJoinRoom = () => {
     if (!joinCode.trim()) return;
     setLoading(true);
-    socket.emit("joinRoom", joinCode.trim(), (res: any) => {
-      setLoading(false);
-      if (res.success) {
-        message.success("Unido correctamente");
-        navigate(`/multiplayer/${joinCode.trim().toUpperCase()}`, {
-          state: { role: "guest", config: res.roomConfig }
-        });
-      } else {
-        message.error(res.error || "Error al unirse a la sala");
+
+    const session = getUserSession();
+
+    socket.emit(
+      "joinRoom",
+      {
+        code: joinCode.trim(),
+        username: session?.username ?? null,
+        profilePicture: session?.profilePicture ?? null,
+      },
+      (res: any) => {
+        setLoading(false);
+        if (res.success) {
+          message.success("Unido correctamente");
+          navigate(`/multiplayer/${joinCode.trim().toUpperCase()}`, { 
+            state: { role: 'guest', config: res.roomConfig } 
+          });
+        } else {
+          message.error(res.error || "Error al unirse a la sala");
+        }
       }
-    });
+    );
   };
 
   const cancelRoom = () => {
     if (createdCode) {
-      socket.emit("leaveRoom", createdCode);
+      socket.emit("leaveRoom", { code: createdCode });
       setCreatedCode(null);
     }
   };

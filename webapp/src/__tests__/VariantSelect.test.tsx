@@ -26,6 +26,15 @@ vi.mock("antd", () => ({
     Flex: ({ children }: any) => <div>{children}</div>,
     Space: ({ children }: any) => <div>{children}</div>,
     Tag: ({ children }: any) => <span>{children}</span>,
+    Masonry: ({ items = [], itemRender }: any) => (
+        <div data-testid="masonry">
+            {items.map((item: any) => (
+                <div key={item.key} data-testid={`masonry-item-${item.key}`}>
+                    {itemRender ? itemRender(item) : null}
+                </div>
+            ))}
+        </div>
+    ),
     Typography: {
         Title: ({ children }: any) => <h2>{children}</h2>,
         Text: ({ children }: any) => <span>{children}</span>,
