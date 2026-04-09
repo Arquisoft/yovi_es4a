@@ -85,18 +85,23 @@ export default function GameFortuneDice() {
     gameId: string,
     cellId: number,
   ): Promise<SessionGameMoveResponse<YEN>> => {
-    const result = await hvhMove(gameId, cellId);
+    const curPlayer = currentPlayerRef.current;
+    const curNextInt = curPlayer === "player0" ? 0 : 1;
+    
+    // Si quedan piezas, forzamos que el siguiente siga siendo el actual
+    const nextPlayerOverride = piecesLeftRef.current > 1 ? curNextInt : undefined;
+
+    const result = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
 
     if (result.status.state === "finished") return result;
 
     piecesLeftRef.current -= 1;
 
     if (piecesLeftRef.current > 0) {
-      // Aún quedan piezas en este turno: mantener el mismo jugador
       setPiecesLeft(piecesLeftRef.current);
       return {
         ...result,
-        status: { state: "ongoing", next: currentPlayerRef.current },
+        status: { state: "ongoing", next: curPlayer },
       };
     }
 

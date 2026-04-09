@@ -302,6 +302,11 @@ export default function GameMultiplayer() {
     function onEnemyMove({ cellId }: { cellId: number }) {
       if (gameId) {
         refreshGameState(gameId, hostClientId ?? undefined, cellId);
+        
+        // Sincronizar contador local de piezas restantes al mover el oponente
+        if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
+            setPiecesLeft(prev => (prev > 1 ? prev - 1 : (config.mode === "master_hvh" ? 2 : prev)));
+        }
       }
     }
 
@@ -412,17 +417,26 @@ export default function GameMultiplayer() {
       } else {
         setNextTurn(r.status.next ?? null);
         setMoveCount(prev => prev + 1);
+
+        // Actualizamos contador local de piezas restantes para variantes de múltiples movimientos
+        if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
+            // Si el turno ha pasado oficialmente al otro jugador, reseteamos contador (el host enviará el nuevo dado si procede)
+            if (r.status.next !== myPlayer) {
+                if (config.mode === "master_hvh") setPiecesLeft(2);
+            } else {
+                setPiecesLeft(prev => prev - 1);
+            }
+        }
         
         // Host pushes state for pieces/dice that are not in the standard engine
         if (role === "host") {
             if (config?.mode === "master_hvh") {
                 const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
-                setPiecesLeft(newPiecesLeft);
+                // No llamamos a setPiecesLeft aquí porque ya lo hicimos arriba o lo hará el nextTurn check
                 socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
             } else if (config?.mode === "fortune_dice_hvh") {
                 const newPiecesLeft = piecesLeft - 1;
                 if (newPiecesLeft > 0) {
-                    setPiecesLeft(newPiecesLeft);
                     socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
                 } else {
                     const newDice = Math.floor(Math.random() * 6) + 1;
