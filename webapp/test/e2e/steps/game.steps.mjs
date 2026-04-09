@@ -117,7 +117,14 @@ When('selecciono la dificultad {string}', async function (label) {
 });
 
 When('pulso {string}', async function (texto) {
-  await this.page.click(`text="${texto}"`);
+  const button = this.page.getByRole('button', { name: texto }).first();
+
+  if (await button.count()) {
+    await button.click();
+    return;
+  }
+
+  await this.page.locator(`text=${texto}`).first().click();
 });
 
 Then('veo el tablero de juego', async function () {
