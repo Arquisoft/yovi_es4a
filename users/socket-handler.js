@@ -102,26 +102,37 @@ async function persistRoomHistory(room, { hostResult, guestResult }) {
   room.historySaved = true;
 
   try {
-    await Promise.all([
-      saveGameForUser(room.hostUsername, {
-        gameId: room.gameId,
-        mode,
-        result: hostResult,
-        boardSize,
-        totalMoves: room.hostMoves || 0,
-        opponent: room.guestUsername || "Jugador online",
-        startedBy: "player0",
-      }),
-      saveGameForUser(room.guestUsername, {
-        gameId: room.gameId,
-        mode,
-        result: guestResult,
-        boardSize,
-        totalMoves: room.guestMoves || 0,
-        opponent: room.hostUsername || "Jugador online",
-        startedBy: "player0",
-      }),
-    ]);
+    const saves = [];
+
+    if (hostResult) {
+      saves.push(
+        saveGameForUser(room.hostUsername, {
+          gameId: room.gameId,
+          mode,
+          result: hostResult,
+          boardSize,
+          totalMoves: room.hostMoves || 0,
+          opponent: room.guestUsername || "Jugador online",
+          startedBy: "player0",
+        })
+      );
+    }
+
+    if (guestResult) {
+      saves.push(
+        saveGameForUser(room.guestUsername, {
+          gameId: room.gameId,
+          mode,
+          result: guestResult,
+          boardSize,
+          totalMoves: room.guestMoves || 0,
+          opponent: room.hostUsername || "Jugador online",
+          startedBy: "player0",
+        })
+      );
+    }
+
+    await Promise.all(saves);
   } catch (err) {
     room.historySaved = false;
     console.error('Error guardando historial multiplayer:', err);
@@ -276,12 +287,12 @@ module.exports = function setupSocketHandler(io) {
           if (socket.id === room.host) {
             await persistRoomHistory(room, {
               hostResult: 'abandoned',
-              guestResult: 'won',
+              guestResult: null,
             });
           }
           else if (socket.id === room.guest) {
             await persistRoomHistory(room, {
-              hostResult: 'won',
+              hostResult: null,
               guestResult: 'abandoned',
             });
           }
@@ -316,12 +327,12 @@ module.exports = function setupSocketHandler(io) {
             if (room.host === socket.id) {
               await persistRoomHistory(room, {
                 hostResult: 'abandoned',
-                guestResult: 'won',
+                guestResult: null,
               });
             }
             else {
               await persistRoomHistory(room, {
-                hostResult: 'won',
+                hostResult: null,
                 guestResult: 'abandoned',
               });
             }
