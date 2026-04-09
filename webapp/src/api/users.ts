@@ -4,7 +4,13 @@ export type GameMode =
     | "tabu_hvh"
     | "holey_hvh"
     | "fortune_dice_hvh"
-    | "poly_hvh";
+    | "poly_hvh"
+    | "pastel_hvh"
+    | "master_hvh"
+    | "fortune_coin_hvh"
+    | "whynot_hvh"
+    | "3dy_hvh"
+    | "hex_hvh";
 
 export type HistoryGame = {
     gameId: string;

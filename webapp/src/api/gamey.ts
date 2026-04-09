@@ -138,6 +138,7 @@ export type GameStateResponse = {
 
 export type CellMoveRequest = {
   cell_id: number;
+  next_player?: number;
 };
 
 export type MoveCoords = { x: number; y: number; z: number };
@@ -282,10 +283,10 @@ export async function getHvhGame(gameId: string, overrideClientId?: string): Pro
   });
 }
 
-export async function hvhMove(gameId: string, cellId: number, overrideClientId?: string): Promise<HvhMoveResponse> {
+export async function hvhMove(gameId: string, cellId: number, overrideClientId?: string, nextPlayer?: number): Promise<HvhMoveResponse> {
   return http<HvhMoveResponse>(`/api/v1/hvh/games/${encodeURIComponent(gameId)}/moves`, {
     method: "POST",
     headers: buildHeaders(undefined, overrideClientId),
-    body: JSON.stringify({ cell_id: cellId } satisfies CellMoveRequest),
+    body: JSON.stringify({ cell_id: cellId, next_player: nextPlayer } satisfies CellMoveRequest),
   });
 }

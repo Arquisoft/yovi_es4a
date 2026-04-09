@@ -189,7 +189,7 @@ pub async fn post_move(
     if finished {
         session.hvh_winner = Some(played_by);
     } else {
-        session.hvh_next_player = Some(1 - played_by);
+        session.hvh_next_player = Some(req.next_player.unwrap_or(1 - played_by));
     }
 
     save_session(&state, &game_id, session.clone()).await?;

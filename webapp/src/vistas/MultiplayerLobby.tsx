@@ -13,7 +13,13 @@ const MODE_MAP: Record<string, string> = {
   tabu: "tabu_hvh",
   holey: "holey_hvh",
   fortune_dice: "fortune_dice_hvh",
-  poly_y: "poly_hvh"
+  fortune_coin: "fortune_coin_hvh",
+  poly_y: "poly_hvh",
+  pastel: "pastel_hvh",
+  master: "master_hvh",
+  why_not: "whynot_hvh",
+  hex: "hex_hvh",
+  "3dy": "3dy_hvh",
 };
 
 export default function MultiplayerLobby() {
@@ -135,7 +141,7 @@ export default function MultiplayerLobby() {
                       value={modeId} 
                       onChange={setModeId} 
                       style={{ width: "100%" }}
-                      options={VARIANTS.filter(v => v.implemented || v.id === 'fortune_dice' || v.id === 'poly_y').map(v => ({ value: v.id, label: `${v.emoji} ${v.label}` }))}
+                      options={VARIANTS.map(v => ({ value: v.id, label: `${v.emoji} ${v.label}` }))}
                     />
 
                     <Text strong style={{ marginTop: 10, display: "block" }}>Tamaño del tablero:</Text>

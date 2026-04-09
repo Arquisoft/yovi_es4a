@@ -104,6 +104,7 @@ function gameRouteForVariant(variantId: VariantId): string {
     why_not: "/game-why-not",
     poly_y: "/game-poly-y",
     hex: "/game-hex",
+    "3dy": "/game-3dy",
   };
   return map[variantId] ?? "/game-hvb";
 }
@@ -115,7 +116,7 @@ function hvhRouteForVariant(variantId: VariantId): string {
 }
 
 // Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
+const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel", "3dy"];
 const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 // ─── Props ───────────────────────────────────────────────────────────────────

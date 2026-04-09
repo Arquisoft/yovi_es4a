@@ -74,6 +74,7 @@ type Props<TYen extends GameYEN> = {
   disabledCells?: Set<number>;
   celebrateWinner?: (winner: string | null) => boolean;
   shouldCountMove?: (turn: string | null) => boolean;
+  turnIndicator?: React.ReactNode;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -92,6 +93,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   guestSaveLoading = false,
   disabledCells,
   shouldCountMove,
+  turnIndicator: customTurnIndicator,
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -306,7 +308,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
       emptyText={resultConfig.emptyText ?? "No se pudo crear la partida."}
       onAbandon={handleAbandonGame}
       abandonDisabled={loading || abandoning || gameOver}
-      turnIndicator={turnIndicator}
+      turnIndicator={customTurnIndicator ?? turnIndicator}
       board={
         <Card
           style={{

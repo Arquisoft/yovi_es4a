@@ -23,6 +23,7 @@ export type VariantId =
   | "holey"
   | "why_not"
   | "poly_y"
+  | "3dy"
   | "hex";
 
 export interface Variant {
@@ -59,7 +60,7 @@ export const VARIANTS: Variant[] = [
     description: "Un jugador coloca la primera pieza, el otro elige bando.",
     detail:
       "El Jugador 1 elige dónde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posición (intercambiar bandos) o ceder el turno. Elimina la ventaja de salir primero.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "master",
@@ -70,7 +71,7 @@ export const VARIANTS: Variant[] = [
     description: "Igual que el clásico, pero cada turno se colocan 2 fichas.",
     detail:
       "Las reglas son idénticas al Y estándar salvo que en cada turno el jugador activo coloca exactamente 2 piezas en casillas libres. La estrategia cambia radicalmente al poder avanzar el doble cada vez.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "fortune_coin",
@@ -81,7 +82,7 @@ export const VARIANTS: Variant[] = [
     description: "Antes de cada turno se lanza una moneda para decidir quién mueve.",
     detail:
       "Al inicio de cada turno se lanza una moneda: cara o cruz determina qué jugador coloca ficha ese turno. Un mismo jugador puede mover varias veces seguidas. El primero en conectar los tres lados gana.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "fortune_dice",
@@ -92,7 +93,7 @@ export const VARIANTS: Variant[] = [
     description: "El dado indica cuántas piezas puede colocar el jugador activo.",
     detail:
       "En cada turno se lanza un dado de 6 caras. El resultado indica cuántas piezas puede colocar ese turno el jugador activo. Luego el turno pasa al oponente. La volatilidad es alta y las remontadas son frecuentes.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "tabu",
@@ -125,7 +126,7 @@ export const VARIANTS: Variant[] = [
     description: "Gana el primero en conectar los tres lados... ¡en conectar pierde!",
     detail:
       "Las reglas son idénticas al Y clásico, pero el objetivo se invierte: el primer jugador que forme una conexión de los tres lados del tablero con sus piezas ¡pierde la partida! Hay que conectar al adversario sin conectarse uno mismo.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "poly_y",
@@ -136,7 +137,7 @@ export const VARIANTS: Variant[] = [
     description: "Tablero de 5+ lados. Gana quien conquiste más esquinas.",
     detail:
       "Se juega en un tablero poligonal con un número impar de lados (mínimo 5). Un jugador «posee» una esquina si tiene un grupo de piezas que toca los dos lados que forman dicha esquina. Gana quien consiga poseer más esquinas al final.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "hex",
@@ -147,7 +148,18 @@ export const VARIANTS: Variant[] = [
     description: "Juego relacionado con Y pero en tablero rómbico de 11×11.",
     detail:
       "Jugado en un tablero rómbico (habitualmente 11×11). Cada jugador intenta conectar sus dos lados opuestos del tablero. No hay empates posibles. Comparte ADN matemático con el juego Y y es un clásico de la teoría de juegos.",
-    implemented: false,
+    implemented: true,
+  },
+  {
+    id: "3dy",
+    label: "3D Y",
+    emoji: "🧊",
+    tagLabel: "3 Dimensiones",
+    tagColor: "cyan",
+    description: "Juego Y en 3D. Conecta las caras de un tetraedro.",
+    detail:
+      "Se juega en varios niveles superpuestos. Cada nivel es un tablero Y más pequeño. Los jugadores deben conectar las caras del tetraedro 3D mediante una cadena continua de piezas.",
+    implemented: true,
   },
 ];
 

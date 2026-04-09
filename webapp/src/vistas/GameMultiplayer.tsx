@@ -118,14 +118,19 @@ function GameResult({
   animationFinished,
   onAnimationComplete,
   onBack,
+  mode,
 }: Readonly<{
   winner: string;
   myPlayer: string;
   animationFinished: boolean;
   onAnimationComplete: () => void;
   onBack: () => void;
+  mode?: string;
 }>) {
-  const isWin = winner === myPlayer;
+  const isWhYnot = mode === "whynot_hvh";
+  const effectivelyWhoWon = isWhYnot ? (winner === "player0" ? "player1" : "player0") : winner;
+  const isWin = effectivelyWhoWon === myPlayer;
+  
   return (
     <Card style={{ marginTop: 20, textAlign: "center" }}>
       {!animationFinished && (
@@ -138,6 +143,9 @@ function GameResult({
         </div>
       )}
       <Title level={3}>{isWin ? "👑 ¡HAS GANADO!" : "💀 HAS PERDIDO"}</Title>
+      {isWhYnot && (
+        <Text type="secondary">En WhY not, el primero que conecta pierde.</Text>
+      )}
       <Button type="primary" size="large" onClick={onBack} style={{ marginTop: 10 }}>
         Volver al Lobby
       </Button>
@@ -173,8 +181,18 @@ export default function GameMultiplayer() {
   // Variants state
   const [disabledCells, setDisabledCells] = useState<Set<number>>(new Set());
   const [holes, setHoles] = useState<Set<number>>(new Set());
+  const [piecesLeft, setPiecesLeft] = useState(1);
+  const [diceValue, setDiceValue] = useState(1);
+  const [swapped, setSwapped] = useState(false);
+  const [moveCount, setMoveCount] = useState(0);
 
-  const myPlayer = role === "host" ? "player0" : "player1";
+  const effectiveMyPlayer = useMemo(() => {
+    const base = role === "host" ? "player0" : "player1";
+    if (swapped) return base === "player0" ? "player1" : "player0";
+    return base;
+  }, [role, swapped]);
+
+  const myPlayer = effectiveMyPlayer;
   const myColor = myPlayer === "player0" ? "#1677ff" : "#ff7b00";
 
   // Auto-scroll chat
@@ -190,17 +208,22 @@ export default function GameMultiplayer() {
 
     async function initHost() {
       try {
+        const initialTurn: "player0" | "player1" = config?.mode === "fortune_coin_hvh" 
+            ? (Math.random() < 0.5 ? "player0" : "player1") 
+            : "player0";
+
         await putConfig({ 
           size: config!.size, 
           hvb_starter: "human", 
-          hvh_starter: "player0", 
+          hvh_starter: initialTurn, 
           bot_id: null 
         });
         
-        const r = await createHvhGame({ size: config!.size, hvh_starter: "player0" });
+        const r = await createHvhGame({ size: config!.size, hvh_starter: initialTurn });
         if (!isMounted) return;
 
         let extra: any = {};
+
         if (config?.mode === "holey_hvh") {
           const totalCells = (config.size * (config.size + 1)) / 2;
           const generatedHoles = generateHoles(totalCells);
@@ -210,16 +233,33 @@ export default function GameMultiplayer() {
           extra.holes = holesArray;
         }
 
+        if (config?.mode === "master_hvh") {
+            setPiecesLeft(1); // First move is 1 piece
+            extra.piecesLeft = 1;
+        } else if (config?.mode === "fortune_dice_hvh") {
+            const firstDice = Math.floor(Math.random() * 6) + 1;
+            setDiceValue(firstDice);
+            setPiecesLeft(firstDice);
+            extra.diceValue = firstDice;
+            extra.piecesLeft = firstDice;
+        } else if (config?.mode === "fortune_coin_hvh") {
+            extra.nextTurnOverride = initialTurn;
+            message.info(`🪙 Moneda lanzada: Empieza ${initialTurn === "player0" ? "Azul" : "Naranja"}`);
+        }
+
         setGameId(r.game_id);
         setYen(r.yen);
-        setNextTurn(r.status.state === "ongoing" ? r.status.next! : null);
+        setNextTurn(initialTurn);
         
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", { 
           code, 
           gameId: r.game_id, 
           hostClientId: myClientId,
-          extra
+          extra: {
+            ...extra,
+            mode: config?.mode
+          }
         });
         setLoading(false);
       } catch (err: any) {
@@ -254,6 +294,8 @@ export default function GameMultiplayer() {
         } else {
           refreshGameState(gId, hId);
         }
+        if (extra?.piecesLeft !== undefined) setPiecesLeft(extra.piecesLeft);
+        if (extra?.diceValue !== undefined) setDiceValue(extra.diceValue);
       }
     }
 
@@ -269,6 +311,16 @@ export default function GameMultiplayer() {
         setHasNewMessages(true);
       }
     }
+
+    function onVariantUpdate(update: any) {
+        if (update.swapped !== undefined) setSwapped(update.swapped);
+        if (update.piecesLeft !== undefined) setPiecesLeft(update.piecesLeft);
+        if (update.diceValue !== undefined) setDiceValue(update.diceValue);
+        if (update.nextTurnOverride !== undefined) {
+            setNextTurn(update.nextTurnOverride);
+            message.info(`🪙 ¡Moneda! Turno para ${update.nextTurnOverride === "player0" ? "Azul" : "Naranja"}`);
+        }
+    }
     
     function onPlayerDisconnected(msg: string) {
        message.warning(msg);
@@ -279,12 +331,14 @@ export default function GameMultiplayer() {
     socket.on("enemyMove", onEnemyMove);
     socket.on("chatMessage", onChatMessage);
     socket.on("playerDisconnected", onPlayerDisconnected);
+    socket.on("variantUpdate", onVariantUpdate);
 
     return () => {
       socket.off("gameStarted", onGameStarted);
       socket.off("enemyMove", onEnemyMove);
       socket.off("chatMessage", onChatMessage);
       socket.off("playerDisconnected", onPlayerDisconnected);
+      socket.off("variantUpdate", onVariantUpdate);
     };
   }, [gameId, role, hostClientId, config]);
 
@@ -321,7 +375,29 @@ export default function GameMultiplayer() {
     setLoading(true);
     try {
       const isGuest = role === "guest";
-      const r = await hvhMove(gameId!, cellId, isGuest && hostClientId ? hostClientId : undefined);
+      const nextPlayerInt = myPlayer === "player0" ? 0 : 1;
+      let nextPlayerOverride: number | undefined = undefined;
+
+      if (config?.mode === "master_hvh") {
+          const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
+          if (newPiecesLeft === 1) nextPlayerOverride = nextPlayerInt;
+      } else if (config?.mode === "fortune_dice_hvh") {
+          if (piecesLeft > 1) nextPlayerOverride = nextPlayerInt;
+      } else if (role === "host" && config?.mode === "fortune_coin_hvh") {
+          // El host decide el siguiente jugador tras el lanzamiento de moneda
+          const next = Math.random() < 0.5 ? 0 : 1;
+          nextPlayerOverride = next;
+          const nextStr = next === 0 ? "player0" : "player1";
+          socket.emit("variantUpdate", { code, nextTurnOverride: nextStr });
+          message.info(`🪙 ¡Moneda! Turno para ${next === 0 ? "Azul" : "Naranja"}`);
+      }
+
+      const r = await hvhMove(
+          gameId!, 
+          cellId, 
+          isGuest && hostClientId ? hostClientId : undefined,
+          nextPlayerOverride
+      );
       setYen(r.yen);
       
       // Al mover nosotros, en Tabu se limpian nuestras celdas bloqueadas (hasta el próximo turno rival)
@@ -335,6 +411,27 @@ export default function GameMultiplayer() {
         setDisabledCells(new Set());
       } else {
         setNextTurn(r.status.next ?? null);
+        setMoveCount(prev => prev + 1);
+        
+        // Host pushes state for pieces/dice that are not in the standard engine
+        if (role === "host") {
+            if (config?.mode === "master_hvh") {
+                const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
+                setPiecesLeft(newPiecesLeft);
+                socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
+            } else if (config?.mode === "fortune_dice_hvh") {
+                const newPiecesLeft = piecesLeft - 1;
+                if (newPiecesLeft > 0) {
+                    setPiecesLeft(newPiecesLeft);
+                    socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
+                } else {
+                    const newDice = Math.floor(Math.random() * 6) + 1;
+                    setDiceValue(newDice);
+                    setPiecesLeft(newDice);
+                    socket.emit("variantUpdate", { code, diceValue: newDice, piecesLeft: newDice });
+                }
+            }
+        }
       }
 
       socket.emit("playMove", { code, cellId });
@@ -362,6 +459,14 @@ export default function GameMultiplayer() {
   const cells = useMemo(() => {
     return yen ? parseYenToCells(yen) : [];
   }, [yen]);
+
+  function handleSwapRoles() {
+    if (role === "guest" && moveCount === 1 && !swapped) {
+        setSwapped(true);
+        socket.emit("variantUpdate", { code, swapped: true });
+        message.success("Has intercambiado roles.");
+    }
+  }
 
   const activeTurnColor = nextTurn === "player0" ? "#1677ff" : "#ff7b00";
   const goToLobby = () => navigate("/multiplayer");
@@ -402,6 +507,22 @@ export default function GameMultiplayer() {
             onOpenChat={() => { setIsChatOpen(true); setHasNewMessages(false); }}
           />
         }
+        turnIndicatorExtra={
+            <>
+                {config?.mode === "master_hvh" && (
+                     <Badge count={piecesLeft} overflowCount={9} style={{ backgroundColor: '#52c41a' }} />
+                )}
+                {config?.mode === "fortune_dice_hvh" && (
+                     <Badge count={diceValue} overflowCount={9} style={{ backgroundColor: '#faad14' }} title="Valor del dado" />
+                )}
+                {config?.mode === "fortune_dice_hvh" && (
+                     <Badge count={piecesLeft} overflowCount={9} style={{ backgroundColor: '#52c41a' }} title="Movimientos restantes" />
+                )}
+                {role === "guest" && config?.mode === "pastel_hvh" && moveCount === 1 && !swapped && (
+                    <Button size="small" onClick={handleSwapRoles}>Intercambiar Roles (Regla Pastel)</Button>
+                )}
+            </>
+        }
         board={
           <Card
             style={{
@@ -429,6 +550,7 @@ export default function GameMultiplayer() {
               animationFinished={animationFinished}
               onAnimationComplete={() => setAnimationFinished(true)}
               onBack={goToLobby}
+              mode={config?.mode}
             />
           ) : null
         }
