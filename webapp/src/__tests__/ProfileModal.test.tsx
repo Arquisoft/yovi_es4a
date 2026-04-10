@@ -28,12 +28,14 @@ beforeAll(() => {
 });
 
 const changePasswordMock = vi.fn().mockResolvedValue(undefined);
-const changeUserEmailMock = vi.fn().mockResolvedValue(undefined);
+const changeUsernameMock = vi.fn().mockResolvedValue(undefined);
+const changeAvatarMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("../api/users", () => ({
   getUserProfile: vi.fn().mockResolvedValue({
     username: "mario",
     email: "mario@mail.com",
+    profilePicture: "seniora.png",
   }),
   getUserStats: vi.fn().mockResolvedValue({
     stats: {
@@ -43,11 +45,13 @@ vi.mock("../api/users", () => ({
     },
   }),
   changePassword: (...args: any[]) => changePasswordMock(...args),
-  changeUserEmail: (...args: any[]) => changeUserEmailMock(...args),
+  changeUsername: (...args: any[]) => changeUsernameMock(...args),
+  changeAvatar: (...args: any[]) => changeAvatarMock(...args),
 }));
 
 vi.mock("../utils/session", () => ({
-  getUserSession: () => ({ username: "mario" }),
+  getUserSession: () => ({ username: "mario", profilePicture: "seniora.png" }),
+  saveUserSession: vi.fn(),
 }));
 
 vi.mock("../vistas/ChangePasswordModal", () => ({
@@ -70,7 +74,7 @@ vi.mock("../vistas/ChangePasswordModal", () => ({
   },
 }));
 
-vi.mock("../vistas/ChangeEmailModal", () => ({
+vi.mock("../vistas/ChangeUsernameModal", () => ({
   default: ({ open, onConfirm, onClose }: any) => {
     if (!open) return null;
     return (
@@ -78,13 +82,33 @@ vi.mock("../vistas/ChangeEmailModal", () => ({
         <button
           onClick={async () => {
             try {
-              await onConfirm("nuevo@mail.com");
+              await onConfirm("nuevo_usuario");
             } catch {}
           }}
         >
-          __confirm_email__
+          __confirm_username__
         </button>
-        <button onClick={onClose}>__close_email__</button>
+        <button onClick={onClose}>__close_username__</button>
+      </>
+    );
+  },
+}));
+
+vi.mock("../vistas/ChangeAvatarModal", () => ({
+  default: ({ open, onConfirm, onClose }: any) => {
+    if (!open) return null;
+    return (
+      <>
+        <button
+          onClick={async () => {
+            try {
+              await onConfirm("disco.png");
+            } catch {}
+          }}
+        >
+          __confirm_avatar__
+        </button>
+        <button onClick={onClose}>__close_avatar__</button>
       </>
     );
   },
@@ -118,40 +142,45 @@ describe("ProfileModal", () => {
     expect(screen.getByText("60%")).toBeInTheDocument();
   });
 
-  it("abre el modal de cambio de correo y ejecuta changeUserEmail", async () => {
-    const user = userEvent.setup();
+  it("muestra el correo en modo solo lectura (sin botón Cambiar junto a él)", async () => {
     renderModal();
 
-    const buttons = await screen.findAllByText("Cambiar");
-    await user.click(buttons[0]);
-
-    await user.click(await screen.findByText("__confirm_email__"));
-
-    expect(changeUserEmailMock).toHaveBeenCalledWith(
-      "mario",
-      "nuevo@mail.com",
-    );
-    expect(await screen.findByText("nuevo@mail.com")).toBeInTheDocument();
+    expect(await screen.findByText("mario@mail.com")).toBeInTheDocument();
+    // Solo deben existir dos botones "Cambiar": username y contraseña
+    const cambiarButtons = await screen.findAllByText("Cambiar");
+    expect(cambiarButtons).toHaveLength(2);
   });
 
-  it("cierra el modal de cambio de correo", async () => {
+  it("abre el modal de cambio de nombre de usuario y ejecuta changeUsername", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    // El primer "Cambiar" corresponde al nombre de usuario
+    const buttons = await screen.findAllByText("Cambiar");
+    await user.click(buttons[0]);
+
+    await user.click(await screen.findByText("__confirm_username__"));
+
+    expect(changeUsernameMock).toHaveBeenCalledWith("mario", "nuevo_usuario");
+  });
+
+  it("cierra el modal de cambio de nombre de usuario", async () => {
     const user = userEvent.setup();
     renderModal();
 
     const buttons = await screen.findAllByText("Cambiar");
     await user.click(buttons[0]);
 
-    await user.click(await screen.findByText("__close_email__"));
+    await user.click(await screen.findByText("__close_username__"));
 
-    expect(
-      screen.queryByText("__confirm_email__"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("__confirm_username__")).not.toBeInTheDocument();
   });
 
   it("abre el modal de cambio de contraseña y ejecuta changePassword", async () => {
     const user = userEvent.setup();
     renderModal();
 
+    // El segundo "Cambiar" corresponde a la contraseña
     const buttons = await screen.findAllByText("Cambiar");
     await user.click(buttons[1]);
 
@@ -173,15 +202,11 @@ describe("ProfileModal", () => {
 
     await user.click(await screen.findByText("__close_password__"));
 
-    expect(
-      screen.queryByText("__confirm_password__"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("__confirm_password__")).not.toBeInTheDocument();
   });
 
   it("ejecuta la rama de error al fallar changePassword", async () => {
-    changePasswordMock.mockRejectedValueOnce(
-      new Error("Password incorrecto"),
-    );
+    changePasswordMock.mockRejectedValueOnce(new Error("Password incorrecto"));
 
     const user = userEvent.setup();
     renderModal();
@@ -194,10 +219,8 @@ describe("ProfileModal", () => {
     expect(changePasswordMock).toHaveBeenCalled();
   });
 
-  it("ejecuta la rama de error al fallar changeUserEmail", async () => {
-    changeUserEmailMock.mockRejectedValueOnce(
-      new Error("Email inválido"),
-    );
+  it("ejecuta la rama de error al fallar changeUsername", async () => {
+    changeUsernameMock.mockRejectedValueOnce(new Error("Usuario ya en uso"));
 
     const user = userEvent.setup();
     renderModal();
@@ -205,9 +228,9 @@ describe("ProfileModal", () => {
     const buttons = await screen.findAllByText("Cambiar");
     await user.click(buttons[0]);
 
-    await user.click(await screen.findByText("__confirm_email__"));
+    await user.click(await screen.findByText("__confirm_username__"));
 
-    expect(changeUserEmailMock).toHaveBeenCalled();
+    expect(changeUsernameMock).toHaveBeenCalled();
   });
 
   it("ejecuta logout al pulsar Cerrar sesión", async () => {

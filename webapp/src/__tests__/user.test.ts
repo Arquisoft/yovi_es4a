@@ -7,6 +7,8 @@ import {
   recordUserGame,
   registerUser,
   changePassword,
+  changeAvatar,
+  changeUsername,
   getUserProfile,
 } from "../api/users";
 
@@ -297,5 +299,159 @@ describe("api/users", () => {
     await expect(getUserProfile("inexistente")).rejects.toThrow(
       "Usuario no encontrado"
     );
+  });
+ 
+  it("changeUsername hace PATCH correcto y devuelve el nuevo username", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "Nombre de usuario actualizado correctamente.",
+        username: "nuevo_marcelo",
+      }),
+    });
+ 
+    const result = await changeUsername("marcelo", "nuevo_marcelo");
+ 
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo/username",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newUsername: "nuevo_marcelo" }),
+      }
+    );
+ 
+    expect(result.username).toBe("nuevo_marcelo");
+    expect(result.message).toBe("Nombre de usuario actualizado correctamente.");
+  });
+ 
+  it("changeUsername encodea correctamente el username con espacios", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "Nombre de usuario actualizado correctamente.",
+        username: "nuevo",
+      }),
+    });
+ 
+    await changeUsername("marcelo diez", "nuevo");
+ 
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo%20diez/username",
+      expect.any(Object)
+    );
+  });
+ 
+  it("changeUsername lanza error cuando el nombre ya está en uso", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "Ese nombre de usuario ya está en uso." }),
+    });
+ 
+    await expect(
+      changeUsername("marcelo", "ocupado")
+    ).rejects.toThrow("Ese nombre de usuario ya está en uso.");
+  });
+ 
+  it("changeUsername lanza error cuando el usuario no existe", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: "Usuario no encontrado" }),
+    });
+ 
+    await expect(
+      changeUsername("noexiste", "nuevo")
+    ).rejects.toThrow("Usuario no encontrado");
+  });
+ 
+  it("changeUsername usa Error <status> si el backend no envía error", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+ 
+    await expect(
+      changeUsername("marcelo", "nuevo")
+    ).rejects.toThrow("Error 500");
+  });
+ 
+  it("changeAvatar hace PATCH correcto y devuelve el nuevo profilePicture", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "Avatar actualizado correctamente.",
+        profilePicture: "disco.png",
+      }),
+    });
+ 
+    const result = await changeAvatar("marcelo", "disco.png");
+ 
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo/avatar",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profilePicture: "disco.png" }),
+      }
+    );
+ 
+    expect(result.profilePicture).toBe("disco.png");
+    expect(result.message).toBe("Avatar actualizado correctamente.");
+  });
+ 
+  it("changeAvatar encodea correctamente el username con espacios", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: "Avatar actualizado correctamente.",
+        profilePicture: "elvis.png",
+      }),
+    });
+ 
+    await changeAvatar("marcelo diez", "elvis.png");
+ 
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/marcelo%20diez/avatar",
+      expect.any(Object)
+    );
+  });
+ 
+  it("changeAvatar lanza error cuando el avatar no es válido", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "Avatar no válido." }),
+    });
+ 
+    await expect(
+      changeAvatar("marcelo", "avatar_inexistente.png")
+    ).rejects.toThrow("Avatar no válido.");
+  });
+ 
+  it("changeAvatar lanza error cuando el usuario no existe", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: "Usuario no encontrado" }),
+    });
+ 
+    await expect(
+      changeAvatar("noexiste", "disco.png")
+    ).rejects.toThrow("Usuario no encontrado");
+  });
+ 
+  it("changeAvatar usa Error <status> si el backend no envía error", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+ 
+    await expect(
+      changeAvatar("marcelo", "rubia.png")
+    ).rejects.toThrow("Error 500");
   });
 });
