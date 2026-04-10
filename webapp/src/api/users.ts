@@ -198,18 +198,34 @@ export async function changePassword(
   return parseJson<{ message: string }>(response);
 }
 
-export async function changeUserEmail(
+export async function changeUsername(
   username: string,
-  newEmail: string
+  newUsername: string
 ) {
   const response = await fetch(
-    `${USERS_API_URL}/users/${encodeURIComponent(username)}/email`,
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/username`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: newEmail }),
+      body: JSON.stringify({ newUsername }),
     }
   );
 
-  return parseJson<{ message: string }>(response);
+  return parseJson<{ message: string; username: string }>(response);
+}
+
+export async function changeAvatar(
+  username: string,
+  profilePicture: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/avatar`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePicture }),
+    }
+  );
+
+  return parseJson<{ message: string; profilePicture: string }>(response);
 }

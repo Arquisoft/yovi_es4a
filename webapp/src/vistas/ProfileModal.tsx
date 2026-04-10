@@ -14,12 +14,20 @@ import {
   MailOutlined,
   UserOutlined,
   LockOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
-import { getUserSession } from "../utils/session";
+import { getUserSession, saveUserSession } from "../utils/session";
 import { resolveAvatarSrc } from "../utils/avatar";
-import { getUserProfile, getUserStats, changePassword, changeUserEmail } from "../api/users";
+import {
+  getUserProfile,
+  getUserStats,
+  changePassword,
+  changeUsername,
+  changeAvatar,
+} from "../api/users";
 import ChangePasswordModal from "./ChangePasswordModal";
-import ChangeEmailModal from "./ChangeEmailModal";
+import ChangeUsernameModal from "./ChangeUsernameModal";
+import ChangeAvatarModal from "./ChangeAvatarModal";
 
 const { Text, Title } = Typography;
 
@@ -46,7 +54,8 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
   const [loading, setLoading] = useState(false);
 
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [changeUsernameOpen, setChangeUsernameOpen] = useState(false);
+  const [changeAvatarOpen, setChangeAvatarOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !session) return;
@@ -58,7 +67,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
     const profilePromise = getUserProfile(session.username).catch(() => ({
       username: session.username,
       email: "—",
-      profilePicture: undefined,
+      profilePicture: session.profilePicture,
     }));
 
     const statsPromise = getUserStats(session.username).catch(() => null);
@@ -80,7 +89,7 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
   const avatarSrc = profile?.profilePicture
     ? resolveAvatarSrc(profile.profilePicture)
-    : undefined;
+    : resolveAvatarSrc(session.profilePicture);
 
   return (
     <>
@@ -103,15 +112,33 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
           <Flex vertical gap={20}>
             {/* Avatar */}
             <Flex vertical align="center" gap={12} style={{ paddingTop: 8 }}>
-              <Avatar
-                size={88}
-                src={avatarSrc}
-                icon={<UserOutlined />}
-                style={{
-                  border: "3px solid #28BBF5",
-                  boxShadow: "0 4px 16px rgba(40,187,245,0.25)",
-                }}
-              />
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <Avatar
+                  size={88}
+                  src={avatarSrc}
+                  icon={<UserOutlined />}
+                  style={{
+                    border: "3px solid #28BBF5",
+                    boxShadow: "0 4px 16px rgba(40,187,245,0.25)",
+                  }}
+                />
+                <Button
+                  type="primary"
+                  shape="circle"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => setChangeAvatarOpen(true)}
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    right: 0,
+                    width: 26,
+                    height: 26,
+                    minWidth: 26,
+                    fontSize: 12,
+                  }}
+                />
+              </div>
               <Title level={4} style={{ margin: 0 }}>
                 {profile?.username ?? session.username}
               </Title>
@@ -126,11 +153,21 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
                 <div style={box("#f0f7ff")}>
                   <UserOutlined style={{ color: "#28BBF5" }} />
                 </div>
-                <Flex vertical>
+                <Flex vertical style={{ flex: 1 }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     Nombre de usuario
                   </Text>
-                  <Text strong>{profile?.username ?? session.username}</Text>
+                  <Flex align="center" gap={8}>
+                    <Text strong>{profile?.username ?? session.username}</Text>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => setChangeUsernameOpen(true)}
+                    >
+                      Cambiar
+                    </Button>
+                  </Flex>
                 </Flex>
               </Flex>
 
@@ -139,21 +176,11 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
                 <div style={box("#fff7e6")}>
                   <MailOutlined style={{ color: "#FF7B00" }} />
                 </div>
-                <Flex vertical style={{ flex: 1 }}>
+                <Flex vertical>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     Correo electrónico
                   </Text>
-                  <Flex align="center" gap={8}>
-                    <Text strong>{profile?.email ?? "—"}</Text>
-                    <Button
-                      type="link"
-                      size="small"
-                      style={{ padding: 0, fontSize: 12 }}
-                      onClick={() => setChangeEmailOpen(true)}
-                    >
-                      Cambiar
-                    </Button>
-                  </Flex>
+                  <Text strong>{profile?.email ?? "—"}</Text>
                 </Flex>
               </Flex>
 
@@ -234,32 +261,49 @@ export default function ProfileModal({ open, onClose, onLogout }: Props) {
 
       {/* Password modal */}
       <ChangePasswordModal
-      open={changePasswordOpen}
-      onClose={() => setChangePasswordOpen(false)}
-      onConfirm={async (oldPassword, newPassword) => {
-        if (!session) return;
-        try {
-          await changePassword(session.username, oldPassword, newPassword);
-        } catch (e: any) {
-          throw new Error(e?.message ?? "No se pudo cambiar la contraseña.");
-        }
-      }}
-    />
-
-
-      {/* Email modal */}
-      <ChangeEmailModal
-        open={changeEmailOpen}
-        currentEmail={profile?.email ?? ""}
-        onClose={() => setChangeEmailOpen(false)}
-        onConfirm={async (newEmail) => {
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        onConfirm={async (oldPassword, newPassword) => {
           if (!session) return;
           try {
-            await changeUserEmail(session.username, newEmail);
-            // Actualizar localmente el email mostrado
-            setProfile((prev) => (prev ? { ...prev, email: newEmail } : prev));
+            await changePassword(session.username, oldPassword, newPassword);
           } catch (e: any) {
-            throw new Error(e?.message ?? "No se pudo cambiar el correo.");
+            throw new Error(e?.message ?? "No se pudo cambiar la contraseña.");
+          }
+        }}
+      />
+
+      {/* Username modal */}
+      <ChangeUsernameModal
+        open={changeUsernameOpen}
+        onClose={() => setChangeUsernameOpen(false)}
+        onConfirm={async (newUsername) => {
+          if (!session) return;
+          try {
+            await changeUsername(session.username, newUsername);
+            // Actualizar perfil y sesión con el nuevo username
+            setProfile((prev) => (prev ? { ...prev, username: newUsername } : prev));
+            saveUserSession({ ...session, username: newUsername });
+          } catch (e: any) {
+            throw new Error(e?.message ?? "No se pudo cambiar el nombre de usuario.");
+          }
+        }}
+      />
+
+      {/* Avatar modal */}
+      <ChangeAvatarModal
+        open={changeAvatarOpen}
+        currentAvatar={profile?.profilePicture ?? session.profilePicture ?? "seniora.png"}
+        onClose={() => setChangeAvatarOpen(false)}
+        onConfirm={async (newAvatar) => {
+          if (!session) return;
+          try {
+            await changeAvatar(session.username, newAvatar);
+            // Actualizar perfil y sesión con el nuevo avatar
+            setProfile((prev) => (prev ? { ...prev, profilePicture: newAvatar } : prev));
+            saveUserSession({ ...session, profilePicture: newAvatar });
+          } catch (e: any) {
+            throw new Error(e?.message ?? "No se pudo cambiar el avatar.");
           }
         }}
       />

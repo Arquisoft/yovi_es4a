@@ -7,7 +7,6 @@ import {
   recordUserGame,
   registerUser,
   changePassword,
-  changeUserEmail,
   getUserProfile,
 } from "../api/users";
 
@@ -263,40 +262,6 @@ describe("api/users", () => {
     await expect(
       changePassword("marcelo", "wrong", "NewPass123!")
     ).rejects.toThrow("Contraseña actual incorrecta");
-  });
-
-  it("changeUserEmail hace PATCH correcto y devuelve el mensaje", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: "Correo actualizado" }),
-    });
-
-    const result = await changeUserEmail("marcelo", "nuevo@mail.com");
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo/email",
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: "nuevo@mail.com",
-        }),
-      }
-    );
-
-    expect(result.message).toBe("Correo actualizado");
-  });
-
-  it("changeUserEmail usa Error <status> si el backend no envía error", async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => ({}),
-    });
-
-    await expect(
-      changeUserEmail("marcelo", "nuevo@mail.com")
-    ).rejects.toThrow("Error 500");
   });
 
   it("getUserProfile hace GET correcto y devuelve username y email", async () => {
