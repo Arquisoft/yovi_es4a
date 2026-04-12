@@ -127,6 +127,7 @@ function buildHistoryResponse(overrides: any = {}) {
             gamesAbandoned: 1,
             totalMoves: 20,
             winRate: 33,
+            currentWinStreak: 0,
         },
         pagination: {
             page: 1,
@@ -232,6 +233,7 @@ describe("UserHistory", () => {
                     gamesAbandoned: 0,
                     totalMoves: 0,
                     winRate: 0,
+                    currentWinStreak: 0,
                 },
                 pagination: {
                     page: 1,
@@ -365,6 +367,59 @@ describe("UserHistory", () => {
                 mode: "classic_hvb",
                 result: "won",
                 sortBy: "movesDesc",
+            });
+        });
+    });
+
+    it("muestra una partida why_not_hvh con su label", async () => {
+        getUserHistoryMock.mockResolvedValueOnce(
+            buildHistoryResponse({
+                games: [
+                    {
+                        gameId: "g-why-not",
+                        mode: "why_not_hvh",
+                        result: "won",
+                        boardSize: 7,
+                        totalMoves: 11,
+                        opponent: "Jugador local (WhY Not)",
+                        startedBy: "player0",
+                        finishedAt: "2026-03-21T14:00:00.000Z",
+                    },
+                ],
+            }),
+        );
+
+        render(<UserHistory />);
+
+        expect((await screen.findAllByText("WhY Not HvH")).length).toBeGreaterThan(0);
+        expect(
+            screen.getAllByText("WhY Not — Humano vs Humano").length,
+        ).toBeGreaterThan(0);
+        expect(screen.getByText("Rival: Jugador local (WhY Not)")).toBeInTheDocument();
+    });
+
+    it("permite filtrar por why_not_hvh", async () => {
+        getUserHistoryMock.mockResolvedValue(buildHistoryResponse());
+
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[0], {
+            target: { value: "why_not_hvh" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "why_not_hvh",
+                result: "all",
+                sortBy: "newest",
             });
         });
     });

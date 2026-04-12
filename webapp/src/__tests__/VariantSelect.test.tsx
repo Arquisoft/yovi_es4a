@@ -23,12 +23,12 @@ vi.mock("../vistas/AppHeader", () => ({
 }));
 
 vi.mock("antd", () => ({
-    Button: ({ children, onClick, disabled, icon, ...props }: any) => (
+    Button: ({ children, onClick, disabled, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
             {children}
         </button>
     ),
-    Card: ({ children, onClick, size: _size, hoverable: _h, ...props }: any) => (
+    Card: ({ children, onClick, ...props }: any) => (
         <div onClick={onClick} {...props}>
             {children}
         </div>
@@ -76,6 +76,7 @@ describe("VariantSelect", () => {
         // Verificamos al menos las principales que sabemos que existen
         expect(screen.getByText("Clásico")).toBeInTheDocument();
         expect(screen.getByText("Regla del Pastel")).toBeInTheDocument();
+        expect(screen.getByText("WhY not")).toBeInTheDocument();
     });
 
     it("muestra el tag 'Próximamente' para variantes no implementadas", () => {
@@ -107,6 +108,18 @@ describe("VariantSelect", () => {
         expect(onSelect).toHaveBeenCalledOnce();
         expect(onSelect).toHaveBeenCalledWith(
             expect.objectContaining({ id: "classic", implemented: true })
+        );
+    });
+
+    it("permite seleccionar Why Not y confirmar", async () => {
+        const user = userEvent.setup();
+        const { onSelect } = renderVariantSelect();
+
+        await user.click(screen.getByText("WhY not"));
+        await user.click(screen.getByRole("button", { name: /Continuar con/i }));
+
+        expect(onSelect).toHaveBeenCalledWith(
+            expect.objectContaining({ id: "why_not", implemented: true })
         );
     });
 

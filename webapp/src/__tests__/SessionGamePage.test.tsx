@@ -281,6 +281,46 @@ describe("SessionGamePage", () => {
     expect(onGameFinishedMock).toHaveBeenCalledTimes(1);
   });
 
+  it("aplica mapWinner al notificar onGameFinished", async () => {
+    useSessionGameMock.mockReturnValue({
+      yen: { size: 7, layout: "." },
+      gameId: "g-map",
+      winner: "player0",
+      nextTurn: null,
+      error: "",
+      loading: false,
+      gameOver: true,
+      moveCount: 7,
+      onCellClick: onCellClickMock,
+      onBotTurn: onBotTurnMock,
+    });
+
+    const mapWinnerMock = vi.fn((winner: string | null) =>
+      winner === "player0" ? "player1" : winner,
+    );
+
+    render(
+      <SessionGamePage
+        {...baseProps}
+        mapWinner={mapWinnerMock}
+        resultConfig={{
+          ...baseProps.resultConfig,
+          getResultTitle: (winner) => `winner:${winner}`,
+          getResultText: (winner) => `text:${winner}`,
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mapWinnerMock).toHaveBeenCalledWith("player0");
+      expect(onGameFinishedMock).toHaveBeenCalledWith({
+        gameId: "g-map",
+        winner: "player1",
+        totalMoves: 7,
+      });
+    });
+  });
+
   it("abre confirm de abandono y ejecuta callback", async () => {
     const user = userEvent.setup();
     render(<SessionGamePage {...baseProps} />);
@@ -351,6 +391,36 @@ describe("SessionGamePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("usa mapWinner también en el texto del resultado", () => {
+    useSessionGameMock.mockReturnValueOnce({
+      yen: { size: 7, layout: "." },
+      gameId: "g-resolved",
+      winner: "player0",
+      nextTurn: null,
+      error: "",
+      loading: false,
+      gameOver: true,
+      moveCount: 5,
+      onCellClick: onCellClickMock,
+      onBotTurn: onBotTurnMock,
+    });
+
+    render(
+      <SessionGamePage
+        {...baseProps}
+        mapWinner={(winner) => (winner === "player0" ? "player1" : winner)}
+        resultConfig={{
+          ...baseProps.resultConfig,
+          getResultTitle: (winner) => `Ganador final: ${winner}`,
+          getResultText: (winner) => `Texto final: ${winner}`,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Ganador final: player1")).toBeInTheDocument();
+    expect(screen.getByText("Texto final: player1")).toBeInTheDocument();
+  });
+
   it("muestra el botón de guardar partida para invitados y lo dispara con el payload correcto", async () => {
     useSessionGameMock.mockReturnValueOnce({
       yen: { size: 7, layout: "." },
@@ -382,6 +452,41 @@ describe("SessionGamePage", () => {
       gameId: "g77",
       winner: "human",
       totalMoves: 9,
+    });
+  });
+
+  it("aplica mapWinner también al guardar partida de invitado", async () => {
+    useSessionGameMock.mockReturnValueOnce({
+      yen: { size: 7, layout: "." },
+      gameId: "g-guest",
+      winner: "player0",
+      nextTurn: null,
+      error: "",
+      loading: false,
+      gameOver: true,
+      moveCount: 4,
+      onCellClick: onCellClickMock,
+      onBotTurn: onBotTurnMock,
+    });
+
+    const user = userEvent.setup();
+    render(
+      <SessionGamePage
+        {...baseProps}
+        canOfferGuestSave
+        onGuestSaveRequested={onGuestSaveRequestedMock}
+        mapWinner={(winner) => (winner === "player0" ? "player1" : winner)}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Guardar esta partida" }),
+    );
+
+    expect(onGuestSaveRequestedMock).toHaveBeenCalledWith({
+      gameId: "g-guest",
+      winner: "player1",
+      totalMoves: 4,
     });
   });
 });
