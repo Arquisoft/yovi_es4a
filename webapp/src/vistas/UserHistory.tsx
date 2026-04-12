@@ -70,6 +70,8 @@ function modeTag(mode: HistoryGame["mode"]) {
       return <Tag color="#FACC15">Fortune Dice HvH</Tag>;
     case "poly_hvh":
       return <Tag color="#22C55E">PolY HvH</Tag>;
+    case "why_not_hvh":
+      return <Tag color="#5cf6b6">WhY Not HvH</Tag>;
     default:
       return <Tag>{mode}</Tag>;
   }
@@ -89,6 +91,8 @@ function modeLabel(mode: HistoryGame["mode"]) {
       return "Fortune Dice — Humano vs Humano";
     case "poly_hvh":
       return "PolY — Humano vs Humano";
+    case "why_not_hvh":
+      return "WhY Not — Humano vs Humano";
     default:
       return mode;
   }
@@ -146,7 +150,7 @@ export default function UserHistory() {
   const [error, setError] = useState<string | null>(null);
 
   const [modeFilter, setModeFilter] = useState<
-    "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh"
+    "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh" | "why_not_hvh"
   >("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
@@ -237,6 +241,7 @@ export default function UserHistory() {
                           { value: "holey_hvh", label: "HoleY HvH" },
                           { value: "fortune_dice_hvh", label: "Fortune Dice HvH" },
                           { value: "poly_hvh", label: "PolY HvH" },
+                          { value: "why_not_hvh", label: "WhY Not HvH" },
                         ]}
                       />
 
@@ -321,7 +326,7 @@ export default function UserHistory() {
                           current={data.pagination.page}
                           total={data.pagination.totalGames}
                           pageSize={data.pagination.pageSize}
-                          onChange={(newPage) => setPage(newPage)}
+                          onChange={(nextPage) => setPage(nextPage)}
                           showSizeChanger={false}
                         />
                       </Flex>

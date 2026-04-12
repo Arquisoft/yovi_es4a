@@ -68,7 +68,7 @@ function normalizePositiveInteger(value, fallback) {
 }
 
 function validateRecordGame(body) {
-  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
+  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh", "why_not_hvh"];
   const allowedResults = ["won", "lost", "abandoned"];
 
   const gameIdValidation = validateGameId(body.gameId);
@@ -84,7 +84,7 @@ function validateRecordGame(body) {
   const totalMoves = Number(body.totalMoves);
 
   if (!allowedModes.includes(mode)) {
-    return { error: "'mode' debe ser 'classic_hvb', 'classic_hvh', 'tabu_hvh', 'holey_hvh', 'fortune_dice_hvh' o 'poly_hvh'" };
+    return { error: "'mode' debe ser 'classic_hvb', 'classic_hvh', 'tabu_hvh', 'holey_hvh', 'fortune_dice_hvh', 'poly_hvh' o 'why_not_hvh'" };
   }
 
   if (!allowedResults.includes(result)) {
@@ -405,7 +405,7 @@ app.get("/users/:username/history", async (req, res) => {
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
-  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
+  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh", "why_not_hvh"];
   const validResults = ["won", "lost", "abandoned"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 

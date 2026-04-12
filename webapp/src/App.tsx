@@ -23,6 +23,7 @@ import GameTabu from "./vistas/GameTabu";
 import GameHoley from "./vistas/GameHoley";
 import GamePolyY from "./vistas/GamePolyY";
 import GameHex from "./vistas/GameHex";
+import GameWhyNot from "./vistas/GameWhyNot";
 
 // ─── Flujo /home: selección de variante → configuración ─────────────────────
 
@@ -78,7 +79,7 @@ function App() {
         <Route path="/game-holey" element={<GameHoley />} />
         <Route path="/game-poly-y" element={<GamePolyY />} />
         <Route path="/game-hex" element={<GameHex />} />
-        <Route path="/game-why-not" element={<GameHex />} />
+        <Route path="/game-why-not" element={<GameWhyNot />} />
         <Route path="/game-pastel" element={<GameHex />} />
 
         {/* Multijugador por Sockets */}

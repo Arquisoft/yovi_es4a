@@ -125,7 +125,7 @@ export const VARIANTS: Variant[] = [
     description: "Gana el primero en conectar los tres lados... ¡en conectar pierde!",
     detail:
       "Las reglas son idénticas al Y clásico, pero el objetivo se invierte: el primer jugador que forme una conexión de los tres lados del tablero con sus piezas ¡pierde la partida! Hay que conectar al adversario sin conectarse uno mismo.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "poly_y",

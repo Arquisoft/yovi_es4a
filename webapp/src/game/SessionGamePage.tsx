@@ -74,6 +74,7 @@ type Props<TYen extends GameYEN> = {
   disabledCells?: Set<number>;
   celebrateWinner?: (winner: string | null) => boolean;
   shouldCountMove?: (turn: string | null) => boolean;
+  mapWinner?: (winner: string | null) => string | null;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -92,6 +93,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   guestSaveLoading = false,
   disabledCells,
   shouldCountMove,
+  mapWinner,
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -122,6 +124,11 @@ export default function SessionGamePage<TYen extends GameYEN>({
     botMove,
     shouldCountMove,
   });
+
+  const resolvedWinner = useMemo(
+    () => (mapWinner ? mapWinner(winner) : winner),
+    [winner, mapWinner],
+  );
 
   const cells = useMemo(() => {
     const base = yen ? parseYenToCells(yen) : [];
@@ -184,7 +191,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
 
     onGuestSaveRequested?.({
       gameId,
-      winner,
+      winner: resolvedWinner,
       totalMoves: moveCount,
     });
   }
@@ -205,10 +212,10 @@ export default function SessionGamePage<TYen extends GameYEN>({
 
     void onGameFinished?.({
       gameId,
-      winner,
+      winner: resolvedWinner,
       totalMoves: moveCount,
     });
-  }, [gameOver, gameId, winner, moveCount, onGameFinished]);
+  }, [gameOver, gameId, resolvedWinner, moveCount, onGameFinished]);
 
   const activeTurn = nextTurn ? turnConfig.turns[nextTurn] : null;
 
@@ -220,14 +227,14 @@ export default function SessionGamePage<TYen extends GameYEN>({
         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
       };
     }
-    if (gameOver && winner === winnerPalette.highlightedWinner) {
+    if (gameOver && resolvedWinner === winnerPalette.highlightedWinner) {
       return { background: winnerPalette.highlightedBackground };
     }
-    if (gameOver && winner) {
+    if (gameOver && resolvedWinner) {
       return { background: winnerPalette.otherWinnerBackground };
     }
     return {};
-  }, [gameOver, activeTurn, winner, winnerPalette]);
+  }, [gameOver, activeTurn, resolvedWinner, winnerPalette]);
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !activeTurn) return null;
@@ -293,8 +300,9 @@ export default function SessionGamePage<TYen extends GameYEN>({
   }, [gameId]);
 
   const shouldCelebrate =
-    gameOver && winner !== null && winner !== "bot" && !animationFinished;
-  const shouldShowGameOver = gameOver && winner === "bot" && !animationFinished;
+    gameOver && resolvedWinner !== null && resolvedWinner !== "bot" && !animationFinished;
+  const shouldShowGameOver =
+    gameOver && resolvedWinner === "bot" && !animationFinished;
 
   return (
     <GameShell
@@ -383,13 +391,13 @@ export default function SessionGamePage<TYen extends GameYEN>({
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={4} style={{ margin: 0 }}>
-                  {resultConfig.getResultTitle(winner)}
+                  {resultConfig.getResultTitle(resolvedWinner)}
                 </Title>
               </Flex>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={5} style={{ margin: 0 }}>
-                  {resultConfig.getResultText(winner)}
+                  {resultConfig.getResultText(resolvedWinner)}
                 </Title>
               </Flex>
 
