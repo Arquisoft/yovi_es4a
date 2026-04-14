@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use crate::{MctsBot, RandomBot, YBotRegistry};
+use crate::{MctsBot, MctsCompletoBot, RandomBot, YBotRegistry};
 
 use self::config_store::ConfigStore;
 
@@ -85,7 +85,9 @@ impl GameServerState {
             .with_bot(Arc::new(RandomBot))
             .with_bot(Arc::new(MctsBot::new("mcts_medio",     20000)))
             .with_bot(Arc::new(MctsBot::new("mcts_dificil",   30000)))
-            .with_bot(Arc::new(MctsBot::new("mcts_demencial", 100000)));
+            .with_bot(Arc::new(MctsCompletoBot::new("mcts_demencial", 30000)))
+            .with_bot(Arc::new(MctsCompletoBot::new("mcts_completo_medio", 15000)))
+            .with_bot(Arc::new(MctsCompletoBot::new("mcts_completo_dificil", 30000)));
 
         Self {
             bots: Arc::new(bots),
@@ -201,5 +203,6 @@ mod tests {
         assert!(names.iter().any(|b| b == "mcts_medio"));
         assert!(names.iter().any(|b| b == "mcts_dificil"));
         assert!(names.iter().any(|b| b == "mcts_demencial"));
+        assert!(names.iter().any(|b| b == "mcts_completo_medio"));
     }
 }

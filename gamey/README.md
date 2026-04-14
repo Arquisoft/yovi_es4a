@@ -30,6 +30,14 @@ cargo run
 cargo test
 ```
 
+### Pruebas entre bots
+
+Para comprobar qué bot es más inteligente se pueden enfrentar en la arena situada en examples/arena.rs con:
+
+```sh
+cargo run --release --example arena
+```
+
 ## Benchmarks
 
 Run the benchmarks using Criterion:
