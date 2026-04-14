@@ -68,7 +68,7 @@ pub fn run_cli_game() -> Result<()> {
     let bots_registry = YBotRegistry::new()
         .with_bot(Arc::new(RandomBot))
         .with_bot(Arc::new(MctsBot::new("mcts_test", 15000))) // Nivel de dificultad alto
-        .with_bot(Arc::new(MctsCompletoBot::new("mcts_completo", 30000)));
+        .with_bot(Arc::new(MctsCompletoBot::new("mcts_completo", 15000)));
 
     let bot: Arc<dyn YBot> = match bots_registry.find(&args.bot) {
         Some(b) => b,
