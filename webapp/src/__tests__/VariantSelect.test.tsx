@@ -6,16 +6,6 @@ import VariantSelect from "../vistas/VariantSelect";
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
-const navigateMock = vi.fn();
-
-vi.mock("react-router-dom", async () => {
-    const actual = await vi.importActual<any>("react-router-dom");
-    return {
-        ...actual,
-        useNavigate: () => navigateMock,
-    };
-});
-
 vi.mock("../vistas/AppHeader", () => ({
     default: ({ title }: { title: string }) => (
         <div data-testid="app-header">{title}</div>
@@ -36,6 +26,15 @@ vi.mock("antd", () => ({
     Flex: ({ children }: any) => <div>{children}</div>,
     Space: ({ children }: any) => <div>{children}</div>,
     Tag: ({ children }: any) => <span>{children}</span>,
+    Masonry: ({ items = [], itemRender }: any) => (
+        <div data-testid="masonry">
+            {items.map((item: any) => (
+                <div key={item.key} data-testid={`masonry-item-${item.key}`}>
+                    {itemRender ? itemRender(item) : null}
+                </div>
+            ))}
+        </div>
+    ),
     Typography: {
         Title: ({ children }: any) => <h2>{children}</h2>,
         Text: ({ children }: any) => <span>{children}</span>,
@@ -52,15 +51,18 @@ vi.mock("@ant-design/icons", () => ({
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-function renderVariantSelect(onSelect = vi.fn()) {
-    return { onSelect, ...render(<VariantSelect onSelect={onSelect} />) };
+function renderVariantSelect(onSelect = vi.fn(), onBack = vi.fn()) {
+    return {
+        onSelect,
+        onBack,
+        ...render(<VariantSelect onSelect={onSelect} onBack={onBack} />),
+    };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("VariantSelect", () => {
     beforeEach(() => {
-        navigateMock.mockReset();
         vi.restoreAllMocks();
     });
 
@@ -177,12 +179,12 @@ describe("VariantSelect", () => {
 
     // ── Botón Volver ─────────────────────────────────────────────────────────
 
-    it("el botón Volver navega a /", async () => {
+    it("el botón Volver llama a onBack", async () => {
         const user = userEvent.setup();
-        renderVariantSelect();
+        const { onBack } = renderVariantSelect();
 
         await user.click(screen.getByText("Volver"));
 
-        expect(navigateMock).toHaveBeenCalledWith("/");
+        expect(onBack).toHaveBeenCalledOnce();
     });
 });

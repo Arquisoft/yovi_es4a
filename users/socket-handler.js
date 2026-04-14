@@ -61,17 +61,29 @@ async function saveGameForUser(username, game) {
     "stats.totalMoves": game.totalMoves,
   };
 
-  if (game.result === "won")
+  const currentWinStreak = user.stats?.currentWinStreak || 0;
+  let nextWinStreak = 0;
+
+  if (game.result === "won") {
     inc["stats.gamesWon"] = 1;
-  else if (game.result === "lost")
+    nextWinStreak = currentWinStreak + 1;
+  }
+  else if (game.result === "lost") {
     inc["stats.gamesLost"] = 1;
-  else if (game.result === "abandoned")
+    nextWinStreak = 0;
+  }
+  else if (game.result === "abandoned") {
     inc["stats.gamesAbandoned"] = 1;
+    nextWinStreak = 0;
+  }
 
   await User.findByIdAndUpdate(
     user._id,
     {
       $inc: inc,
+      $set: {
+        "stats.currentWinStreak": nextWinStreak,
+      },
       $push: {
         gameHistory: {
           $each: [{
@@ -102,26 +114,37 @@ async function persistRoomHistory(room, { hostResult, guestResult }) {
   room.historySaved = true;
 
   try {
-    await Promise.all([
-      saveGameForUser(room.hostUsername, {
-        gameId: room.gameId,
-        mode,
-        result: hostResult,
-        boardSize,
-        totalMoves: room.hostMoves || 0,
-        opponent: room.guestUsername || "Jugador online",
-        startedBy: "player0",
-      }),
-      saveGameForUser(room.guestUsername, {
-        gameId: room.gameId,
-        mode,
-        result: guestResult,
-        boardSize,
-        totalMoves: room.guestMoves || 0,
-        opponent: room.hostUsername || "Jugador online",
-        startedBy: "player0",
-      }),
-    ]);
+    const saves = [];
+
+    if (hostResult) {
+      saves.push(
+        saveGameForUser(room.hostUsername, {
+          gameId: room.gameId,
+          mode,
+          result: hostResult,
+          boardSize,
+          totalMoves: room.hostMoves || 0,
+          opponent: room.guestUsername || "Jugador online",
+          startedBy: "player0",
+        })
+      );
+    }
+
+    if (guestResult) {
+      saves.push(
+        saveGameForUser(room.guestUsername, {
+          gameId: room.gameId,
+          mode,
+          result: guestResult,
+          boardSize,
+          totalMoves: room.guestMoves || 0,
+          opponent: room.hostUsername || "Jugador online",
+          startedBy: "player0",
+        })
+      );
+    }
+
+    await Promise.all(saves);
   } catch (err) {
     room.historySaved = false;
     console.error('Error guardando historial multiplayer:', err);
@@ -276,12 +299,12 @@ module.exports = function setupSocketHandler(io) {
           if (socket.id === room.host) {
             await persistRoomHistory(room, {
               hostResult: 'abandoned',
-              guestResult: 'won',
+              guestResult: null,
             });
           }
           else if (socket.id === room.guest) {
             await persistRoomHistory(room, {
-              hostResult: 'won',
+              hostResult: null,
               guestResult: 'abandoned',
             });
           }
@@ -316,12 +339,12 @@ module.exports = function setupSocketHandler(io) {
             if (room.host === socket.id) {
               await persistRoomHistory(room, {
                 hostResult: 'abandoned',
-                guestResult: 'won',
+                guestResult: null,
               });
             }
             else {
               await persistRoomHistory(room, {
-                hostResult: 'won',
+                hostResult: null,
                 guestResult: 'abandoned',
               });
             }

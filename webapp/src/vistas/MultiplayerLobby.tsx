@@ -74,6 +74,7 @@ export default function MultiplayerLobby() {
   const handleJoinRoom = () => {
     if (!joinCode.trim()) return;
     setLoading(true);
+
     const session = getUserSession();
 
     socket.emit(
@@ -206,7 +207,7 @@ export default function MultiplayerLobby() {
 
           {!createdCode && (
             <Flex justify="flex-start">
-              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/")}>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/home")}>
                 Volver al Menú
               </Button>
             </Flex>
