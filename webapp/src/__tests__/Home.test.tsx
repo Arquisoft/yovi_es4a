@@ -71,7 +71,11 @@ vi.mock("antd", () => ({
             {children}
         </button>
     ),
-    Card: ({ children }: any) => <div data-testid="card">{children}</div>,
+    Card: ({ children, onClick, ...props }: any) => (
+        <div onClick={onClick} data-testid="card" {...props}>
+            {children}
+        </div>
+    ),
     Divider: ({ children }: any) => <div>{children}</div>,
     Flex: ({ children }: any) => <div>{children}</div>,
     Space: ({ children }: any) => <div>{children}</div>,
@@ -125,11 +129,8 @@ vi.mock("antd", () => ({
 vi.mock("@ant-design/icons", () => ({
     BuildOutlined: () => null,
     PlayCircleOutlined: () => null,
-    RobotOutlined: () => null,
     TeamOutlined: () => null,
-    ThunderboltOutlined: () => null,
-    FireOutlined: () => null,
-    ArrowLeftOutlined: () => null,
+    DeploymentUnitOutlined: () => null,
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -189,6 +190,28 @@ describe("Home", () => {
         renderHome();
 
         expect(await screen.findByTestId("app-header")).toHaveTextContent("YOVI");
+    });
+
+    it("renderiza la card de multijugador online", async () => {
+        metaOk();
+
+        renderHome();
+
+        expect(await screen.findByText("🌍 Multijugador Online (BETA)")).toBeInTheDocument();
+        expect(
+        screen.getByText(/Crea o únete a salas privadas mediante códigos y juega en tiempo real/i)
+        ).toBeInTheDocument();
+    });
+
+    it("navega a /multiplayer al pulsar la card de multijugador", async () => {
+        metaOk();
+
+        const user = userEvent.setup();
+        renderHome();
+
+        await user.click(await screen.findByText("🌍 Multijugador Online (BETA)"));
+
+        expect(navigateMock).toHaveBeenCalledWith("/multiplayer");
     });
 
     it("renderiza el nombre de la variante activa", async () => {

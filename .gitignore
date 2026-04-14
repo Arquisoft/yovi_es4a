@@ -7,10 +7,6 @@ docs/build
 webapp/.env
 .vscode/
 gateway/certs
-
+gateway/letsencrypt/
 .DS_Store
 repomix-output.xml
-
-gateway/letsencrypt/archive/
-gateway/letsencrypt/live/
-gateway/letsencrypt/renewal/

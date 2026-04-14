@@ -16,7 +16,7 @@ import {
   BuildOutlined,
   PlayCircleOutlined,
   TeamOutlined,
-  ArrowLeftOutlined,
+  DeploymentUnitOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { getMeta, type MetaResponse } from "../api/gamey";
@@ -38,6 +38,13 @@ type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
 const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
 
+// ─── Bots de fallback ─────────────────────────────────────────────────────────
+// Lista completa de bots conocidos para cuando el backend no está disponible.
+// Incluye los 4 niveles de dificultad que muestra DifficultySelect.
+const FALLBACK_BOTS = ["random_bot", "mcts_medio", "mcts_dificil", "mcts_demencial"];
+
+// ─── Helpers de localStorage ──────────────────────────────────────────────────
+
 function loadLastConfigHvB(): LastConfigHvB | null {
   try {
     const raw = localStorage.getItem(LAST_CONFIG_KEY_HVB);
@@ -55,7 +62,7 @@ function loadLastConfigHvB(): LastConfigHvB | null {
 function saveLastConfigHvB(cfg: LastConfigHvB) {
   try {
     localStorage.setItem(LAST_CONFIG_KEY_HVB, JSON.stringify(cfg));
-  } catch {}
+  } catch { }
 }
 
 function loadLastConfigHvH(): LastConfigHvH | null {
@@ -74,7 +81,7 @@ function loadLastConfigHvH(): LastConfigHvH | null {
 function saveLastConfigHvH(cfg: LastConfigHvH) {
   try {
     localStorage.setItem(LAST_CONFIG_KEY_HVH, JSON.stringify(cfg));
-  } catch {}
+  } catch { }
 }
 
 function clampSize(n: number, meta: MetaResponse | null) {
@@ -87,16 +94,16 @@ function clampSize(n: number, meta: MetaResponse | null) {
 
 function gameRouteForVariant(variantId: VariantId): string {
   const map: Record<VariantId, string> = {
-    classic:       "/game-hvb",
-    pastel:        "/game-pastel",
-    master:        "/game-master",
-    fortune_coin:  "/game-fortune-coin",
-    fortune_dice:  "/game-fortune-dice",
-    tabu:          "/game-tabu",
-    holey:         "/game-holey",
-    why_not:       "/game-why-not",
-    poly_y:        "/game-poly-y",
-    hex:           "/game-hex",
+    classic: "/game-hvb",
+    pastel: "/game-pastel",
+    master: "/game-master",
+    fortune_coin: "/game-fortune-coin",
+    fortune_dice: "/game-fortune-dice",
+    tabu: "/game-tabu",
+    holey: "/game-holey",
+    why_not: "/game-why-not",
+    poly_y: "/game-poly-y",
+    hex: "/game-hex",
   };
   return map[variantId] ?? "/game-hvb";
 }
@@ -145,11 +152,14 @@ export default function Home({ variant, onChangeVariant }: Props) {
     getMeta()
       .then((c) => setMeta(c))
       .catch(() =>
+        // FIX: el fallback incluye los 4 bots reales con sus IDs correctos
+        // para que DifficultySelect pueda mostrar Fácil/Medio/Difícil/Demencial
+        // incluso cuando el backend gamey no está disponible.
         setMeta({
           api_version: "v1",
           min_board_size: 2,
           max_board_size: 15,
-          bots: ["random_bot", "mcts_bot"],
+          bots: FALLBACK_BOTS,
         })
       );
   }, []);
@@ -195,6 +205,11 @@ export default function Home({ variant, onChangeVariant }: Props) {
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
 
+  // ─── Bots disponibles (con fallback garantizado) ───────────────────────────
+  // Si meta ya está cargado usamos sus bots; si no, usamos el fallback directamente.
+  // Esto evita que DifficultySelect se renderice con una lista vacía.
+  const availableBots = meta?.bots?.length ? meta.bots : FALLBACK_BOTS;
+
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
   function handleGoToDifficulty() {
@@ -235,7 +250,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
   if (showDifficulty) {
     return (
       <DifficultySelect
-        bots={meta?.bots ?? ["random_bot", "mcts_bot"]}
+        bots={availableBots}
         selectedBot={botId}
         onSelect={(next) => {
           setBotId(next);
@@ -254,6 +269,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
         <div style={{ width: "min(1000px, 100%)" }}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <AppHeader title="YOVI" />
+            <MultiplayerCard onClick={() => navigate("/multiplayer")} />
             <Card>
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
                 <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
@@ -281,6 +297,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
         <div style={{ width: "min(1000px, 100%)" }}>
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <AppHeader title="YOVI" />
+            <MultiplayerCard onClick={() => navigate("/multiplayer")} />
             <Card>
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
                 <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
@@ -308,6 +325,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
       <div style={{ width: "min(1000px, 100%)" }}>
         <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <AppHeader title="YOVI" />
+          <MultiplayerCard onClick={() => navigate("/multiplayer")} />
 
           <Card>
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
@@ -371,6 +389,29 @@ export default function Home({ variant, onChangeVariant }: Props) {
   );
 }
 
+function MultiplayerCard({ onClick }: { onClick: () => void }) {
+  return (
+    <Card
+      hoverable
+      style={{
+        background: "linear-gradient(135deg, #1677ff 0%, #164cff 100%)",
+        border: "none",
+        color: "white",
+        textAlign: "center",
+        cursor: "pointer",
+      }}
+      onClick={onClick}
+    >
+      <Title level={3} style={{ color: "white", margin: 0 }}>
+        🌍 Multijugador Online (BETA)
+      </Title>
+      <Text style={{ color: "rgba(255,255,255,0.8)" }}>
+        Crea o únete a salas privadas mediante códigos y juega en tiempo real.
+      </Text>
+    </Card>
+  );
+}
+
 // ─── Subcomponentes reutilizables ─────────────────────────────────────────────
 
 function VariantHeader({
@@ -395,8 +436,8 @@ function VariantHeader({
         <Tag color={variant.tagColor}>{variant.tagLabel}</Tag>
       </Flex>
       <Button
-        size="small"
-        icon={<ArrowLeftOutlined />}
+        size="medium"
+        icon={<DeploymentUnitOutlined />}
         onClick={onChangeVariant}
         data-testid="change-variant-btn"
       >

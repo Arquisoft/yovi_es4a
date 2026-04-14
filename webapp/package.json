@@ -11,7 +11,7 @@
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "test:e2e:run": "cucumber-js --import test/e2e/support/setup.mjs --import 'test/e2e/steps/**/*.mjs' test/e2e/features --format progress",
+    "test:e2e:run": "cucumber-js --tags 'not @skip' --import test/e2e/support/setup.mjs --import 'test/e2e/steps/**/*.mjs' test/e2e/features --format progress",
     "test:e2e:install-browsers": "npx playwright install",
     "start:all": "concurrently \"npm run dev\" \"npm --prefix ../users start\"",
     "start:all:test": "concurrently \"npm run dev\" \"cross-env NODE_ENV=test npm --prefix ../users start\"",
@@ -32,7 +32,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hexgrid": "^2.0.1",
-    "react-router-dom": "^6.30.3"
+    "react-router-dom": "^6.30.3",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.4.0",

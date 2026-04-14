@@ -73,6 +73,7 @@ type Props<TYen extends GameYEN> = {
   guestSaveLoading?: boolean;
   disabledCells?: Set<number>;
   celebrateWinner?: (winner: string | null) => boolean;
+  shouldCountMove?: (turn: string | null) => boolean;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -89,7 +90,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
   canOfferGuestSave = false,
   onGuestSaveRequested,
   guestSaveLoading = false,
-  disabledCells, // <-- ¡Aquí estaba el posible problema!
+  disabledCells,
+  shouldCountMove,
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -118,6 +120,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     start,
     move,
     botMove,
+    shouldCountMove,
   });
 
   const cells = useMemo(() => {
@@ -405,7 +408,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
               </Flex>
             </Space>
           </Card>
-        ) : null
+        ) : undefined
       }
     />
   );

@@ -77,11 +77,12 @@ const userSchema = new mongoose.Schema({
 
     // Estadísticas de juego
     stats: {
-      gamesPlayed:    { type: Number, default: 0 },
-      gamesWon:       { type: Number, default: 0 },
-      gamesLost:      { type: Number, default: 0 },
-      gamesAbandoned: { type: Number, default: 0 },
-      totalMoves:     { type: Number, default: 0 },
+      gamesPlayed:      { type: Number, default: 0 },
+      gamesWon:         { type: Number, default: 0 },
+      gamesLost:        { type: Number, default: 0 },
+      gamesAbandoned:   { type: Number, default: 0 },
+      totalMoves:       { type: Number, default: 0 },
+      currentWinStreak: { type: Number, default: 0 },
     },
 
     // Historial de partidas

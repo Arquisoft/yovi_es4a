@@ -102,6 +102,7 @@ export default function GameHvB() {
         move={(gameId, cellId) => hvbHumanMove(gameId, cellId)}
         botMove={(gameId) => hvbBotMove(gameId)}
         onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
+        shouldCountMove={(turn) => turn === "human"}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
           if (!winner) return;
 

@@ -102,6 +102,16 @@ describe("GameHvB", () => {
     expect(props.canOfferGuestSave).toBe(false);
   });
 
+  it("pasa shouldCountMove para contar solo jugadas humanas", () => {
+    render(<GameHvB />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    expect(props.shouldCountMove("human")).toBe(true);
+    expect(props.shouldCountMove("bot")).toBe(false);
+    expect(props.shouldCountMove(null)).toBe(false);
+  });
+
   it("normaliza starter=bot y respeta bot/size de la query", () => {
     mockSearchParams = new URLSearchParams("size=9&bot=mcts_bot&hvbstarter=BoT");
 

@@ -23,6 +23,7 @@ export type UserStats = {
     gamesLost: number;
     gamesAbandoned: number;
     totalMoves: number;
+    currentWinStreak: number;
     winRate: number;
 };
 
@@ -93,13 +94,33 @@ export async function registerUser(body: {
     return parseJson<{ message: string }>(response);
 }
 
-export async function getRanking(sortBy: "winRate" | "gamesWon" | "gamesPlayed", limit = 20) {
+export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "totalMoves" | "gamesAbandoned";
+
+export type RankingPodiumEntry = {
+    username: string;
+    profilePicture: string;
+    stats: UserStats;
+} | null;
+
+export async function getRanking(sortBy: SortByOption = "winRate", page = 1, pageSize = 20) {
     const response = await fetch(
-        `${USERS_API_URL}/ranking?sortBy=${encodeURIComponent(sortBy)}&limit=${limit}`
+        `${USERS_API_URL}/ranking?sortBy=${encodeURIComponent(sortBy)}&page=${page}&pageSize=${pageSize}`
     );
 
     return parseJson<{
         sortBy: string;
+        period: string;
+        podium?: {
+            mostGames: RankingPodiumEntry;
+            mostWins: RankingPodiumEntry;
+            bestRate: RankingPodiumEntry;
+        };
+        pagination: {
+            totalItems: number;
+            page: number;
+            pageSize: number;
+            totalPages: number;
+        };
         ranking: Array<{
             username: string;
             profilePicture: string;
@@ -167,4 +188,65 @@ export async function getUserStats(username: string) {
         profilePicture?: string;
         stats: UserStats;
     }>(response);
+}
+
+export async function getUserProfile(username: string) {
+    const response = await fetch(
+        `${USERS_API_URL}/users/${encodeURIComponent(username)}/profile`
+    );
+ 
+    return parseJson<{
+        username: string;
+        email: string;
+        profilePicture?: string;
+    }>(response);
+}
+
+export async function changePassword(
+  username: string,
+  oldPassword: string,
+  newPassword: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/password`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }
+  );
+
+  return parseJson<{ message: string }>(response);
+}
+
+export async function changeUsername(
+  username: string,
+  newUsername: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/username`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUsername }),
+    }
+  );
+
+  return parseJson<{ message: string; username: string }>(response);
+}
+
+export async function changeAvatar(
+  username: string,
+  profilePicture: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/avatar`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePicture }),
+    }
+  );
+
+  return parseJson<{ message: string; profilePicture: string }>(response);
 }

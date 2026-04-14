@@ -14,6 +14,8 @@ import UserHistory from "./vistas/UserHistory";
 import ProtectedRoute from "./utils/ProtectedRoute";
 import VariantSelect from "./vistas/VariantSelect";
 import type { Variant } from "./vistas/VariantSelect";
+import MultiplayerLobby from "./vistas/MultiplayerLobby";
+import GameMultiplayer from "./vistas/GameMultiplayer";
 
 // ─── Variantes de juego ──────────────────────────────────────────────────────
 import GameFortuneDice from "./vistas/GameFortuneDice";
@@ -22,7 +24,7 @@ import GameHoley from "./vistas/GameHoley";
 import GamePolyY from "./vistas/GamePolyY";
 import GameHex from "./vistas/GameHex";
 
-// ─── Flujo /home: selección de variante → configuración ─────────────────────
+// ─── Flujo /home: configuración → selección de variante ─────────────────────
 
 const CLASSIC_VARIANT: Variant = {
   id: "classic",
@@ -37,7 +39,7 @@ const CLASSIC_VARIANT: Variant = {
 };
 
 function HomeFlow() {
-  const [step, setStep] = useState<"variant" | "config">("variant");
+  const [step, setStep] = useState<"variant" | "config">("config");
   const [variant, setVariant] = useState<Variant>(CLASSIC_VARIANT);
 
   function handleVariantSelect(v: Variant) {
@@ -46,7 +48,7 @@ function HomeFlow() {
   }
 
   if (step === "variant") {
-    return <VariantSelect onSelect={handleVariantSelect} />;
+    return <VariantSelect onSelect={handleVariantSelect} onBack={() => setStep("config")} />;
   }
 
   return (
@@ -78,6 +80,10 @@ function App() {
         <Route path="/game-hex" element={<GameHex />} />
         <Route path="/game-why-not" element={<GameHex />} />
         <Route path="/game-pastel" element={<GameHex />} />
+
+        {/* Multijugador por Sockets */}
+        <Route path="/multiplayer" element={<MultiplayerLobby />} />
+        <Route path="/multiplayer/:code" element={<GameMultiplayer />} />
 
         {/* Usuarios */}
         <Route path="/registro" element={<RegisterForm />} />

@@ -1,8 +1,83 @@
-# Yovi_es4a - Game Y at UniOvi
+<img width="15%" height="auto" src="./images/yovi-logo.png">
+
+# Yovi Game
 
 [![Release — Test, Build, Publish, Deploy](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml/badge.svg)](https://github.com/arquisoft/yovi_es4a/actions/workflows/release-deploy.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Arquisoft_yovi_es4a&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Arquisoft_yovi_es4a)
+
+Bienvenido a Yovi Game, una aplicación para el Juego Y.
+
+Aquí podras jugar al famoso Juego Y clásico, incluyendo también diferentes variaciones del juego que aportan un nivel de dificultad.
+
+A continuación te presentamos la estructura de la aplicación.
+
+## Registro / Inicio de sesión
+- Para poder acceder a la aplicación puedes iniciar sesión si ya tienes una cuenta creada, o registrarte con un correo y verificar tu cuenta para poder guardar la información de las partidas jugadas.
+
+<img width="49%" height="auto" src="./images/InicioSesion.png"> <img width="49%" height="auto" src="./images/Registro.png">
+
+- También puedes acceder sin cuenta, entrando como invitado.
+  - Ten en cuenta que en este caso, no se guardarán tus partidas ni estadísticas!
+
+## ¿Cómo jugar?
+- La mecánica del juego es simple, solo tienes q conseguir unir los tres laterales del tablero con un mismo camino, evitando que el jugador contrario te bloquee o lo consiga antes.
+- Aquí te dejamos varios ejemplos, donde el azul gana:
+
+<img width="25%" height="auto" src="./images/Juego1.svg"> <img width="25%" height="auto" src="./images/Juego2.svg">
+
+
+## Modos de juego
+- Para poder jugar existen diferentes variantes, de las cuales ahora mismo tenemos disponibles las que se explican a continuación.
+- En todas ellas podrás configurar tanto el tamaño del tablero como el jugador que empieza la partida (existe la opción de que se escoja aleatoriamente).
+
+### Clásico
+
+<img width="49%" height="auto" src="./images/Clasico.png">
+
+Este es el tablero clásico, sin complicaciones. Existen dos modos de juego:
+
+#### Human vs Bot
+Te enfrentas a un bot para poder jugar. También puedes escoger la dificultad:
+- Fácil: El bot juega de forma aleatoria. Perfecto para aprender a jugar.
+- Medio: El bot ya piensa un poco, analizando posibles jugadas.
+- Difícil: El bot calcula miles de partidas posibles. Ya cuesta más vencerle
+- Demencial: El bot hace simulaciones masivas de jugadas. Se lo recomendamos a los más valientes!
+
+<img width="49%" height="auto" src="./images/HvBDificultad.png"> <img width="49%" height="auto" src="./images/HvBClasico.png">
+
+#### Human vs Human
+Sigue siendo el modo clásico de juego, pero aquí te puedes enfrentar a algún amigo que se atreva a retarte.
+
+<img width="49%" height="auto" src="./images/HvHClasico.png">
+
+### Tabú Y - Human vs Human
+Aquí aumenta un poco la dificultad del juego.
+
+Según se van colocando casillas, se bloquean las adyacentes durante el siguiente turno. De esta forma, se complica el hacer un camino más rápido, ya que pueden bloquearte casillas que necesites.
+
+<img width="49%" height="auto" src="./images/HvHTabu1.png"> <img width="49%" height="auto" src="./images/HvHTabu2.png">
+
+### Holey Y
+Al inicio de la partida se bloquean aleatoriamente varias casillas del tablero, por lo que no podrás pasar por ellas. 
+
+<img width="49%" height="auto" src="./images/HvHHoley.png">
+
+
+## Historial
+Todos los usuarios registrados podar acceder al apartado de "Mi Historial". 
+
+Aquí podréis encontrar las estadísticas de vuestras partidas, además de el registro de todos los juegos con la información correspondiente.
+
+<img width="49%" height="auto" src="./images/Historial1.png"> <img width="49%" height="auto" src="./images/Historial2.png">
+
+## Ranking
+Tenemos disponible un ranking con todos los usuarios registrados, de forma que puedas ver quienes son los mejores jugadores e intentar batir sus puntuaciones.
+
+<img width="49%" height="auto" src="./images/Ranking.png">
+
+---
+# Yovi_es4a - Game Y at UniOvi
 
 This project is a template with some basic functionality for the ASW labs.
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
@@ -14,11 +14,12 @@ beforeAll(async () => {
   const uri = mongod.getUri()
   await mongoose.connect(uri)
 
-  await import('../users-service.js')
+  const service = await import('../users-service.js')
+  const app = service.default || service
   const UserModule = await import('../users-model.js')
   User = UserModule.default || UserModule
 
-  api = request('http://127.0.0.1:8001')
+  api = request(app)
 })
 
 afterAll(async () => {
@@ -248,6 +249,7 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.gamesLost).toBe(0)
     expect(res.body.stats.gamesAbandoned).toBe(0)
     expect(res.body.stats.totalMoves).toBe(10)
+    expect(res.body.stats.currentWinStreak).toBe(1)
     expect(res.body.stats.winRate).toBe(100)
     expect(res.body.savedGame.gameId).toBe('game-1')
     expect(res.body.savedGame.mode).toBe('classic_hvb')
@@ -287,6 +289,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.savedGame.mode).toBe('fortune_dice_hvh')
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 
   it('acepta modos nuevos como poly_hvh', async () => {
@@ -305,6 +308,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.savedGame.mode).toBe('poly_hvh')
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 
   it('devuelve 400 si el body no es válido', async () => {
@@ -336,6 +340,7 @@ describe('POST /users/:username/games', () => {
 
     expect(res.status).toBe(201)
     expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 })
 
@@ -390,6 +395,7 @@ describe('GET /users/:username/history', () => {
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('HistoryUser')
     expect(res.body.stats.gamesPlayed).toBe(4)
+    expect(res.body.stats.currentWinStreak).toBe(0)
     expect(res.body.pagination.page).toBe(1)
     expect(res.body.pagination.pageSize).toBe(2)
     expect(res.body.pagination.totalGames).toBe(4)
@@ -459,6 +465,7 @@ describe('GET /users/:username/history', () => {
     expect(res.status).toBe(200)
     expect(res.body.pagination.totalGames).toBe(0)
     expect(res.body.pagination.totalPages).toBe(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
   })
 })
 
@@ -478,6 +485,7 @@ describe('PATCH /users/:username/stats', () => {
     expect(res.body.stats.gamesWon).toBe(1)
     expect(res.body.stats.gamesLost).toBe(0)
     expect(res.body.stats.totalMoves).toBe(10)
+    expect(res.body.stats.currentWinStreak).toBe(1)
     expect(res.body.stats.winRate).toBe(100)
   })
 
@@ -492,6 +500,7 @@ describe('PATCH /users/:username/stats', () => {
     expect(res.body.stats.gamesWon).toBe(1)
     expect(res.body.stats.gamesLost).toBe(1)
     expect(res.body.stats.totalMoves).toBe(18)
+    expect(res.body.stats.currentWinStreak).toBe(0)
     expect(res.body.stats.winRate).toBe(50)
   })
 
@@ -612,6 +621,7 @@ describe('GET /users/:username/stats', () => {
     expect(res.body.stats).toHaveProperty('gamesLost')
     expect(res.body.stats).toHaveProperty('gamesAbandoned')
     expect(res.body.stats).toHaveProperty('totalMoves')
+    expect(res.body.stats).toHaveProperty('currentWinStreak')
     expect(res.body.stats).toHaveProperty('winRate')
     expect(res.body.stats).not.toHaveProperty('winningMoves')
     expect(res.body.stats).not.toHaveProperty('accuracy')
@@ -687,5 +697,299 @@ describe('CORS OPTIONS', () => {
   it('devuelve 204 para peticiones OPTIONS', async () => {
     const res = await api.options('/login')
     expect(res.status).toBe(204)
+  })
+})
+
+describe('GET /users/:username/profile', () => {
+  beforeAll(async () => {
+    await createVerifiedUser('ProfileUser', 'profileuser@test.com')
+  })
+ 
+  it('devuelve username, email y profilePicture del usuario', async () => {
+    const res = await api.get('/users/ProfileUser/profile')
+ 
+    expect(res.status).toBe(200)
+    expect(res.body.username).toBe('ProfileUser')
+    expect(res.body.email).toBe('profileuser@test.com')
+    expect(res.body).toHaveProperty('profilePicture')
+  })
+ 
+  it('devuelve 404 si el usuario no existe', async () => {
+    const res = await api.get('/users/UsuarioFantasma999/profile')
+ 
+    expect(res.status).toBe(404)
+    expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+ 
+  it('devuelve 400 si el username es inválido', async () => {
+    const res = await api.get('/users/..bad_user../profile')
+ 
+    expect(res.status).toBe(400)
+  })
+ 
+  it('no devuelve la contraseña en la respuesta', async () => {
+    const res = await api.get('/users/ProfileUser/profile')
+ 
+    expect(res.status).toBe(200)
+    expect(res.body).not.toHaveProperty('password')
+  })
+})
+ 
+describe('PUT /users/:username/password', () => {
+  beforeAll(async () => {
+    await createVerifiedUser('PassUser', 'passuser@test.com')
+  })
+ 
+  it('cambia la contraseña correctamente con credenciales válidas', async () => {
+    const res = await api
+      .put('/users/PassUser/password')
+      .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
+ 
+    expect(res.status).toBe(200)
+    expect(res.body.message).toMatch(/actualizada correctamente/i)
+  })
+ 
+  it('permite iniciar sesión con la nueva contraseña tras el cambio', async () => {
+    // La contraseña ya fue cambiada a 'NuevaPass123!' por el test anterior,
+    // así que usamos esa como oldPassword para hacer un segundo cambio
+    await api
+      .put('/users/PassUser/password')
+      .send({ oldPassword: 'NuevaPass123!', newPassword: 'PasswordNuevo1!' })
+ 
+    const login = await api
+      .post('/login')
+      .send({ username: 'PassUser', password: 'PasswordNuevo1!' })
+ 
+    expect(login.status).toBe(200)
+    expect(login.body.username).toBe('PassUser')
+  })
+ 
+  it('devuelve 401 si la contraseña actual es incorrecta', async () => {
+    const res = await api
+      .put('/users/PassUser/password')
+      .send({ oldPassword: 'contraseña_incorrecta', newPassword: 'NuevaPass123!' })
+ 
+    expect(res.status).toBe(401)
+    expect(res.body.error).toMatch(/contraseña actual es incorrecta/i)
+  })
+ 
+  it('devuelve 400 si falta la contraseña actual', async () => {
+    const res = await api
+      .put('/users/PassUser/password')
+      .send({ newPassword: 'NuevaPass123!' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/contraseña actual es obligatoria/i)
+  })
+ 
+  it('devuelve 400 si la nueva contraseña tiene menos de 6 caracteres', async () => {
+    const res = await api
+      .put('/users/PassUser/password')
+      .send({ oldPassword: '1234', newPassword: 'abc' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/al menos 6 caracteres/i)
+  })
+ 
+  it('devuelve 400 si falta la nueva contraseña', async () => {
+    const res = await api
+      .put('/users/PassUser/password')
+      .send({ oldPassword: '1234' })
+ 
+    expect(res.status).toBe(400)
+  })
+ 
+  it('devuelve 404 si el usuario no existe', async () => {
+    const res = await api
+      .put('/users/UsuarioFantasma999/password')
+      .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
+ 
+    expect(res.status).toBe(404)
+    expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+ 
+  it('devuelve 400 si el username es inválido', async () => {
+    const res = await api
+      .put('/users/..bad_user../password')
+      .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
+ 
+    expect(res.status).toBe(400)
+  })
+})
+ 
+describe('PATCH /users/:username/username', () => {
+  beforeAll(async () => {
+    await createVerifiedUser('UsernameOld', 'usernameold@test.com')
+    await createVerifiedUser('UsernameOcupado', 'usernameocupado@test.com')
+  })
+ 
+  it('cambia el nombre de usuario correctamente', async () => {
+    const res = await api
+      .patch('/users/UsernameOld/username')
+      .send({ newUsername: 'UsernameNew' })
+ 
+    expect(res.status).toBe(200)
+    expect(res.body.message).toMatch(/actualizado correctamente/i)
+    expect(res.body.username).toBe('UsernameNew')
+  })
+ 
+  it('el usuario es accesible con el nuevo nombre tras el cambio', async () => {
+    const res = await api.get('/users/UsernameNew/profile')
+ 
+    expect(res.status).toBe(200)
+    expect(res.body.username).toBe('UsernameNew')
+  })
+ 
+  it('el usuario antiguo ya no existe tras el cambio', async () => {
+    const res = await api.get('/users/UsernameOld/profile')
+ 
+    expect(res.status).toBe(404)
+  })
+ 
+  it('devuelve 400 si el nuevo username ya está en uso', async () => {
+    await createVerifiedUser('UsernameConflicto', 'usernameconflicto@test.com')
+ 
+    const res = await api
+      .patch('/users/UsernameConflicto/username')
+      .send({ newUsername: 'UsernameOcupado' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/ya está en uso/i)
+  })
+ 
+  it('devuelve 400 si el nuevo username es igual al actual', async () => {
+    const res = await api
+      .patch('/users/UsernameNew/username')
+      .send({ newUsername: 'UsernameNew' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/diferente al actual/i)
+  })
+ 
+  it('devuelve 400 si el nuevo username tiene menos de 3 caracteres', async () => {
+    const res = await api
+      .patch('/users/UsernameNew/username')
+      .send({ newUsername: 'ab' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/al menos 3 caracteres/i)
+  })
+ 
+  it('devuelve 400 si el nuevo username tiene más de 20 caracteres', async () => {
+    const res = await api
+      .patch('/users/UsernameNew/username')
+      .send({ newUsername: 'nombre_demasiado_largo_para_ser_valido' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/exceder los 20 caracteres/i)
+  })
+ 
+  it('devuelve 400 si el nuevo username tiene caracteres inválidos', async () => {
+    const res = await api
+      .patch('/users/UsernameNew/username')
+      .send({ newUsername: 'nombre con espacios' })
+ 
+    expect(res.status).toBe(400)
+  })
+ 
+  it('devuelve 400 si falta el nuevo username en el body', async () => {
+    const res = await api
+      .patch('/users/UsernameNew/username')
+      .send({})
+ 
+    expect(res.status).toBe(400)
+  })
+ 
+  it('devuelve 404 si el usuario no existe', async () => {
+    const res = await api
+      .patch('/users/UsuarioFantasma999/username')
+      .send({ newUsername: 'NuevoNombre' })
+ 
+    expect(res.status).toBe(404)
+    expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+})
+ 
+describe('PATCH /users/:username/avatar', () => {
+  beforeAll(async () => {
+    await createVerifiedUser('AvatarUser', 'avataruser@test.com')
+  })
+ 
+  it('cambia el avatar correctamente con un avatar válido', async () => {
+    const res = await api
+      .patch('/users/AvatarUser/avatar')
+      .send({ profilePicture: 'disco.png' })
+ 
+    expect(res.status).toBe(200)
+    expect(res.body.message).toMatch(/actualizado correctamente/i)
+    expect(res.body.profilePicture).toBe('disco.png')
+  })
+ 
+  it('el perfil refleja el nuevo avatar tras el cambio', async () => {
+    await api
+      .patch('/users/AvatarUser/avatar')
+      .send({ profilePicture: 'rubia.png' })
+ 
+    const profile = await api.get('/users/AvatarUser/profile')
+ 
+    expect(profile.status).toBe(200)
+    expect(profile.body.profilePicture).toBe('rubia.png')
+  })
+ 
+  it('acepta todos los avatares válidos', async () => {
+    const validAvatars = ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png']
+ 
+    for (const avatar of validAvatars) {
+      const res = await api
+        .patch('/users/AvatarUser/avatar')
+        .send({ profilePicture: avatar })
+ 
+      expect(res.status).toBe(200)
+      expect(res.body.profilePicture).toBe(avatar)
+    }
+  })
+ 
+  it('devuelve 400 si el avatar no es uno de los permitidos', async () => {
+    const res = await api
+      .patch('/users/AvatarUser/avatar')
+      .send({ profilePicture: 'avatar_inventado.png' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Avatar no válido/i)
+  })
+ 
+  it('devuelve 400 si falta el campo profilePicture', async () => {
+    const res = await api
+      .patch('/users/AvatarUser/avatar')
+      .send({})
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Avatar no válido/i)
+  })
+ 
+  it('devuelve 400 si profilePicture es una cadena vacía', async () => {
+    const res = await api
+      .patch('/users/AvatarUser/avatar')
+      .send({ profilePicture: '' })
+ 
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/Avatar no válido/i)
+  })
+ 
+  it('devuelve 404 si el usuario no existe', async () => {
+    const res = await api
+      .patch('/users/UsuarioFantasma999/avatar')
+      .send({ profilePicture: 'disco.png' })
+ 
+    expect(res.status).toBe(404)
+    expect(res.body.error).toMatch(/Usuario no encontrado/i)
+  })
+ 
+  it('devuelve 400 si el username del parámetro es inválido', async () => {
+    const res = await api
+      .patch('/users/..bad_user../avatar')
+      .send({ profilePicture: 'disco.png' })
+ 
+    expect(res.status).toBe(400)
   })
 })

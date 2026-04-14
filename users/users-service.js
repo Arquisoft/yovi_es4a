@@ -44,11 +44,12 @@ app.use(express.json());
 // ───────────────────────────────────────────────────────────────────
 // HELPERS
 function buildUserStats(stats = {}) {
-  const gamesPlayed    = stats.gamesPlayed    || 0;
-  const gamesWon       = stats.gamesWon       || 0;
-  const gamesLost      = stats.gamesLost      || 0;
-  const gamesAbandoned = stats.gamesAbandoned || 0;
-  const totalMoves     = stats.totalMoves     || 0;
+  const gamesPlayed      = stats.gamesPlayed      || 0;
+  const gamesWon         = stats.gamesWon         || 0;
+  const gamesLost        = stats.gamesLost        || 0;
+  const gamesAbandoned   = stats.gamesAbandoned   || 0;
+  const totalMoves       = stats.totalMoves       || 0;
+  const currentWinStreak = stats.currentWinStreak || 0;
 
   return {
     gamesPlayed,
@@ -56,6 +57,7 @@ function buildUserStats(stats = {}) {
     gamesLost,
     gamesAbandoned,
     totalMoves,
+    currentWinStreak,
     winRate: gamesPlayed > 0 ? Math.round((gamesWon / gamesPlayed) * 100) : 0,
   };
 }
@@ -309,6 +311,124 @@ app.post('/login', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// PERFIL DE USUARIO
+app.get('/users/:username/profile', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  try {
+    const user = await User.findOne(
+      { username },
+      { username: 1, email: 1, profilePicture: 1, _id: 0 }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ username: user.username, email: user.email, profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR CONTRASEÑA
+app.put('/users/:username/password', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  const { oldPassword, newPassword } = req.body;
+
+  if (typeof oldPassword !== 'string' || !oldPassword) {
+    return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR NOMBRE DE USUARIO
+app.patch('/users/:username/username', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const newUsernameValidation = validateUsername(req.body.newUsername);
+  if (newUsernameValidation.error) {
+    return res.status(400).json({ error: newUsernameValidation.error });
+  }
+  const newUsername = newUsernameValidation.value;
+
+  if (username === newUsername) {
+    return res.status(400).json({ error: 'El nuevo nombre de usuario debe ser diferente al actual.' });
+  }
+
+  try {
+    const existing = await User.findOne({ username: newUsername });
+    if (existing) return res.status(400).json({ error: 'Ese nombre de usuario ya está en uso.' });
+
+    const user = await User.findOneAndUpdate(
+      { username },
+      { username: newUsername },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Nombre de usuario actualizado correctamente.', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR AVATAR
+app.patch('/users/:username/avatar', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const allowedAvatars = ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png'];
+  const profilePicture = typeof req.body.profilePicture === 'string' ? req.body.profilePicture.trim() : '';
+
+  if (!allowedAvatars.includes(profilePicture)) {
+    return res.status(400).json({ error: 'Avatar no válido.' });
+  }
+
+  try {
+    const user = await User.findOneAndUpdate(
+      { username },
+      { profilePicture },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Avatar actualizado correctamente.', profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // REGISTRAR PARTIDA + ACTUALIZAR ESTADÍSTICAS
 app.post("/users/:username/games", async (req, res) => {
   const usernameValidation = validateUsername(req.params.username);
@@ -342,23 +462,33 @@ app.post("/users/:username/games", async (req, res) => {
       });
     }
 
+    const currentWinStreak = user.stats?.currentWinStreak || 0;
+
     const inc = {
       "stats.gamesPlayed": 1,
       "stats.totalMoves": game.totalMoves,
     };
 
+    let nextWinStreak = 0;
+
     if (game.result === "won") {
       inc["stats.gamesWon"] = 1;
+      nextWinStreak = currentWinStreak + 1;
     } else if (game.result === "lost") {
       inc["stats.gamesLost"] = 1;
+      nextWinStreak = 0;
     } else if (game.result === "abandoned") {
       inc["stats.gamesAbandoned"] = 1;
+      nextWinStreak = 0;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
       {
         $inc: inc,
+        $set: {
+          "stats.currentWinStreak": nextWinStreak,
+        },
         $push: {
           gameHistory: {
             $each: [game],
@@ -472,19 +602,38 @@ app.patch('/users/:username/stats', async (req, res) => {
   }
 
   try {
+    const existingUser = await User.findOne(
+      { username },
+      { username: 1, stats: 1, _id: 1 }
+    );
+
+    if (!existingUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const currentWinStreak = existingUser.stats?.currentWinStreak || 0;
+
     const inc = {
       "stats.gamesPlayed": 1,
       "stats.totalMoves": totalMoves,
     };
+
+    let nextWinStreak = 0;
+
     if (won) {
       inc['stats.gamesWon']   = 1;
+      nextWinStreak = currentWinStreak + 1;
     } else {
       inc['stats.gamesLost'] = 1;
+      nextWinStreak = 0;
     }
 
-    const user = await User.findOneAndUpdate(
-      { username },
-      { $inc: inc },
+    const user = await User.findByIdAndUpdate(
+      existingUser._id,
+      {
+        $inc: inc,
+        $set: {
+          "stats.currentWinStreak": nextWinStreak,
+        },
+      },
       { new: true }
     );
 
@@ -508,34 +657,88 @@ app.patch('/users/:username/stats', async (req, res) => {
  *         'gamesWon' (partidas ganadas), 'gamesPlayed' (cantidad de partidas)
  */
 app.get('/ranking', async (req, res) => {
-  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed'];
-  const sortBy = validSortFields.includes(req.query.sortBy) ? req.query.sortBy : 'winRate';
-  const limit  = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+  const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
+  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
+  const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
+  const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
+  const sizeNum = Math.min(100, Math.max(1, Number.parseInt(pageSize || limit, 10) || 20));
 
   try {
-    const users = await User.find(
-      { 'stats.gamesPlayed': { $gt: 0 } },
-      { username: 1, profilePicture: 1, stats: 1, _id: 0 }
-    );
-
-    const ranked = users.map(u => {
-      const stats = buildUserStats(u.stats);
-
-      return {
-        username:       u.username,
-        profilePicture: u.profilePicture,
-        gamesPlayed:    stats.gamesPlayed,
-        gamesWon:       stats.gamesWon,
-        gamesLost:      stats.gamesLost,
-        gamesAbandoned: stats.gamesAbandoned,
-        totalMoves:     stats.totalMoves,
-        winRate:        stats.winRate,
-      };
+    const users = await User.find({ 'stats.gamesPlayed': { $gt: 0 } }, { 
+      username: 1, 
+      profilePicture: 1, 
+      stats: 1, 
+      gameHistory: 1
     });
 
-    ranked.sort((a, b) => b[sortBy] - a[sortBy]);
+    const calculateStats = (user, isWeekly = false) => {
+      let stats = user.stats || {};
+      
+      if (isWeekly) {
+        const lastWeek = new Date();
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        const weeklyGames = (user.gameHistory || []).filter(g => new Date(g.finishedAt) >= lastWeek);
+        
+        const won = weeklyGames.filter(g => g.result === 'won').length;
+        const lost = weeklyGames.filter(g => g.result === 'lost').length;
+        const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
+        const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
-    res.json({ sortBy, ranking: ranked.slice(0, limit) });
+        return {
+          gamesPlayed: weeklyGames.length,
+          gamesWon: won,
+          gamesLost: lost,
+          gamesAbandoned: abandoned,
+          totalMoves: totalMoves,
+          winRate: weeklyGames.length > 0 ? Math.round((won / weeklyGames.length) * 100) : 0
+        };
+      }
+      
+      return {
+        gamesPlayed: stats.gamesPlayed || 0,
+        gamesWon: stats.gamesWon || 0,
+        gamesLost: stats.gamesLost || 0,
+        gamesAbandoned: stats.gamesAbandoned || 0,
+        totalMoves: stats.totalMoves || 0,
+        winRate: (stats.gamesPlayed > 0) ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0
+      };
+    };
+
+    let ranked = users.map(u => ({
+      username: u.username,
+      profilePicture: u.profilePicture,
+      ...calculateStats(u, false)
+    }));
+
+    ranked.sort((a, b) => (b[sortField] || 0) - (a[sortField] || 0));
+
+    const weeklyData = users.map(u => ({
+      username: u.username,
+      profilePicture: u.profilePicture,
+      stats: calculateStats(u, true)
+    })).filter(u => u.stats.gamesPlayed > 0);
+
+    const podium = {
+      mostGames: [...weeklyData].sort((a, b) => b.stats.gamesPlayed - a.stats.gamesPlayed)[0] || null,
+      mostWins: [...weeklyData].sort((a, b) => b.stats.gamesWon - a.stats.gamesWon)[0] || null,
+      bestRate: [...weeklyData].sort((a, b) => (b.stats.winRate - a.stats.winRate) || (b.stats.gamesPlayed - a.stats.gamesPlayed))[0] || null
+    };
+
+    const totalItems = ranked.length;
+    const startIndex = (pageNum - 1) * sizeNum;
+    const paginated = ranked.slice(startIndex, startIndex + sizeNum);
+
+    res.json({ 
+      sortBy: sortField, 
+      podium,
+      pagination: {
+        totalItems,
+        page: pageNum,
+        pageSize: sizeNum,
+        totalPages: Math.ceil(totalItems / sizeNum)
+      },
+      ranking: paginated
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -567,6 +770,23 @@ app.get('/users/:username/stats', async (req, res) => {
   }
 });
 
-app.listen(port, () => { console.log(`User service running on port ${port}`); });
+const http = require('node:http');
+const { Server } = require("socket.io");
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Importar y configurar manejador de websockets
+require('./socket-handler')(io);
+
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(port, () => { console.log(`User service running on port ${port} with WebSockets`); });
+}
 
 module.exports = app;

@@ -10,8 +10,15 @@ vi.mock("antd", () => ({
   Statistic: ({ title, value }: any) => <div>{`${title}: ${value}`}</div>,
 }));
 
+vi.mock("@ant-design/icons", () => ({
+  CheckCircleOutlined: () => <span />,
+  CloseCircleOutlined: () => <span />,
+  StopOutlined: () => <span />,
+  FireOutlined: () => <span />,
+}));
+
 describe("UserStatsSummary", () => {
-  it("renderiza el título por defecto y los tres valores", () => {
+  it("renderiza el título por defecto y los valores", () => {
     render(
       <UserStatsSummary
         stats={{
@@ -20,6 +27,7 @@ describe("UserStatsSummary", () => {
           gamesLost: 3,
           gamesAbandoned: 3,
           totalMoves: 50,
+          currentWinStreak: 2,
           winRate: 40,
         }}
       />
@@ -29,6 +37,7 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 4")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 3")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 3")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 2")).toBeInTheDocument();
   });
 
   it("renderiza un título personalizado", () => {
@@ -41,6 +50,7 @@ describe("UserStatsSummary", () => {
           gamesLost: 2,
           gamesAbandoned: 1,
           totalMoves: 40,
+          currentWinStreak: 4,
           winRate: 63,
         }}
       />
@@ -50,6 +60,7 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 5")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 2")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 1")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 4")).toBeInTheDocument();
   });
 
   it("soporta valores a cero", () => {
@@ -61,6 +72,7 @@ describe("UserStatsSummary", () => {
           gamesLost: 0,
           gamesAbandoned: 0,
           totalMoves: 0,
+          currentWinStreak: 0,
           winRate: 0,
         }}
       />
@@ -69,5 +81,6 @@ describe("UserStatsSummary", () => {
     expect(screen.getByText("Partidas Ganadas: 0")).toBeInTheDocument();
     expect(screen.getByText("Partidas Perdidas: 0")).toBeInTheDocument();
     expect(screen.getByText("Partidas Abandonadas: 0")).toBeInTheDocument();
+    expect(screen.getByText("Racha de Partidas Ganadas: 0")).toBeInTheDocument();
   });
 });

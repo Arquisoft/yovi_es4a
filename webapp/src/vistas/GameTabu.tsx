@@ -179,6 +179,7 @@ export default function GameTabu() {
       deps={[size, hvh_starter]}
       start={start}
       move={move}
+      shouldCountMove={(turn) => turn === "player0"}
       onGameFinished={async ({ gameId, winner, totalMoves }) => {
         await registerFinishedGame(gameId, winner, totalMoves);
       }}
