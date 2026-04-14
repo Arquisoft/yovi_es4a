@@ -189,3 +189,64 @@ export async function getUserStats(username: string) {
         stats: UserStats;
     }>(response);
 }
+
+export async function getUserProfile(username: string) {
+    const response = await fetch(
+        `${USERS_API_URL}/users/${encodeURIComponent(username)}/profile`
+    );
+ 
+    return parseJson<{
+        username: string;
+        email: string;
+        profilePicture?: string;
+    }>(response);
+}
+
+export async function changePassword(
+  username: string,
+  oldPassword: string,
+  newPassword: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/password`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }
+  );
+
+  return parseJson<{ message: string }>(response);
+}
+
+export async function changeUsername(
+  username: string,
+  newUsername: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/username`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUsername }),
+    }
+  );
+
+  return parseJson<{ message: string; username: string }>(response);
+}
+
+export async function changeAvatar(
+  username: string,
+  profilePicture: string
+) {
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(username)}/avatar`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePicture }),
+    }
+  );
+
+  return parseJson<{ message: string; profilePicture: string }>(response);
+}

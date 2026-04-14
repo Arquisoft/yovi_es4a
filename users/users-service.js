@@ -311,6 +311,124 @@ app.post('/login', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// PERFIL DE USUARIO
+app.get('/users/:username/profile', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  try {
+    const user = await User.findOne(
+      { username },
+      { username: 1, email: 1, profilePicture: 1, _id: 0 }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ username: user.username, email: user.email, profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR CONTRASEÑA
+app.put('/users/:username/password', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  const { oldPassword, newPassword } = req.body;
+
+  if (typeof oldPassword !== 'string' || !oldPassword) {
+    return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR NOMBRE DE USUARIO
+app.patch('/users/:username/username', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const newUsernameValidation = validateUsername(req.body.newUsername);
+  if (newUsernameValidation.error) {
+    return res.status(400).json({ error: newUsernameValidation.error });
+  }
+  const newUsername = newUsernameValidation.value;
+
+  if (username === newUsername) {
+    return res.status(400).json({ error: 'El nuevo nombre de usuario debe ser diferente al actual.' });
+  }
+
+  try {
+    const existing = await User.findOne({ username: newUsername });
+    if (existing) return res.status(400).json({ error: 'Ese nombre de usuario ya está en uso.' });
+
+    const user = await User.findOneAndUpdate(
+      { username },
+      { username: newUsername },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Nombre de usuario actualizado correctamente.', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR AVATAR
+app.patch('/users/:username/avatar', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const allowedAvatars = ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png'];
+  const profilePicture = typeof req.body.profilePicture === 'string' ? req.body.profilePicture.trim() : '';
+
+  if (!allowedAvatars.includes(profilePicture)) {
+    return res.status(400).json({ error: 'Avatar no válido.' });
+  }
+
+  try {
+    const user = await User.findOneAndUpdate(
+      { username },
+      { profilePicture },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Avatar actualizado correctamente.', profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // REGISTRAR PARTIDA + ACTUALIZAR ESTADÍSTICAS
 app.post("/users/:username/games", async (req, res) => {
   const usernameValidation = validateUsername(req.params.username);
