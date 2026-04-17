@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import User from '../users-model.js';
 
 describe('Socket Handler', () => {
   let io;
   let socketHost;
   let socketGuest;
   let connectionCallback;
+  let findOneMock;
+  let findByIdAndUpdateMock;
 
   const createSocketMock = (id) => ({
     id,
@@ -19,7 +22,10 @@ describe('Socket Handler', () => {
   });
 
   beforeEach(() => {
-    vi.resetModules();
+    vi.restoreAllMocks();
+
+    findOneMock = vi.spyOn(User, 'findOne');
+    findByIdAndUpdateMock = vi.spyOn(User, 'findByIdAndUpdate');
 
     io = {
       on: vi.fn((event, cb) => {
@@ -34,7 +40,8 @@ describe('Socket Handler', () => {
   });
 
   const setup = async () => {
-    const setupSocketHandler = (await import('../socket-handler.js')).default;
+    const imported = await import('../socket-handler.js');
+    const setupSocketHandler = imported.default || imported;
     setupSocketHandler(io);
   };
 
@@ -216,6 +223,22 @@ describe('Socket Handler', () => {
   });
 
   it('debería procesar finishGame sin errores', async () => {
+    findOneMock
+      .mockResolvedValueOnce({
+        _id: 'u1',
+        username: 'hostUser',
+        stats: { currentWinStreak: 2 },
+        gameHistory: [],
+      })
+      .mockResolvedValueOnce({
+        _id: 'u2',
+        username: 'guestUser',
+        stats: { currentWinStreak: 5 },
+        gameHistory: [],
+      });
+
+    findByIdAndUpdateMock.mockResolvedValue({});
+
     await setup();
     connectionCallback(socketHost);
     connectionCallback(socketGuest);
@@ -250,6 +273,38 @@ describe('Socket Handler', () => {
     await expect(
       socketHost.handlers['finishGame']({ code, winner: 'player0' })
     ).resolves.toBeUndefined();
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      1,
+      'u1',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesWon': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 3,
+        },
+      }),
+      expect.any(Object)
+    );
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      2,
+      'u2',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesLost': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
   }, 100000);
 
   it('debería abandonar sala proactivamente (leaveRoom)', async () => {
@@ -278,6 +333,70 @@ describe('Socket Handler', () => {
     expect(socketHost.leave).toHaveBeenCalledWith(code);
   });
 
+  it('debería guardar solo abandoned para el host si abandona la sala', async () => {
+    findOneMock.mockResolvedValueOnce({
+      _id: 'u1',
+      username: 'hostUser',
+      stats: { currentWinStreak: 4 },
+      gameHistory: [],
+    });
+    findByIdAndUpdateMock.mockResolvedValue({});
+
+    await setup();
+    connectionCallback(socketHost);
+    connectionCallback(socketGuest);
+
+    const cbCreate = vi.fn();
+    socketHost.handlers['createRoom'](
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
+      cbCreate
+    );
+    const code = cbCreate.mock.calls[0][0].code;
+
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
+
+    socketHost.handlers['startGame']({
+      code,
+      gameId: 'game-2',
+      hostClientId: 'client-1',
+      extra: {},
+    });
+
+    socketHost.handlers['playMove']({ code, cellId: 3 });
+
+    await socketHost.handlers['leaveRoom']({ code });
+
+    expect(findOneMock).toHaveBeenCalledTimes(1);
+    expect(findOneMock).toHaveBeenCalledWith(
+      { username: 'hostUser' },
+      { username: 1, stats: 1, gameHistory: 1, _id: 1 }
+    );
+
+    expect(findByIdAndUpdateMock).toHaveBeenCalledTimes(1);
+    expect(findByIdAndUpdateMock).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesAbandoned': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
+  }, 1000000);
+
   it('debería desconectar (disconnect) desde host', async () => {
     await setup();
     connectionCallback(socketHost);
@@ -302,4 +421,68 @@ describe('Socket Handler', () => {
       'El rival se ha desconectado de la partida.'
     );
   });
+
+  it('debería guardar solo abandoned para el guest si se desconecta', async () => {
+    findOneMock.mockResolvedValueOnce({
+      _id: 'u2',
+      username: 'guestUser',
+      stats: { currentWinStreak: 6 },
+      gameHistory: [],
+    });
+    findByIdAndUpdateMock.mockResolvedValue({});
+
+    await setup();
+    connectionCallback(socketHost);
+    connectionCallback(socketGuest);
+
+    const cbCreate = vi.fn();
+    socketHost.handlers['createRoom'](
+      {
+        size: 11,
+        mode: 'classic_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
+      cbCreate
+    );
+    const code = cbCreate.mock.calls[0][0].code;
+
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
+
+    socketHost.handlers['startGame']({
+      code,
+      gameId: 'game-3',
+      hostClientId: 'client-1',
+      extra: {},
+    });
+
+    socketGuest.handlers['playMove']({ code, cellId: 8 });
+
+    await socketGuest.handlers['disconnect']();
+
+    expect(findOneMock).toHaveBeenCalledTimes(1);
+    expect(findOneMock).toHaveBeenCalledWith(
+      { username: 'guestUser' },
+      { username: 1, stats: 1, gameHistory: 1, _id: 1 }
+    );
+
+    expect(findByIdAndUpdateMock).toHaveBeenCalledTimes(1);
+    expect(findByIdAndUpdateMock).toHaveBeenCalledWith(
+      'u2',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesAbandoned': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
+  }, 100000);
 });
