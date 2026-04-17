@@ -133,7 +133,7 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
-    });
+    } as any);
 
     mockedParseYenToCells.mockReturnValue([
       {
@@ -144,7 +144,7 @@ describe("GameMultiplayer", () => {
         coords: { x: 0, y: 0, z: 0 },
         touches: { a: false, b: false, c: false },
       },
-    ]);
+    ] as any);
   });
 
   it("renderiza el título y subtítulo de la partida", () => {
@@ -154,7 +154,18 @@ describe("GameMultiplayer", () => {
     expect(screen.getByText("Sala: ROOM1 · Eres: Azul")).toBeTruthy();
   });
 
-  it("muestra el título TABU para el modo tabu_hvh", () => {
+  it("muestra el título correcto para why_not_hvh", () => {
+    locationState = {
+      role: "host",
+      config: { size: 11, mode: "why_not_hvh" },
+    };
+
+    render(<GameMultiplayer />);
+
+    expect(screen.getByText("WhY Not Online vs. guestUser")).toBeTruthy();
+  });
+
+  it("muestra el título correcto para tabu_hvh", () => {
     locationState = {
       role: "host",
       config: { size: 11, mode: "tabu_hvh" },
@@ -162,7 +173,7 @@ describe("GameMultiplayer", () => {
 
     render(<GameMultiplayer />);
 
-    expect(screen.getByText("TABU vs. guestUser")).toBeTruthy();
+    expect(screen.getByText("Tabú Online vs. guestUser")).toBeTruthy();
   });
 
   it("usa YOVI como fallback si no hay modo", () => {
@@ -193,7 +204,7 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
-    });
+    } as any);
 
     render(<GameMultiplayer />);
 
@@ -218,7 +229,7 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
-    });
+    } as any);
 
     render(<GameMultiplayer />);
 
@@ -360,7 +371,7 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
-    });
+    } as any);
 
     render(<GameMultiplayer />);
 
