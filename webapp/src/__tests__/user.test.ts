@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  GAME_MODE_META,
+  HISTORY_MODE_FILTER_OPTIONS,
+  getDefaultOpponentLabel,
+  getGameModeLongLabel,
+  getGameModeShortLabel,
+  getGameModeTagColor,
   getRanking,
   getUserHistory,
   getUserStats,
@@ -456,5 +462,25 @@ describe("api/users", () => {
     await expect(
       changeAvatar("marcelo", "rubia.png")
     ).rejects.toThrow("Error 500");
+  });
+
+  it("expone metadatos de modos y helpers derivados", () => {
+    expect(GAME_MODE_META.classic_hvb.shortLabel).toBe("Clásico HvB");
+    expect(GAME_MODE_META.why_not_hvh.longLabel).toBe("WhY Not — Humano vs Humano");
+    expect(getGameModeShortLabel("classic_hvh")).toBe("Clásico HvH");
+    expect(getGameModeLongLabel("why_not_hvh")).toBe("WhY Not — Humano vs Humano");
+    expect(getGameModeTagColor("holey_hvh")).toBe("#A855F7");
+    expect(getDefaultOpponentLabel("classic_hvb")).toBe("Bot");
+    expect(getDefaultOpponentLabel("classic_hvh")).toBe("Jugador local");
+  });
+
+  it("expone opciones de filtro de historial con all y why_not_hvh", () => {
+    expect(HISTORY_MODE_FILTER_OPTIONS[0]).toEqual({
+      value: "all",
+      label: "Todos los modos",
+    });
+    expect(
+      HISTORY_MODE_FILTER_OPTIONS.some((option) => option.value === "why_not_hvh"),
+    ).toBe(true);
   });
 });

@@ -141,10 +141,7 @@ describe("VariantSelect", () => {
         );
     });
 
-    it("el botón confirmar queda deshabilitado si el usuario consigue forzar una selección no implementada via teclado (defensa)", () => {
-        // El estado interno nunca puede ser una variante no implementada,
-        // así que el botón siempre está habilitado cuando classic está seleccionado.
-        // Este test verifica el estado inicial seguro.
+    it("el botón confirmar queda habilitado con la selección inicial segura", () => {
         renderVariantSelect();
         expect(screen.getByTestId("variant-confirm-btn")).not.toBeDisabled();
     });

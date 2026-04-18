@@ -57,6 +57,88 @@ export type UserHistoryQuery = {
     sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };
 
+type GameModeMeta = {
+    shortLabel: string;
+    longLabel: string;
+    tagColor: string;
+    defaultOpponent: string;
+};
+
+export const GAME_MODE_META: Record<GameMode, GameModeMeta> = {
+    classic_hvb: {
+        shortLabel: "Clásico HvB",
+        longLabel: "Clásico — Humano vs Bot",
+        tagColor: "#28BBF5",
+        defaultOpponent: "Bot",
+    },
+    classic_hvh: {
+        shortLabel: "Clásico HvH",
+        longLabel: "Clásico — Humano vs Humano",
+        tagColor: "#FF7B00",
+        defaultOpponent: "Jugador local",
+    },
+    tabu_hvh: {
+        shortLabel: "Tabú HvH",
+        longLabel: "Tabú — Humano vs Humano",
+        tagColor: "#FF4D6D",
+        defaultOpponent: "Jugador local",
+    },
+    holey_hvh: {
+        shortLabel: "HoleY HvH",
+        longLabel: "HoleY — Humano vs Humano",
+        tagColor: "#A855F7",
+        defaultOpponent: "Jugador local",
+    },
+    fortune_dice_hvh: {
+        shortLabel: "Fortune Dice HvH",
+        longLabel: "Fortune Dice — Humano vs Humano",
+        tagColor: "#FACC15",
+        defaultOpponent: "Jugador local",
+    },
+    poly_hvh: {
+        shortLabel: "PolY HvH",
+        longLabel: "PolY — Humano vs Humano",
+        tagColor: "#22C55E",
+        defaultOpponent: "Jugador local",
+    },
+    why_not_hvh: {
+        shortLabel: "WhY Not HvH",
+        longLabel: "WhY Not — Humano vs Humano",
+        tagColor: "#5cf6b6",
+        defaultOpponent: "Jugador local",
+    },
+};
+
+export function getGameModeShortLabel(mode: GameMode): string {
+    return GAME_MODE_META[mode].shortLabel;
+}
+
+export function getGameModeLongLabel(mode: GameMode): string {
+    return GAME_MODE_META[mode].longLabel;
+}
+
+export function getGameModeTagColor(mode: GameMode): string {
+    return GAME_MODE_META[mode].tagColor;
+}
+
+export function getDefaultOpponentLabel(mode: GameMode): string {
+    return GAME_MODE_META[mode].defaultOpponent;
+}
+
+export const HISTORY_MODE_FILTER_OPTIONS: Array<{
+    value: "all" | GameMode;
+    label: string;
+}> = [
+    { value: "all", label: "Todos los modos" },
+    { value: "classic_hvb", label: getGameModeShortLabel("classic_hvb") },
+    { value: "classic_hvh", label: getGameModeShortLabel("classic_hvh") },
+    { value: "tabu_hvh", label: getGameModeShortLabel("tabu_hvh") },
+    { value: "holey_hvh", label: getGameModeShortLabel("holey_hvh") },
+    { value: "fortune_dice_hvh", label: getGameModeShortLabel("fortune_dice_hvh") },
+    { value: "poly_hvh", label: getGameModeShortLabel("poly_hvh") },
+    { value: "why_not_hvh", label: getGameModeShortLabel("why_not_hvh") },
+];
+
 const USERS_API_URL = "/api/users";
 
 async function parseJson<T>(response: Response): Promise<T> {

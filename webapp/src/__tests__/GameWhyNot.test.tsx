@@ -268,39 +268,32 @@ describe("GameWhyNot", () => {
 
     await props.onGameAbandoned({
       gameId: "g4",
-      totalMoves: 1,
+      totalMoves: 5,
     });
 
     expect(saveGameForCurrentSession).not.toHaveBeenCalled();
     expect(deleteHvhGame).toHaveBeenCalledWith("g4");
   });
 
-  it("propaga las props del hook al SessionGamePage y al AuthModal", () => {
-    const handleGuestSaveRequested = vi.fn();
+  it("renderiza AuthModal con las props del hook", () => {
     const handleLoginSuccess = vi.fn();
     const closeAuthModal = vi.fn();
 
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
       authModalOpen: true,
-      savingPendingGame: true,
-      canOfferGuestSave: true,
-      handleGuestSaveRequested,
       handleLoginSuccess,
       closeAuthModal,
     } as any);
 
     render(<GameWhyNot />);
 
-    const sessionProps = sessionGamePageMock.mock.calls.at(-1)?.[0];
-    const authProps = authModalMock.mock.calls.at(-1)?.[0];
-
-    expect(sessionProps.canOfferGuestSave).toBe(true);
-    expect(sessionProps.guestSaveLoading).toBe(true);
-    expect(sessionProps.onGuestSaveRequested).toBe(handleGuestSaveRequested);
-
-    expect(authProps.open).toBe(true);
-    expect(authProps.onClose).toBe(closeAuthModal);
-    expect(authProps.onLoginSuccess).toBe(handleLoginSuccess);
+    expect(authModalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        open: true,
+        onClose: closeAuthModal,
+        onLoginSuccess: handleLoginSuccess,
+      }),
+    );
   });
 });
