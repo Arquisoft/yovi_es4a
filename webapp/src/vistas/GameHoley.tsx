@@ -26,10 +26,9 @@ import {
   type YEN,
 } from "../api/gamey";
 import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
 import { hasPlayableCells } from "../game/variants";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -67,7 +66,6 @@ function generateHoles(totalCells: number): Set<number> {
 
 export default function GameHoley() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
@@ -77,41 +75,14 @@ export default function GameHoley() {
   // Los agujeros se generan una vez al montar el componente
   const holesRef = useRef<Set<number>>(generateHoles(totalCells));
   const [holes, setHoles] = useState<Set<number>>(holesRef.current);
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session || savedGameIdsRef.current.has(gameId)) return;
-    await recordUserGame(session.username, {
-      gameId,
-      mode: "holey_hvh",
-      result:
-        winner === "player0" ? "won" :
-        winner === "player1" ? "lost" :
-        "draw",
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
       boardSize: size,
-      totalMoves,
+      mode: "holey_hvh",
       opponent: "Jugador local (Holey)",
       startedBy: hvh_starter,
+      deleteGame: deleteHvhGame,
     });
-    savedGameIdsRef.current.add(gameId);
-  }
-
-  async function registerAbandonedGame(gameId: string, totalMoves: number) {
-    const session = getUserSession();
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
-        gameId,
-        mode: "holey_hvh",
-        result: "abandoned",
-        boardSize: size,
-        totalMoves,
-        opponent: "Jugador local (Holey)",
-        startedBy: hvh_starter,
-      });
-      savedGameIdsRef.current.add(gameId);
-    }
-    await deleteHvhGame(gameId);
-  }
 
   const move = useCallback(async (
     gameId: string,

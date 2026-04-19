@@ -24,9 +24,8 @@ import {
   type YEN,
 } from "../api/gamey";
 import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -43,7 +42,6 @@ function rollDice(): number {
 
 export default function GameFortuneDice() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter: StarterHvH = "player0";
@@ -56,35 +54,14 @@ export default function GameFortuneDice() {
   const [piecesLeft, setPiecesLeft] = useState(piecesLeftRef.current);
 
   const DICE_FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session || savedGameIdsRef.current.has(gameId)) return;
-    await recordUserGame(session.username, {
-      gameId,
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
+      boardSize: size,
       mode: "fortune_dice_hvh",
-      result:
-        winner === "player0" ? "won" :
-        winner === "player1" ? "lost" :
-        "draw",
-      boardSize: size, totalMoves,
-      opponent: "Jugador local (Dado)", startedBy: hvh_starter,
+      opponent: "Jugador local (Dado)",
+      startedBy: hvh_starter,
+      deleteGame: deleteHvhGame,
     });
-    savedGameIdsRef.current.add(gameId);
-  }
-
-  async function registerAbandonedGame(gameId: string, totalMoves: number) {
-    const session = getUserSession();
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
-        gameId, mode: "fortune_dice_hvh", result: "abandoned",
-        boardSize: size, totalMoves,
-        opponent: "Jugador local (Dado)", startedBy: hvh_starter,
-      });
-      savedGameIdsRef.current.add(gameId);
-    }
-    await deleteHvhGame(gameId);
-  }
 
   const move = useCallback(async (
     gameId: string,

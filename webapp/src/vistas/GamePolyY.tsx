@@ -18,7 +18,7 @@
  * alcance del motor Y triangular actual).
  */
 
-import { useRef, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -29,9 +29,8 @@ import {
   type YEN,
 } from "../api/gamey";
 import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -82,41 +81,19 @@ function countCorners(yen: YEN): { player0: number; player1: number } {
 
 export default function GamePolyY() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
 
   const [corners, setCorners] = useState({ player0: 0, player1: 0 });
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session || savedGameIdsRef.current.has(gameId)) return;
-    await recordUserGame(session.username, {
-      gameId,
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
+      boardSize: size,
       mode: "poly_hvh",
-      result:
-        winner === "player0" ? "won" :
-        winner === "player1" ? "lost" :
-        "draw",
-      boardSize: size, totalMoves,
-      opponent: "Jugador local (Poly-Y)", startedBy: hvh_starter,
+      opponent: "Jugador local (Poly-Y)",
+      startedBy: hvh_starter,
+      deleteGame: deleteHvhGame,
     });
-    savedGameIdsRef.current.add(gameId);
-  }
-
-  async function registerAbandonedGame(gameId: string, totalMoves: number) {
-    const session = getUserSession();
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
-        gameId, mode: "poly_hvh", result: "abandoned",
-        boardSize: size, totalMoves,
-        opponent: "Jugador local (Poly-Y)", startedBy: hvh_starter,
-      });
-      savedGameIdsRef.current.add(gameId);
-    }
-    await deleteHvhGame(gameId);
-  }
 
   const move = useCallback(async (
     gameId: string,
