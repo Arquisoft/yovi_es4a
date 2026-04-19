@@ -76,7 +76,7 @@ export default function UserStatsSummary({
                     prefix={<MinusCircleOutlined />}
                     title="Partidas Empatadas"
                     value={stats.gamesDrawn}
-                    valueStyle={{ color: "#bfbfbf" }}
+                    valueStyle={{ color: "#999999" }}
                   />
                 </Card>
               </Col>
@@ -105,7 +105,7 @@ export default function UserStatsSummary({
                           #52c41a 0deg ${wonDeg}deg,
                           #cf1322 ${wonDeg}deg ${wonDeg + lostDeg}deg,
                           #595959 ${wonDeg + lostDeg}deg ${wonDeg + lostDeg + abandonedDeg}deg,
-                          #d9d9d9 ${wonDeg + lostDeg + abandonedDeg}deg ${wonDeg + lostDeg + abandonedDeg + drawDeg}deg
+                          #999999 ${wonDeg + lostDeg + abandonedDeg}deg ${wonDeg + lostDeg + abandonedDeg + drawDeg}deg
                         )`
                       : "#f0f0f0",
                   position: "relative",
@@ -129,7 +129,6 @@ export default function UserStatsSummary({
                     color: "#595959",
                   }}
                 >
-                  {total}
                 </div>
               </div>
 

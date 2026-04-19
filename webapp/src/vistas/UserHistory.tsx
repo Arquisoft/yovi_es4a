@@ -56,9 +56,8 @@ function resultTag(result: HistoryGame["result"]) {
           icon={<StopOutlined />}
           style={{
             ...resultTagStyle,
-            background: "#595959",
-            borderColor: "#434343",
-            color: "#ffffff",
+            background: "#f5f5f5",
+            color: "#595959",
           }}
         >
           Abandonada
@@ -70,9 +69,8 @@ function resultTag(result: HistoryGame["result"]) {
           icon={<MinusCircleOutlined />}
           style={{
             ...resultTagStyle,
-            background: "#d9d9d9",
-            borderColor: "#bfbfbf",
-            color: "#434343",
+            background: "#fafafa",
+            color: "#999999",
           }}
         >
           Empatada
