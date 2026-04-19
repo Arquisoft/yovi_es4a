@@ -166,7 +166,7 @@ fn test_player_0_wins_by_connecting_three_sides() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(0));
+            assert_eq!(*winner, Some(PlayerId::new(0)));
         }
         _ => panic!("Game should be finished"),
     }
@@ -211,7 +211,7 @@ fn test_player_1_wins() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(1));
+            assert_eq!(*winner, Some(PlayerId::new(1)));
         }
         _ => panic!("Game should be finished with player 1 as winner"),
     }
@@ -230,7 +230,7 @@ fn test_single_cell_board_instant_win() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(0));
+            assert_eq!(*winner, Some(PlayerId::new(0)));
         }
         _ => panic!("Game should be finished"),
     }
@@ -265,7 +265,7 @@ fn test_size_2_board_win() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(0));
+            assert_eq!(*winner, Some(PlayerId::new(0)));
         }
         _ => panic!("Game should be finished"),
     }
@@ -374,7 +374,7 @@ fn test_resign_ends_game_with_opponent_winning() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(1));
+            assert_eq!(*winner, Some(PlayerId::new(1)));
         }
         _ => panic!("Game should be finished"),
     }
@@ -401,7 +401,7 @@ fn test_player_1_resign_makes_player_0_win() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(0));
+            assert_eq!(*winner, Some(PlayerId::new(0)));
         }
         _ => panic!("Game should be finished with player 0 as winner"),
     }
@@ -886,7 +886,7 @@ fn test_union_find_correctly_merges_components() {
     assert!(game.check_game_over());
     match game.status() {
         GameStatus::Finished { winner } => {
-            assert_eq!(*winner, PlayerId::new(0));
+            assert_eq!(*winner, Some(PlayerId::new(0)));
         }
         _ => panic!("Player 0 should have won"),
     }
