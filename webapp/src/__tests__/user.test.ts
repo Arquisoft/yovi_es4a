@@ -80,7 +80,7 @@ describe("api/users", () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        username: "marcelo diez",
+        username: "marcelo.diez",
         profilePicture: "",
         stats: {
           gamesPlayed: 0,
@@ -102,10 +102,10 @@ describe("api/users", () => {
       }),
     });
 
-    await getUserHistory("marcelo diez", 2, 7);
+    await getUserHistory("marcelo.diez", 2, 7);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo%20diez/history?page=2&pageSize=7",
+      "/api/users/users/marcelo.diez/history?page=2&pageSize=7",
     );
   });
 
@@ -188,7 +188,7 @@ describe("api/users", () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        username: "marcelo",
+        username: "marcelo.diez",
         profilePicture: "avatar.png",
         stats: {
           gamesPlayed: 4,
@@ -203,10 +203,10 @@ describe("api/users", () => {
       }),
     });
 
-    const result = await getUserStats("marcelo diez");
+    const result = await getUserStats("marcelo.diez");
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo%20diez/stats"
+      "/api/users/users/marcelo.diez/stats"
     );
     expect(result.stats.gamesWon).toBe(2);
   });
@@ -276,19 +276,19 @@ describe("api/users", () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        username: "marcelo",
+        username: "marcelo.diez",
         email: "marcelo@test.com",
         profilePicture: "avatar.png",
       }),
     });
 
-    const result = await getUserProfile("marcelo diez");
+    const result = await getUserProfile("marcelo.diez");
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo%20diez/profile"
+      "/api/users/users/marcelo.diez/profile"
     );
 
-    expect(result.username).toBe("marcelo");
+    expect(result.username).toBe("marcelo.diez");
     expect(result.email).toBe("marcelo@test.com");
     expect(result.profilePicture).toBe("avatar.png");
   });
@@ -331,7 +331,7 @@ describe("api/users", () => {
     expect(result.message).toBe("Nombre de usuario actualizado correctamente.");
   });
  
-  it("changeUsername encodea correctamente el username con espacios", async () => {
+  it("changeUsername usa un username válido con punto", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -340,10 +340,10 @@ describe("api/users", () => {
       }),
     });
  
-    await changeUsername("marcelo diez", "nuevo");
+    await changeUsername("marcelo.diez", "nuevo");
  
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo%20diez/username",
+      "/api/users/users/marcelo.diez/username",
       expect.any(Object)
     );
   });
@@ -408,7 +408,7 @@ describe("api/users", () => {
     expect(result.message).toBe("Avatar actualizado correctamente.");
   });
  
-  it("changeAvatar encodea correctamente el username con espacios", async () => {
+  it("changeAvatar usa un username válido con punto", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -417,10 +417,10 @@ describe("api/users", () => {
       }),
     });
  
-    await changeAvatar("marcelo diez", "elvis.png");
+    await changeAvatar("marcelo.diez", "elvis.png");
  
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/users/users/marcelo%20diez/avatar",
+      "/api/users/users/marcelo.diez/avatar",
       expect.any(Object)
     );
   });
