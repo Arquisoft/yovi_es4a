@@ -13,7 +13,7 @@ const gameHistorySchema = new mongoose.Schema(
         },
         result: {
             type: String,
-            enum: ["won", "lost", "abandoned"],
+            enum: ["won", "lost", "abandoned", "draw"],
             required: true,
         },
         boardSize: {

@@ -187,10 +187,12 @@ pub async fn post_move(
     let finished = session.game.check_game_over();
 
     if finished {
-        session.hvh_winner = if session.game.available_cells().is_empty() {
-            None
-        } else {
-            Some(played_by)
+        session.hvh_winner = match session.game.status() {
+            crate::GameStatus::Finished {
+                winner: Some(_),
+            } => Some(played_by),
+            crate::GameStatus::Finished { winner: None } => None,
+            crate::GameStatus::Ongoing { .. } => None,
         };
     } else {
         session.hvh_next_player = Some(1 - played_by);
