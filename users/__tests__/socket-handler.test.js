@@ -72,6 +72,28 @@ describe('Socket Handler', () => {
     });
   });
 
+  it('debería crear una sala why_not_hvh', async () => {
+    await setup();
+    connectionCallback(socketHost);
+
+    const callback = vi.fn();
+    socketHost.handlers['createRoom'](
+      {
+        size: 11,
+        mode: 'why_not_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
+      callback
+    );
+
+    expect(socketHost.join).toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledWith({
+      success: true,
+      code: expect.any(String),
+    });
+  });
+
   it('debería unirse a una sala (joinRoom)', async () => {
     await setup();
     connectionCallback(socketHost);
@@ -301,6 +323,91 @@ describe('Socket Handler', () => {
         }),
         $set: {
           'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
+  }, 100000);
+
+  it('debería procesar finishGame en why_not_hvh con el ganador ya invertido', async () => {
+    findOneMock
+      .mockResolvedValueOnce({
+        _id: 'u1',
+        username: 'hostUser',
+        stats: { currentWinStreak: 2 },
+        gameHistory: [],
+      })
+      .mockResolvedValueOnce({
+        _id: 'u2',
+        username: 'guestUser',
+        stats: { currentWinStreak: 5 },
+        gameHistory: [],
+      });
+
+    findByIdAndUpdateMock.mockResolvedValue({});
+
+    await setup();
+    connectionCallback(socketHost);
+    connectionCallback(socketGuest);
+
+    const cbCreate = vi.fn();
+    socketHost.handlers['createRoom'](
+      {
+        size: 11,
+        mode: 'why_not_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
+      cbCreate
+    );
+    const code = cbCreate.mock.calls[0][0].code;
+
+    socketGuest.handlers['joinRoom'](
+      { code, username: 'guestUser', profilePicture: 'guest.png' },
+      vi.fn()
+    );
+
+    socketHost.handlers['startGame']({
+      code,
+      gameId: 'game-why-not',
+      hostClientId: 'client-1',
+      extra: {},
+    });
+
+    socketHost.handlers['playMove']({ code, cellId: 3 });
+    socketGuest.handlers['playMove']({ code, cellId: 4 });
+
+    await expect(
+      socketHost.handlers['finishGame']({ code, winner: 'player1' })
+    ).resolves.toBeUndefined();
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      1,
+      'u1',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesLost': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 0,
+        },
+      }),
+      expect.any(Object)
+    );
+
+    expect(findByIdAndUpdateMock).toHaveBeenNthCalledWith(
+      2,
+      'u2',
+      expect.objectContaining({
+        $inc: expect.objectContaining({
+          'stats.gamesPlayed': 1,
+          'stats.gamesWon': 1,
+          'stats.totalMoves': 1,
+        }),
+        $set: {
+          'stats.currentWinStreak': 6,
         },
       }),
       expect.any(Object)

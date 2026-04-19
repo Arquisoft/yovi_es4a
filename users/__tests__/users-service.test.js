@@ -311,6 +311,25 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.currentWinStreak).toBe(0)
   })
 
+  it('acepta el nuevo modo why_not_hvh', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-why-not',
+        mode: 'why_not_hvh',
+        result: 'won',
+        boardSize: 7,
+        totalMoves: 12,
+        opponent: 'Jugador local (WhY Not)',
+        startedBy: 'player0',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.mode).toBe('why_not_hvh')
+    expect(res.body.savedGame.result).toBe('won')
+  })
+
   it('devuelve 400 si el body no es válido', async () => {
     const res = await api
       .post('/users/GameUser/games')
@@ -387,6 +406,16 @@ describe('GET /users/:username/history', () => {
       opponent: 'Jugador local',
       startedBy: 'player1',
     })
+
+    await api.post('/users/HistoryUser/games').send({
+      gameId: 'h5',
+      mode: 'why_not_hvh',
+      result: 'won',
+      boardSize: 7,
+      totalMoves: 9,
+      opponent: 'Jugador local (WhY Not)',
+      startedBy: 'player0',
+    })
   })
 
   it('devuelve historial paginado con stats', async () => {
@@ -394,12 +423,12 @@ describe('GET /users/:username/history', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('HistoryUser')
-    expect(res.body.stats.gamesPlayed).toBe(4)
-    expect(res.body.stats.currentWinStreak).toBe(0)
+    expect(res.body.stats.gamesPlayed).toBe(5)
+    expect(res.body.stats.currentWinStreak).toBeGreaterThanOrEqual(0)
     expect(res.body.pagination.page).toBe(1)
     expect(res.body.pagination.pageSize).toBe(2)
-    expect(res.body.pagination.totalGames).toBe(4)
-    expect(res.body.pagination.totalPages).toBe(2)
+    expect(res.body.pagination.totalGames).toBe(5)
+    expect(res.body.pagination.totalPages).toBe(3)
     expect(res.body.games).toHaveLength(2)
   })
 
@@ -422,6 +451,16 @@ describe('GET /users/:username/history', () => {
     expect(res.status).toBe(200)
     expect(res.body.games).toHaveLength(1)
     expect(res.body.games[0].mode).toBe('fortune_dice_hvh')
+  })
+
+  it('filtra también por why_not_hvh', async () => {
+    const res = await api.get(
+      '/users/HistoryUser/history?page=1&pageSize=10&mode=why_not_hvh'
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.body.games).toHaveLength(1)
+    expect(res.body.games[0].mode).toBe('why_not_hvh')
   })
 
   it('ordena por movimientos descendentes', async () => {

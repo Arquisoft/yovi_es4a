@@ -383,6 +383,38 @@ describe("useMultiplayerGameSession", () => {
     expect(result.current.disabledCells).toEqual(new Set([5, 6]));
   });
 
+  it("ignora enemyMove si aún no existe gameId", async () => {
+    const handlers: Record<string, (payload: any) => void> = {};
+    const config = { size: 11, mode: "classic_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    socketMock.on.mockImplementation((event: string, handler: (payload: any) => void) => {
+      handlers[event] = handler;
+      return socketMock;
+    });
+
+    renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "guest",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(handlers.enemyMove).toBeTypeOf("function");
+    });
+
+    await act(async () => {
+      handlers.enemyMove?.({ cellId: 8 });
+    });
+
+    expect(mockedGetHvhGame).not.toHaveBeenCalled();
+  });
+
   it("maneja un movimiento válido", async () => {
     const config = { size: 11, mode: "classic_hvh" } as const;
     const onInvalidState = vi.fn();
@@ -606,6 +638,132 @@ describe("useMultiplayerGameSession", () => {
     });
   });
 
+  it("invierte el ganador en why_not_hvh al terminar con handleCellClick", async () => {
+    mockedHvhMove.mockResolvedValue({
+      yen: { size: 11, layout: "FINAL" },
+      status: { state: "finished", winner: "player0" },
+    } as any);
+
+    const config = { size: 11, mode: "why_not_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    await act(async () => {
+      await result.current.handleCellClick(10);
+    });
+
+    expect(socketMock.emit).toHaveBeenCalledWith("finishGame", {
+      code: "ROOM1",
+      winner: "player1",
+    });
+
+    await waitFor(() => {
+      expect(result.current.winner).toBe("player1");
+      expect(result.current.nextTurn).toBeNull();
+    });
+  });
+
+  it("invierte el ganador en why_not_hvh al refrescar estado desde gameStarted", async () => {
+    const handlers: Record<string, (payload: any) => void> = {};
+    const config = { size: 11, mode: "why_not_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    socketMock.on.mockImplementation((event: string, handler: (payload: any) => void) => {
+      handlers[event] = handler;
+      return socketMock;
+    });
+
+    mockedGetHvhGame.mockResolvedValue({
+      game_id: "game-1",
+      yen: { size: 11, layout: "FINAL" },
+      status: { state: "finished", winner: "player0" },
+    } as any);
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "guest",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await act(async () => {
+      handlers.gameStarted?.({
+        gameId: "game-1",
+        hostClientId: "host-555",
+        extra: {},
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.winner).toBe("player1");
+      expect(result.current.nextTurn).toBeNull();
+      expect(result.current.disabledCells).toEqual(new Set());
+    });
+  });
+
+  it("guarda el error si refreshGameState falla tras gameStarted", async () => {
+    const handlers: Record<string, (payload: any) => void> = {};
+    const config = { size: 11, mode: "classic_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    socketMock.on.mockImplementation((event: string, handler: (payload: any) => void) => {
+      handlers[event] = handler;
+      return socketMock;
+    });
+
+    mockedGetHvhGame.mockRejectedValue(new Error("fallo al cargar partida"));
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "guest",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await act(async () => {
+      handlers.gameStarted?.({
+        gameId: "game-1",
+        hostClientId: "host-999",
+        extra: {},
+        players: {
+          player0: { username: "hostUser", profilePicture: "host.png" },
+          player1: { username: "guestUser", profilePicture: "guest.png" },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("fallo al cargar partida");
+      expect(result.current.loading).toBe(false);
+    });
+  });
+
   it("abandona la sala y borra la partida si es host", async () => {
     const config = { size: 11, mode: "classic_hvh" } as const;
     const onInvalidState = vi.fn();
@@ -660,6 +818,30 @@ describe("useMultiplayerGameSession", () => {
     });
 
     expect(mockedDeleteHvhGame).toHaveBeenCalledWith("game-1");
+    expect(onLeaveLobby).toHaveBeenCalled();
+  });
+
+  it("abandona la sala como guest sin borrar la partida", async () => {
+    const config = { size: 11, mode: "classic_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "guest",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleAbandon();
+    });
+
+    expect(socketMock.emit).toHaveBeenCalledWith("leaveRoom", { code: "ROOM1" });
+    expect(mockedDeleteHvhGame).not.toHaveBeenCalled();
     expect(onLeaveLobby).toHaveBeenCalled();
   });
 

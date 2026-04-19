@@ -14,7 +14,8 @@ const MODE_MAP: Record<string, string> = {
   tabu: "tabu_hvh",
   holey: "holey_hvh",
   fortune_dice: "fortune_dice_hvh",
-  poly_y: "poly_hvh"
+  poly_y: "poly_hvh",
+  why_not: "why_not_hvh",
 };
 
 export default function MultiplayerLobby() {

@@ -37,6 +37,20 @@ type UseMultiplayerGameSessionArgs = {
   onLeaveLobby: () => void;
 };
 
+function resolveWinnerByMode(
+  winner: string | null,
+  mode?: string,
+): string | null {
+  if (mode === "why_not_hvh") {
+    if (winner === "player0")
+      return "player1";
+    if (winner === "player1")
+      return "player0";
+  }
+
+  return winner;
+}
+
 export function useMultiplayerGameSession({
   code,
   role,
@@ -89,7 +103,7 @@ export function useMultiplayerGameSession({
           setDisabledCells(new Set());      
 
         if (r.status.state === "finished") {
-          setWinner(r.status.winner ?? null);
+          setWinner(resolveWinnerByMode(r.status.winner ?? null, config?.mode));
           setNextTurn(null);
           setDisabledCells(new Set());
         }
@@ -146,7 +160,11 @@ export function useMultiplayerGameSession({
 
         setGameId(r.game_id);
         setYen(r.yen);
-        setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
+        setWinner(
+          r.status.state === "finished"
+            ? resolveWinnerByMode(r.status.winner ?? null, config?.mode)
+            : null,
+        );
         setNextTurn(r.status.state === "ongoing" ? r.status.next ?? null : null);
 
         const myClientId = getOrCreateClientId();
@@ -279,23 +297,31 @@ export function useMultiplayerGameSession({
           setDisabledCells(new Set());
 
         if (r.status.state === "finished") {
-          setWinner(r.status.winner ?? null);
+          const resolvedWinner = resolveWinnerByMode(
+            r.status.winner ?? null,
+            config?.mode,
+          );
+
+          setWinner(resolvedWinner);
           setNextTurn(null);
           setDisabledCells(new Set());
+
+          socket.emit("playMove", { code, cellId });
+
+          if (resolvedWinner) {
+            socket.emit("finishGame", {
+              code,
+              winner: resolvedWinner,
+            });
+          }
+
+          return;
         }
-        else {
-          setWinner(null);
-          setNextTurn(r.status.next ?? null);
-        }
+
+        setWinner(null);
+        setNextTurn(r.status.next ?? null);
 
         socket.emit("playMove", { code, cellId });
-
-        if (r.status.state === "finished" && r.status.winner) {
-          socket.emit("finishGame", {
-            code,
-            winner: r.status.winner,
-          });
-        }
       }
       catch (e: any) {
         message.error(e?.message ?? String(e));

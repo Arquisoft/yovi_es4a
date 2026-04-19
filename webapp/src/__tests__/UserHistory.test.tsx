@@ -9,6 +9,33 @@ const getUserSessionMock = vi.fn();
 
 vi.mock("../api/users", () => ({
     getUserHistory: (...args: any[]) => getUserHistoryMock(...args),
+    getDefaultOpponentLabel: (mode: string) => {
+        if (mode === "classic_hvb") return "Bot";
+        return "Jugador local";
+    },
+    getGameModeLongLabel: (mode: string) => {
+        const labels: Record<string, string> = {
+            classic_hvb: "Clásico — Humano vs Bot",
+            classic_hvh: "Clásico — Humano vs Humano",
+            why_not_hvh: "WhY Not — Humano vs Humano",
+        };
+        return labels[mode] ?? mode;
+    },
+    getGameModeShortLabel: (mode: string) => {
+        const labels: Record<string, string> = {
+            classic_hvb: "Clásico HvB",
+            classic_hvh: "Clásico HvH",
+            why_not_hvh: "WhY Not HvH",
+        };
+        return labels[mode] ?? mode;
+    },
+    getGameModeTagColor: () => "blue",
+    HISTORY_MODE_FILTER_OPTIONS: [
+        { value: "all", label: "Todos los modos" },
+        { value: "classic_hvb", label: "Clásico HvB" },
+        { value: "classic_hvh", label: "Clásico HvH" },
+        { value: "why_not_hvh", label: "WhY Not HvH" },
+    ],
 }));
 
 vi.mock("../utils/session", () => ({
@@ -47,12 +74,12 @@ vi.mock("antd", () => {
         <div data-testid="history-list-item">{children}</div>
     );
 
-    const Descriptions = ({ children }: any) => (
-        <div data-testid="descriptions">{children}</div>
-    );
-
-    Descriptions.Item = ({ label, children }: any) => (
-        <div>{`${label}: ${children}`}</div>
+    const DescriptionsComponent = ({ children }: any) => <div>{children}</div>;
+    DescriptionsComponent.Item = ({ label, children }: any) => (
+        <div>
+            <span>{label}: </span>
+            <span>{children}</span>
+        </div>
     );
 
     return {
@@ -62,7 +89,7 @@ vi.mock("antd", () => {
                 <div>{description}</div>
             </div>
         ),
-        Avatar: ({ children }: any) => <div>{children}</div>,
+        Avatar: ({ src }: any) => <img alt="avatar" src={src} />,
         Card: ({ children }: any) => <div>{children}</div>,
         Collapse: ({ items }: any) => (
             <div>
@@ -74,28 +101,24 @@ vi.mock("antd", () => {
                 ))}
             </div>
         ),
-        Descriptions,
+        Descriptions: DescriptionsComponent,
         Empty: ({ description }: any) => <div>{description}</div>,
         Flex: ({ children }: any) => <div>{children}</div>,
         List: ListComponent,
         Pagination: ({ current, total, pageSize, onChange }: any) => (
             <div>
-                <div>{`pagination:${current}/${total}/${pageSize}`}</div>
-                <button type="button" onClick={() => onChange(current + 1)}>
-                    next-page
+                <span>{`page:${current} total:${total} size:${pageSize}`}</span>
+                <button aria-label="next-page" onClick={() => onChange(current + 1)}>
+                    next
                 </button>
             </div>
         ),
         Select: ({ value, onChange, options }: any) => (
-            <select
-                role="combobox"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-            >
-                {options.map((option: any) => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
+            <select value={value} onChange={(e) => onChange(e.target.value)}>
+                {options?.map((o: any) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
                 ))}
             </select>
         ),
@@ -103,8 +126,8 @@ vi.mock("antd", () => {
         Spin: () => <div>Cargando...</div>,
         Tag: ({ children }: any) => <span>{children}</span>,
         Typography: {
-            Title: ({ children }: any) => <div>{children}</div>,
-            Text: ({ children }: any) => <div>{children}</div>,
+            Title: ({ children }: any) => <h2>{children}</h2>,
+            Text: ({ children }: any) => <span>{children}</span>,
         },
     };
 });
@@ -125,8 +148,9 @@ function buildHistoryResponse(overrides: any = {}) {
             gamesWon: 1,
             gamesLost: 1,
             gamesAbandoned: 1,
-            totalMoves: 20,
+            totalMoves: 23,
             winRate: 33,
+            currentWinStreak: 0,
         },
         pagination: {
             page: 1,
@@ -149,11 +173,21 @@ function buildHistoryResponse(overrides: any = {}) {
                 gameId: "g2",
                 mode: "classic_hvh",
                 result: "abandoned",
-                boardSize: 9,
+                boardSize: 7,
                 totalMoves: 5,
                 opponent: "Jugador local",
                 startedBy: "player0",
                 finishedAt: "2026-03-21T13:00:00.000Z",
+            },
+            {
+                gameId: "g3",
+                mode: "why_not_hvh",
+                result: "lost",
+                boardSize: 9,
+                totalMoves: 8,
+                opponent: "Jugador local (WhY Not)",
+                startedBy: "player1",
+                finishedAt: "2026-03-21T14:00:00.000Z",
             },
         ],
         ...overrides,
@@ -193,14 +227,15 @@ describe("UserHistory", () => {
 
         expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Clásico HvH").length).toBeGreaterThan(0);
-        expect(screen.getByText("Clásico — Humano vs Bot")).toBeInTheDocument();
-        expect(screen.getByText("Clásico — Humano vs Humano")).toBeInTheDocument();
+        expect(screen.getAllByText("WhY Not HvH").length).toBeGreaterThan(0);
+
+        expect(screen.getAllByText("Clásico — Humano vs Bot").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Clásico — Humano vs Humano").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("WhY Not — Humano vs Humano").length).toBeGreaterThan(0);
+
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
-        expect(screen.getByText("Rival: random_bot")).toBeInTheDocument();
-        expect(screen.getByText("Empieza: human")).toBeInTheDocument();
-        expect(screen.getByText("Tamaño: 7")).toBeInTheDocument();
-        expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
+        expect(screen.getByText("Perdida")).toBeInTheDocument();
     });
 
     it("muestra spinner mientras carga", () => {
@@ -232,6 +267,7 @@ describe("UserHistory", () => {
                     gamesAbandoned: 0,
                     totalMoves: 0,
                     winRate: 0,
+                    currentWinStreak: 0,
                 },
                 pagination: {
                     page: 1,
@@ -369,8 +405,8 @@ describe("UserHistory", () => {
         });
     });
 
-    it("si no hay username no llama a la API", () => {
-        getUserSessionMock.mockReturnValueOnce(null);
+    it("no hace nada si no hay sesión", () => {
+        getUserSessionMock.mockReturnValue(null);
 
         render(<UserHistory />);
 

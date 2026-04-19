@@ -25,7 +25,13 @@ import { getUserSession } from "../utils/session";
 import AppHeader from "./AppHeader.tsx";
 import DifficultySelect from "./Dificultyselect.tsx";
 import UserStatsSummary from "./UserStats";
-import type { Variant, VariantId } from "./VariantSelect";
+import type { Variant } from "./VariantSelect";
+import {
+  gameRouteForVariant,
+  hvhRouteForVariant,
+  HVH_ONLY_VARIANTS,
+  STANDALONE_VARIANTS,
+} from "../game/variants";
 
 const { Title, Text } = Typography;
 
@@ -89,34 +95,6 @@ function clampSize(n: number, meta: MetaResponse | null) {
   const max = meta?.max_board_size ?? 15;
   return Math.min(Math.max(n, min), max);
 }
-
-// ─── Rutas de juego por variante ─────────────────────────────────────────────
-
-function gameRouteForVariant(variantId: VariantId): string {
-  const map: Record<VariantId, string> = {
-    classic: "/game-hvb",
-    pastel: "/game-pastel",
-    master: "/game-master",
-    fortune_coin: "/game-fortune-coin",
-    fortune_dice: "/game-fortune-dice",
-    tabu: "/game-tabu",
-    holey: "/game-holey",
-    why_not: "/game-why-not",
-    poly_y: "/game-poly-y",
-    hex: "/game-hex",
-  };
-  return map[variantId] ?? "/game-hvb";
-}
-
-/** Ruta HvH: classic tiene su propia ruta /game-hvh; el resto usa la ruta de variante. */
-function hvhRouteForVariant(variantId: VariantId): string {
-  if (variantId === "classic") return "/game-hvh";
-  return gameRouteForVariant(variantId);
-}
-
-// Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
-const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 

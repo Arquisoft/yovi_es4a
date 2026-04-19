@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
-import GameHvH from "../vistas/game/GameHvH";
+import GameWhyNot from "../vistas/GameWhyNot";
 import { createHvhGame, deleteHvhGame, hvhMove, putConfig } from "../api/gamey";
 import { getUserSession } from "../utils/session";
 import useDeferredGameSave from "../game/useDeferredGameSave";
@@ -60,10 +60,11 @@ vi.mock("../vistas/registroLogin/AuthModal", () => ({
   },
 }));
 
-describe("GameHvH", () => {
+describe("GameWhyNot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams("size=7&hvhstarter=player0");
+
     vi.mocked(getUserSession).mockReturnValue({
       username: "marcelo",
       profilePicture: "avatar.png",
@@ -82,33 +83,24 @@ describe("GameHvH", () => {
     } as any);
   });
 
-  it("usa valores por defecto si faltan params", () => {
-    render(<GameHvH />);
+  it("usa valores por defecto y muestra el subtítulo de Why Not", () => {
+    render(<GameWhyNot />);
 
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
-    expect(props.deps).toEqual([7, "player0"]);    
-    expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: Player 0");
-    expect(props.canOfferGuestSave).toBe(false);
+
+    expect(props.deps).toEqual([7, "player0"]);
+    expect(props.resultConfig.title).toBe("Juego Y — WhY Not");
+    expect(props.resultConfig.subtitle).toContain("Conectar los tres lados te hace perder");
   });
 
-  it("pasa shouldCountMove para contar solo jugadas de player0", () => {
-    render(<GameHvH />);
+  it("invierte correctamente el ganador con mapWinner", () => {
+    render(<GameWhyNot />);
 
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
-    expect(props.shouldCountMove("player0")).toBe(true);
-    expect(props.shouldCountMove("player1")).toBe(false);
-    expect(props.shouldCountMove(null)).toBe(false);
-  });
-
-  it("normaliza starter random", () => {
-    mockSearchParams = new URLSearchParams("size=8&hvhstarter=RaNdOm");
-
-    render(<GameHvH />);
-
-    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
-    expect(props.deps).toEqual([8, "random"]);
-    expect(props.resultConfig.subtitle).toBe("Tamaño: 8 · Empieza: Aleatorio");
+    expect(props.mapWinner("player0")).toBe("player1");
+    expect(props.mapWinner("player1")).toBe("player0");
+    expect(props.mapWinner(null)).toBe(null);
   });
 
   it("start guarda config y crea la partida", async () => {
@@ -122,7 +114,7 @@ describe("GameHvH", () => {
 
     mockSearchParams = new URLSearchParams("size=9&hvhstarter=player1");
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
 
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
     const result = await props.start();
@@ -138,13 +130,14 @@ describe("GameHvH", () => {
       size: 9,
       hvh_starter: "player1",
     });
+
     expect(result.game_id).toBe("g2");
   });
 
   it("move delega en hvhMove", async () => {
     vi.mocked(hvhMove).mockResolvedValue({} as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.move("g2", 2);
@@ -152,72 +145,79 @@ describe("GameHvH", () => {
     expect(hvhMove).toHaveBeenCalledWith("g2", 2);
   });
 
-  it("registra partida ganada cuando vence player0", async () => {
+  it("registra partida perdida si quien gana lógicamente es player1", async () => {
     const registerFinishedGame = vi.fn();
+
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
       registerFinishedGame,
     } as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    const logicalWinner = props.mapWinner("player0");
 
     await props.onGameFinished({
       gameId: "g1",
-      winner: "player0",
+      winner: logicalWinner,
       totalMoves: 11,
     });
 
     expect(registerFinishedGame).toHaveBeenCalledWith({
       gameId: "g1",
-      mode: "classic_hvh",
-      result: "won",
-      boardSize: 7,
-      totalMoves: 11,
-      opponent: "Jugador local",
-      startedBy: "player0",
-    });
-  });
-
-  it("registra partida perdida cuando vence player1", async () => {
-    const registerFinishedGame = vi.fn();
-    vi.mocked(useDeferredGameSave).mockReturnValue({
-      ...deferredGameSaveState,
-      registerFinishedGame,
-    } as any);
-
-    render(<GameHvH />);
-    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
-
-    await props.onGameFinished({
-      gameId: "g2",
-      winner: "player1",
-      totalMoves: 6,
-    });
-
-    expect(registerFinishedGame).toHaveBeenCalledWith({
-      gameId: "g2",
-      mode: "classic_hvh",
+      mode: "why_not_hvh",
       result: "lost",
       boardSize: 7,
-      totalMoves: 6,
-      opponent: "Jugador local",
+      totalMoves: 11,
+      opponent: "Jugador local (WhY Not)",
       startedBy: "player0",
     });
   });
 
-  it("no registra partida terminada si winner es null", async () => {
+  it("registra partida ganada si quien gana lógicamente es player0", async () => {
     const registerFinishedGame = vi.fn();
+
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
       registerFinishedGame,
     } as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    const logicalWinner = props.mapWinner("player1");
 
     await props.onGameFinished({
       gameId: "g2",
+      winner: logicalWinner,
+      totalMoves: 6,
+    });
+
+    expect(registerFinishedGame).toHaveBeenCalledWith({
+      gameId: "g2",
+      mode: "why_not_hvh",
+      result: "won",
+      boardSize: 7,
+      totalMoves: 6,
+      opponent: "Jugador local (WhY Not)",
+      startedBy: "player0",
+    });
+  });
+
+  it("ignora onGameFinished si winner es null", async () => {
+    const registerFinishedGame = vi.fn();
+
+    vi.mocked(useDeferredGameSave).mockReturnValue({
+      ...deferredGameSaveState,
+      registerFinishedGame,
+    } as any);
+
+    render(<GameWhyNot />);
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+
+    await props.onGameFinished({
+      gameId: "g-null",
       winner: null,
       totalMoves: 3,
     });
@@ -227,12 +227,13 @@ describe("GameHvH", () => {
 
   it("registra abandono y borra la partida", async () => {
     const saveGameForCurrentSession = vi.fn();
+
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
       saveGameForCurrentSession,
     } as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameAbandoned({
@@ -242,25 +243,27 @@ describe("GameHvH", () => {
 
     expect(saveGameForCurrentSession).toHaveBeenCalledWith({
       gameId: "g3",
-      mode: "classic_hvh",
+      mode: "why_not_hvh",
       result: "abandoned",
       boardSize: 7,
       totalMoves: 8,
-      opponent: "Jugador local",
+      opponent: "Jugador local (WhY Not)",
       startedBy: "player0",
     });
+
     expect(deleteHvhGame).toHaveBeenCalledWith("g3");
   });
 
   it("si no hay sesión en abandono, igualmente borra la partida", async () => {
     const saveGameForCurrentSession = vi.fn();
+
     vi.mocked(getUserSession).mockReturnValue(null as any);
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
       saveGameForCurrentSession,
     } as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
     await props.onGameAbandoned({
@@ -283,7 +286,7 @@ describe("GameHvH", () => {
       closeAuthModal,
     } as any);
 
-    render(<GameHvH />);
+    render(<GameWhyNot />);
 
     expect(authModalMock).toHaveBeenCalledWith(
       expect.objectContaining({

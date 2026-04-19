@@ -9,6 +9,7 @@ const ALLOWED_MODES = new Set([
   'holey_hvh',
   'fortune_dice_hvh',
   'poly_hvh',
+  'why_not_hvh',
 ]);
 
 // Genera un código de 5 caracteres (mayúsculas y números)

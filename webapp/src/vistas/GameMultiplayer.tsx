@@ -15,6 +15,11 @@ import MultiplayerChatDrawer, {
 
 function getModeTitle(mode: string | undefined): string {
   if (mode === "classic_hvh") return "Clásico Online";
+  if (mode === "tabu_hvh") return "Tabú Online";
+  if (mode === "holey_hvh") return "Holey Online";
+  if (mode === "fortune_dice_hvh") return "Fortune Dice Online";
+  if (mode === "why_not_hvh") return "WhY Not Online";
+  if (mode === "poly_hvh") return "PolY Online";
   return mode?.split("_")[0].toUpperCase() ?? "YOVI";
 }
 

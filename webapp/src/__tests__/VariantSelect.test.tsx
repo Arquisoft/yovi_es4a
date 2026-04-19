@@ -13,12 +13,12 @@ vi.mock("../vistas/AppHeader", () => ({
 }));
 
 vi.mock("antd", () => ({
-    Button: ({ children, onClick, disabled, icon, ...props }: any) => (
+    Button: ({ children, onClick, disabled, ...props }: any) => (
         <button onClick={onClick} disabled={disabled} {...props}>
             {children}
         </button>
     ),
-    Card: ({ children, onClick, size: _size, hoverable: _h, ...props }: any) => (
+    Card: ({ children, onClick, ...props }: any) => (
         <div onClick={onClick} {...props}>
             {children}
         </div>
@@ -78,6 +78,7 @@ describe("VariantSelect", () => {
         // Verificamos al menos las principales que sabemos que existen
         expect(screen.getByText("Clásico")).toBeInTheDocument();
         expect(screen.getByText("Regla del Pastel")).toBeInTheDocument();
+        expect(screen.getByText("WhY not")).toBeInTheDocument();
     });
 
     it("muestra el tag 'Próximamente' para variantes no implementadas", () => {
@@ -112,6 +113,18 @@ describe("VariantSelect", () => {
         );
     });
 
+    it("permite seleccionar Why Not y confirmar", async () => {
+        const user = userEvent.setup();
+        const { onSelect } = renderVariantSelect();
+
+        await user.click(screen.getByText("WhY not"));
+        await user.click(screen.getByRole("button", { name: /Continuar con/i }));
+
+        expect(onSelect).toHaveBeenCalledWith(
+            expect.objectContaining({ id: "why_not", implemented: true })
+        );
+    });
+
     // ── Variantes no implementadas ────────────────────────────────────────────
 
     it("hacer clic en una variante no implementada NO la selecciona", async () => {
@@ -128,10 +141,7 @@ describe("VariantSelect", () => {
         );
     });
 
-    it("el botón confirmar queda deshabilitado si el usuario consigue forzar una selección no implementada via teclado (defensa)", () => {
-        // El estado interno nunca puede ser una variante no implementada,
-        // así que el botón siempre está habilitado cuando classic está seleccionado.
-        // Este test verifica el estado inicial seguro.
+    it("el botón confirmar queda habilitado con la selección inicial segura", () => {
         renderVariantSelect();
         expect(screen.getByTestId("variant-confirm-btn")).not.toBeDisabled();
     });

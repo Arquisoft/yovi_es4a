@@ -44,6 +44,7 @@ vi.mock("../vistas/VariantSelect", () => ({
     { id: "tabu", label: "Tabú", emoji: "🚫", implemented: true },
     { id: "holey", label: "Holey", emoji: "🕳️", implemented: true },
     { id: "fortune_dice", label: "Fortune Dice", emoji: "🎲", implemented: false },
+    { id: "why_not", label: "WhY Not", emoji: "🔄", implemented: true },
     { id: "poly_y", label: "Poly-Y", emoji: "🔺", implemented: false },
   ],
 }));
@@ -149,6 +150,35 @@ describe("MultiplayerLobby", () => {
     expect(screen.getByText("A1B2C")).toBeTruthy();
   });
 
+  it("crea una sala why_not_hvh cuando se selecciona Why Not", () => {
+    socketMock.emit.mockImplementation((event: string, ...args: any[]) => {
+      const callback = args[1];
+      if (event === "createRoom" && typeof callback === "function") {
+        callback({ success: true, code: "WHY99" });
+      }
+      return socketMock as any;
+    });
+
+    render(<MultiplayerLobby />);
+
+    fireEvent.change(screen.getByLabelText("Modo de juego"), {
+      target: { value: "why_not" },
+    });
+
+    fireEvent.click(screen.getByText("Generar Código"));
+
+    expect(socketMock.emit).toHaveBeenCalledWith(
+      "createRoom",
+      {
+        size: 11,
+        mode: "why_not_hvh",
+        username: "marcelo",
+        profilePicture: "avatar.png",
+      },
+      expect.any(Function)
+    );
+  });
+
   it("permite crear sala sin sesión enviando null", () => {
     mockedGetUserSession.mockReturnValue(null);
 
@@ -248,6 +278,37 @@ describe("MultiplayerLobby", () => {
     expect(messageSuccess).toHaveBeenCalledWith("¡El rival se ha unido!");
     expect(navigateMock).toHaveBeenCalledWith("/multiplayer/ROOM9", {
       state: { role: "host", config: { size: 11, mode: "classic_hvh" } },
+    });
+  });
+
+  it("navega a la partida why_not_hvh cuando entra el rival", () => {
+    const handlers: Record<string, () => void> = {};
+
+    socketMock.on.mockImplementation((event: string, handler: () => void) => {
+      handlers[event] = handler;
+      return socketMock as any;
+    });
+
+    socketMock.emit.mockImplementation((event: string, ...args: any[]) => {
+      const callback = args[1];
+      if (event === "createRoom" && typeof callback === "function") {
+        callback({ success: true, code: "WHY01" });
+      }
+      return socketMock as any;
+    });
+
+    render(<MultiplayerLobby />);
+
+    fireEvent.change(screen.getByLabelText("Modo de juego"), {
+      target: { value: "why_not" },
+    });
+
+    fireEvent.click(screen.getByText("Generar Código"));
+
+    handlers.playerJoined?.();
+
+    expect(navigateMock).toHaveBeenCalledWith("/multiplayer/WHY01", {
+      state: { role: "host", config: { size: 11, mode: "why_not_hvh" } },
     });
   });
 
