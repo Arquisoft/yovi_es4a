@@ -20,6 +20,7 @@ import {
   CloseCircleOutlined,
   StopOutlined,
   UserOutlined,
+  MinusCircleOutlined,
 } from "@ant-design/icons";
 import AppHeader from "./AppHeader";
 import UserStatsSummary from "./UserStats";
@@ -51,6 +52,8 @@ function resultTag(result: HistoryGame["result"]) {
       return <Tag color="error" icon={<CloseCircleOutlined />} style={resultTagStyle}>Perdida</Tag>;
     case "abandoned":
       return <Tag color="default" icon={<StopOutlined />} style={resultTagStyle}>Abandonada</Tag>;
+    case "draw":
+      return <Tag color="processing" icon={<MinusCircleOutlined />} style={resultTagStyle}>Empatada</Tag>;
     default:
       return <Tag style={resultTagStyle}>{result}</Tag>;
   }
@@ -148,7 +151,7 @@ export default function UserHistory() {
   const [modeFilter, setModeFilter] = useState<
     "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh"
   >("all");
-  const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
+  const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned" | "draw">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
 
   useEffect(() => {
@@ -249,6 +252,7 @@ export default function UserHistory() {
                           { value: "won", label: "Ganadas" },
                           { value: "lost", label: "Perdidas" },
                           { value: "abandoned", label: "Abandonadas" },
+                          { value: "draw", label: "Empatadas" },
                         ]}
                       />
 

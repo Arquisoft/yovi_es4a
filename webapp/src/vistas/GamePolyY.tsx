@@ -91,9 +91,14 @@ export default function GamePolyY() {
 
   async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     const session = getUserSession();
-    if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
+    if (!session || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "poly_hvh", result: winner === "player0" ? "won" : "lost",
+      gameId,
+      mode: "poly_hvh",
+      result:
+        winner === "player0" ? "won" :
+        winner === "player1" ? "lost" :
+        "draw",
       boardSize: size, totalMoves,
       opponent: "Jugador local (Poly-Y)", startedBy: hvh_starter,
     });
@@ -148,7 +153,9 @@ export default function GamePolyY() {
           const c = corners;
           return winner === "player0"
             ? `Player 0 gana (${c.player0} esquinas vs ${c.player1}).`
-            : `Player 1 gana (${c.player1} esquinas vs ${c.player0}).`;
+            : winner === "player1"
+              ? `Player 1 gana (${c.player1} esquinas vs ${c.player0}).`
+              : `Empate (${c.player0} esquinas vs ${c.player1}).`;
         },
       }}
       winnerPalette={{

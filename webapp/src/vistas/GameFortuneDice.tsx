@@ -59,9 +59,14 @@ export default function GameFortuneDice() {
 
   async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     const session = getUserSession();
-    if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
+    if (!session || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
-      gameId, mode: "fortune_dice_hvh", result: winner === "player0" ? "won" : "lost",
+      gameId,
+      mode: "fortune_dice_hvh",
+      result:
+        winner === "player0" ? "won" :
+        winner === "player1" ? "lost" :
+        "draw",
       boardSize: size, totalMoves,
       opponent: "Jugador local (Dado)", startedBy: hvh_starter,
     });
@@ -149,7 +154,11 @@ export default function GameFortuneDice() {
         abandonOkText: "Abandonar",
         getResultTitle: () => "Partida finalizada",
         getResultText: (winner) =>
-          winner === "player0" ? "Player 0 ha ganado." : "Player 1 ha ganado.",
+          winner === "player0"
+            ? "Player 0 ha ganado."
+            : winner === "player1"
+              ? "Player 1 ha ganado."
+              : "La partida terminó en empate.",
       }}
       winnerPalette={{
         highlightedWinner: "player0",

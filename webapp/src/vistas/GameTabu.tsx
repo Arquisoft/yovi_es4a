@@ -29,6 +29,7 @@ import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/
 import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
 import { getUserSession } from "../utils/session";
+import { hasPlayableCells } from "../game/variants";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -110,11 +111,14 @@ export default function GameTabu() {
 
   async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     const session = getUserSession();
-    if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
+    if (!session || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
       gameId,
       mode: "tabu_hvh",
-      result: winner === "player0" ? "won" : "lost",
+      result:
+        winner === "player0" ? "won" :
+        winner === "player1" ? "lost" :
+        "draw",
       boardSize: size,
       totalMoves,
       opponent: "Jugador local (Tabú)",
@@ -157,6 +161,13 @@ export default function GameTabu() {
       // Las celdas tabú para el próximo turno son las adyacentes a la jugada del jugador actual
       const newTabu = computeTabu(cellId);
       setTabuCells(newTabu);
+
+      if (!hasPlayableCells(result.yen, newTabu)) {
+        return {
+          ...result,
+          status: { state: "finished", winner: null },
+        };
+      }
     } else {
       setTabuCells(new Set());
     }
@@ -192,7 +203,11 @@ export default function GameTabu() {
         abandonOkText: "Abandonar",
         getResultTitle: () => "Partida finalizada",
         getResultText: (winner) =>
-          winner === "player0" ? "Player 0 ha ganado." : "Player 1 ha ganado.",
+          winner === "player0"
+            ? "Player 0 ha ganado."
+            : winner === "player1"
+              ? "Player 1 ha ganado."
+              : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
       }}
       winnerPalette={{
         highlightedWinner: "player0",

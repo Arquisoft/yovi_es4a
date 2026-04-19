@@ -75,7 +75,7 @@ pub enum GameMode {
 #[serde(tag = "state", rename_all = "lowercase")]
 pub enum GameStatus {
     Ongoing { next: NextTurn },
-    Finished { winner: Winner },
+    Finished { winner: Option<Winner> },
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -122,11 +122,11 @@ pub fn status_hvh_from_session(
     winner: Option<u8>,
 ) -> GameStatus {
     if finished {
-        let w = match winner.unwrap_or(0) {
+        let winner = winner.map(|winner| match winner {
             1 => Winner::Player1,
             _ => Winner::Player0,
-        };
-        GameStatus::Finished { winner: w }
+        });
+        GameStatus::Finished { winner }
     } else {
         let next = match next_player {
             1 => NextTurn::Player1,
@@ -138,7 +138,9 @@ pub fn status_hvh_from_session(
 
 pub fn status_hvb(next_is_human: bool, finished: Option<Winner>) -> GameStatus {
     match finished {
-        Some(winner) => GameStatus::Finished { winner },
+        Some(winner) => GameStatus::Finished {
+            winner: Some(winner),
+        },
         None => GameStatus::Ongoing {
             next: if next_is_human { NextTurn::Human } else { NextTurn::Bot },
         },
@@ -174,12 +176,12 @@ mod tests {
     }
 
     #[test]
-    fn status_hvh_finished_defaults_to_player0_when_winner_is_none() {
+    fn status_hvh_finished_returns_draw_when_winner_is_none() {
         let status = status_hvh_from_session(true, 1, None);
 
         match status {
             GameStatus::Finished { winner } => {
-                assert!(matches!(winner, Winner::Player0));
+                assert!(winner.is_none());
             }
             _ => panic!("expected finished"),
         }
@@ -191,7 +193,7 @@ mod tests {
 
         match status {
             GameStatus::Finished { winner } => {
-                assert!(matches!(winner, Winner::Player1));
+                assert!(matches!(winner, Some(Winner::Player1)));
             }
             _ => panic!("expected finished"),
         }
@@ -222,7 +224,7 @@ mod tests {
         let status = status_hvb(true, Some(Winner::Bot));
 
         match status {
-            GameStatus::Finished { winner } => assert!(matches!(winner, Winner::Bot)),
+            GameStatus::Finished { winner } => assert!(matches!(winner, Some(Winner::Bot))),
             _ => panic!("expected finished"),
         }
     }

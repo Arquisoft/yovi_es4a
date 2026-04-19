@@ -41,6 +41,7 @@ export default function GameMultiplayer() {
   const {
     yen,
     loading,
+    gameOver,
     winner,
     nextTurn,
     error,
@@ -109,9 +110,10 @@ export default function GameMultiplayer() {
         boardSize={yen?.size ?? config?.size ?? 11}
         cells={cells}
         disabledCells={disabledCells}
-        boardDisabled={loading || !!winner || nextTurn !== myPlayer}
+        boardDisabled={loading || gameOver || nextTurn !== myPlayer}
         onCellClick={handleCellClick}
         myPlayer={myPlayer}
+        gameOver={gameOver}
         nextTurn={nextTurn}
         winner={winner}
         hasNewMessages={hasNewMessages}

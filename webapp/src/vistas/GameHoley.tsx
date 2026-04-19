@@ -29,6 +29,7 @@ import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/
 import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
 import { getUserSession } from "../utils/session";
+import { hasPlayableCells } from "../game/variants";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -79,11 +80,14 @@ export default function GameHoley() {
 
   async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
     const session = getUserSession();
-    if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
+    if (!session || savedGameIdsRef.current.has(gameId)) return;
     await recordUserGame(session.username, {
       gameId,
       mode: "holey_hvh",
-      result: winner === "player0" ? "won" : "lost",
+      result:
+        winner === "player0" ? "won" :
+        winner === "player1" ? "lost" :
+        "draw",
       boardSize: size,
       totalMoves,
       opponent: "Jugador local (Holey)",
@@ -117,7 +121,16 @@ export default function GameHoley() {
     if (holes.has(cellId)) {
       throw new Error("Esa casilla es un agujero y no se puede usar.");
     }
-    return hvhMove(gameId, cellId);
+    const result = await hvhMove(gameId, cellId);
+
+    if (result.status.state === "ongoing" && !hasPlayableCells(result.yen, holes)) {
+      return {
+        ...result,
+        status: { state: "finished", winner: null },
+      };
+    }
+
+    return result;
   }, [holes]);
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
@@ -153,11 +166,15 @@ export default function GameHoley() {
         resultConfig={{
           title: "Juego Y — Holey Y",
           subtitle: `Tamaño: ${size} · ${holes.size} agujero(s) en el tablero`,
-          abandonOkText: "Abandonar",
-          getResultTitle: () => "Partida finalizada",
-          getResultText: (winner) =>
-            winner === "player0" ? "Player 0 ha ganado." : "Player 1 ha ganado.",
-        }}
+        abandonOkText: "Abandonar",
+        getResultTitle: () => "Partida finalizada",
+        getResultText: (winner) =>
+          winner === "player0"
+            ? "Player 0 ha ganado."
+            : winner === "player1"
+              ? "Player 1 ha ganado."
+              : "No quedan casillas jugables fuera de los agujeros. La partida terminó en empate.",
+      }}
         winnerPalette={{
           highlightedWinner: "player0",
           highlightedBackground: "#28bbf532",

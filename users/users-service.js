@@ -69,7 +69,7 @@ function normalizePositiveInteger(value, fallback) {
 
 function validateRecordGame(body) {
   const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const allowedResults = ["won", "lost", "abandoned"];
+  const allowedResults = ["won", "lost", "abandoned", "draw"];
 
   const gameIdValidation = validateGameId(body.gameId);
   if (gameIdValidation.error) {
@@ -88,7 +88,7 @@ function validateRecordGame(body) {
   }
 
   if (!allowedResults.includes(result)) {
-    return { error: "'result' debe ser 'won', 'lost' o 'abandoned'" };
+    return { error: "'result' debe ser 'won', 'lost', 'abandoned' o 'draw'" };
   }
 
   if (!Number.isFinite(boardSize) || boardSize <= 0) {
@@ -480,6 +480,8 @@ app.post("/users/:username/games", async (req, res) => {
     } else if (game.result === "abandoned") {
       inc["stats.gamesAbandoned"] = 1;
       nextWinStreak = 0;
+    } else if (game.result === "draw") {
+      nextWinStreak = 0;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -524,7 +526,7 @@ app.get("/users/:username/history", async (req, res) => {
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
   const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const validResults = ["won", "lost", "abandoned"];
+  const validResults = ["won", "lost", "abandoned", "draw"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
   const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
@@ -681,7 +683,7 @@ app.get('/ranking', async (req, res) => {
         
         const won = weeklyGames.filter(g => g.result === 'won').length;
         const lost = weeklyGames.filter(g => g.result === 'lost').length;
-        const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
+        const abandoned = weeklyGames.filter(g => g.result === 'abandoned' || g.result === 'draw').length;
         const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
         return {

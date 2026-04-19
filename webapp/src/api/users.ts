@@ -9,7 +9,7 @@ export type GameMode =
 export type HistoryGame = {
     gameId: string;
     mode: GameMode;
-    result: "won" | "lost" | "abandoned";
+    result: "won" | "lost" | "abandoned" | "draw";
     boardSize: number;
     totalMoves: number;
     opponent: string;
@@ -43,7 +43,7 @@ export type UserHistoryResponse = {
 export type RecordUserGameRequest = {
     gameId: string;
     mode: GameMode;
-    result: "won" | "lost" | "abandoned";
+    result: "won" | "lost" | "abandoned" | "draw";
     boardSize: number;
     totalMoves: number;
     opponent?: string;
@@ -52,7 +52,7 @@ export type RecordUserGameRequest = {
 
 export type UserHistoryQuery = {
     mode?: "all" | GameMode;
-    result?: "all" | "won" | "lost" | "abandoned";
+    result?: "all" | "won" | "lost" | "abandoned" | "draw";
     sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };
 
