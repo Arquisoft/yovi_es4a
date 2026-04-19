@@ -21,6 +21,7 @@ export type UserStats = {
     gamesPlayed: number;
     gamesWon: number;
     gamesLost: number;
+    gamesDrawn: number;
     gamesAbandoned: number;
     totalMoves: number;
     currentWinStreak: number;
@@ -94,7 +95,7 @@ export async function registerUser(body: {
     return parseJson<{ message: string }>(response);
 }
 
-export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "totalMoves" | "gamesAbandoned";
+export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "gamesDrawn" | "totalMoves" | "gamesAbandoned";
 
 export type RankingPodiumEntry = {
     username: string;
@@ -127,6 +128,7 @@ export async function getRanking(sortBy: SortByOption = "winRate", page = 1, pag
             gamesPlayed: number;
             gamesWon: number;
             gamesLost: number;
+            gamesDrawn: number;
             gamesAbandoned: number;
             totalMoves: number;
             winRate: number;

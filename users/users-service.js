@@ -47,6 +47,7 @@ function buildUserStats(stats = {}) {
   const gamesPlayed      = stats.gamesPlayed      || 0;
   const gamesWon         = stats.gamesWon         || 0;
   const gamesLost        = stats.gamesLost        || 0;
+  const gamesDrawn       = stats.gamesDrawn       || 0;
   const gamesAbandoned   = stats.gamesAbandoned   || 0;
   const totalMoves       = stats.totalMoves       || 0;
   const currentWinStreak = stats.currentWinStreak || 0;
@@ -55,6 +56,7 @@ function buildUserStats(stats = {}) {
     gamesPlayed,
     gamesWon,
     gamesLost,
+    gamesDrawn,
     gamesAbandoned,
     totalMoves,
     currentWinStreak,
@@ -481,6 +483,7 @@ app.post("/users/:username/games", async (req, res) => {
       inc["stats.gamesAbandoned"] = 1;
       nextWinStreak = 0;
     } else if (game.result === "draw") {
+      inc["stats.gamesDrawn"] = 1;
       nextWinStreak = 0;
     }
 
@@ -660,7 +663,7 @@ app.patch('/users/:username/stats', async (req, res) => {
  */
 app.get('/ranking', async (req, res) => {
   const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
-  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
+  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesDrawn', 'gamesAbandoned', 'totalMoves'];
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
   const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
   const sizeNum = Math.min(100, Math.max(1, Number.parseInt(pageSize || limit, 10) || 20));
@@ -683,13 +686,15 @@ app.get('/ranking', async (req, res) => {
         
         const won = weeklyGames.filter(g => g.result === 'won').length;
         const lost = weeklyGames.filter(g => g.result === 'lost').length;
-        const abandoned = weeklyGames.filter(g => g.result === 'abandoned' || g.result === 'draw').length;
+        const drawn = weeklyGames.filter(g => g.result === 'draw').length;
+        const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
         const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
         return {
           gamesPlayed: weeklyGames.length,
           gamesWon: won,
           gamesLost: lost,
+          gamesDrawn: drawn,
           gamesAbandoned: abandoned,
           totalMoves: totalMoves,
           winRate: weeklyGames.length > 0 ? Math.round((won / weeklyGames.length) * 100) : 0
@@ -700,6 +705,7 @@ app.get('/ranking', async (req, res) => {
         gamesPlayed: stats.gamesPlayed || 0,
         gamesWon: stats.gamesWon || 0,
         gamesLost: stats.gamesLost || 0,
+        gamesDrawn: stats.gamesDrawn || 0,
         gamesAbandoned: stats.gamesAbandoned || 0,
         totalMoves: stats.totalMoves || 0,
         winRate: (stats.gamesPlayed > 0) ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0

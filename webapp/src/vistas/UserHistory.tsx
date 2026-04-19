@@ -51,9 +51,33 @@ function resultTag(result: HistoryGame["result"]) {
     case "lost":
       return <Tag color="error" icon={<CloseCircleOutlined />} style={resultTagStyle}>Perdida</Tag>;
     case "abandoned":
-      return <Tag color="default" icon={<StopOutlined />} style={resultTagStyle}>Abandonada</Tag>;
+      return (
+        <Tag
+          icon={<StopOutlined />}
+          style={{
+            ...resultTagStyle,
+            background: "#595959",
+            borderColor: "#434343",
+            color: "#ffffff",
+          }}
+        >
+          Abandonada
+        </Tag>
+      );
     case "draw":
-      return <Tag color="processing" icon={<MinusCircleOutlined />} style={resultTagStyle}>Empatada</Tag>;
+      return (
+        <Tag
+          icon={<MinusCircleOutlined />}
+          style={{
+            ...resultTagStyle,
+            background: "#d9d9d9",
+            borderColor: "#bfbfbf",
+            color: "#434343",
+          }}
+        >
+          Empatada
+        </Tag>
+      );
     default:
       return <Tag style={resultTagStyle}>{result}</Tag>;
   }

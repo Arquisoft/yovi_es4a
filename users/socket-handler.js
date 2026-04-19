@@ -77,6 +77,7 @@ async function saveGameForUser(username, game) {
     nextWinStreak = 0;
   }
   else if (game.result === "draw") {
+    inc["stats.gamesDrawn"] = 1;
     nextWinStreak = 0;
   }
 

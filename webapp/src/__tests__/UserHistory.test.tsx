@@ -29,6 +29,7 @@ vi.mock("../vistas/UserStats", () => ({
             <div>{title}</div>
             <div>{`W:${stats.gamesWon}`}</div>
             <div>{`L:${stats.gamesLost}`}</div>
+            <div>{`D:${stats.gamesDrawn}`}</div>
             <div>{`A:${stats.gamesAbandoned}`}</div>
         </div>
     ),
@@ -114,6 +115,7 @@ vi.mock("@ant-design/icons", () => ({
     CloseCircleOutlined: () => null,
     StopOutlined: () => null,
     UserOutlined: () => null,
+    MinusCircleOutlined: () => null,
 }));
 
 function buildHistoryResponse(overrides: any = {}) {
@@ -124,8 +126,10 @@ function buildHistoryResponse(overrides: any = {}) {
             gamesPlayed: 3,
             gamesWon: 1,
             gamesLost: 1,
+            gamesDrawn: 1,
             gamesAbandoned: 1,
             totalMoves: 20,
+            currentWinStreak: 0,
             winRate: 33,
         },
         pagination: {
@@ -189,6 +193,7 @@ describe("UserHistory", () => {
         expect(screen.getByText("Estadísticas")).toBeInTheDocument();
         expect(screen.getByText("W:1")).toBeInTheDocument();
         expect(screen.getByText("L:1")).toBeInTheDocument();
+        expect(screen.getByText("D:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
         expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
@@ -229,8 +234,10 @@ describe("UserHistory", () => {
                     gamesPlayed: 0,
                     gamesWon: 0,
                     gamesLost: 0,
+                    gamesDrawn: 0,
                     gamesAbandoned: 0,
                     totalMoves: 0,
+                    currentWinStreak: 0,
                     winRate: 0,
                 },
                 pagination: {
