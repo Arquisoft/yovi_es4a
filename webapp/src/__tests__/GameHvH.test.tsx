@@ -206,7 +206,7 @@ describe("GameHvH", () => {
     });
   });
 
-  it("no registra partida terminada si winner es null", async () => {
+  it("registra partida empatada si winner es null", async () => {
     const registerFinishedGame = vi.fn();
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
@@ -222,7 +222,15 @@ describe("GameHvH", () => {
       totalMoves: 3,
     });
 
-    expect(registerFinishedGame).not.toHaveBeenCalled();
+    expect(registerFinishedGame).toHaveBeenCalledWith({
+      gameId: "g2",
+      mode: "classic_hvh",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 3,
+      opponent: "Jugador local",
+      startedBy: "player0",
+    });
   });
 
   it("registra abandono y borra la partida", async () => {
