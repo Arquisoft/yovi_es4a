@@ -208,6 +208,33 @@ describe("UserHistory", () => {
         expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
     });
 
+    it("muestra partidas empatadas y usa rival por defecto cuando falta opponent", async () => {
+        getUserHistoryMock.mockResolvedValueOnce(
+            buildHistoryResponse({
+                games: [
+                    {
+                        gameId: "g3",
+                        mode: "tabu_hvh",
+                        result: "draw",
+                        boardSize: 7,
+                        totalMoves: 14,
+                        opponent: "",
+                        startedBy: "",
+                        finishedAt: "2026-03-21T14:00:00.000Z",
+                    },
+                ],
+            }),
+        );
+
+        render(<UserHistory />);
+
+        expect(await screen.findByText("Empatada")).toBeInTheDocument();
+        expect(screen.getAllByText("Tabú HvH").length).toBeGreaterThan(0);
+        expect(screen.getByText("Tabú — Humano vs Humano")).toBeInTheDocument();
+        expect(screen.getByText("Rival: Jugador local")).toBeInTheDocument();
+        expect(screen.queryByText(/Empieza:/)).toBeNull();
+    });
+
     it("muestra spinner mientras carga", () => {
         getUserHistoryMock.mockReturnValue(new Promise(() => {}));
 
@@ -372,6 +399,28 @@ describe("UserHistory", () => {
                 mode: "classic_hvb",
                 result: "won",
                 sortBy: "movesDesc",
+            });
+        });
+    });
+
+    it("permite filtrar por empatadas", async () => {
+        getUserHistoryMock.mockResolvedValue(buildHistoryResponse());
+
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalled();
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[1], {
+            target: { value: "draw" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "draw",
+                sortBy: "newest",
             });
         });
     });
