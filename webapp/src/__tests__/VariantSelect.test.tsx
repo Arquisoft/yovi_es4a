@@ -130,8 +130,8 @@ describe("VariantSelect", () => {
         const user = userEvent.setup();
         const { onSelect } = renderVariantSelect();
 
-        const pastelCard = screen.getByText("Regla del Pastel");
-        await user.click(pastelCard);
+        const hexCard = screen.getByText("Hex");
+        await user.click(hexCard);
 
         // Al confirmar, la selección sigue siendo el clásico
         await user.click(screen.getByRole("button", { name: /Continuar con/i }));
