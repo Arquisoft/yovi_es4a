@@ -37,7 +37,7 @@ services:
     depends_on:
       - mongodb
     environment:
-      - NODE_ENV=test
+      - NODE_ENV=development
       - MONGODB_URI=mongodb://mongodb:27017/yovi
       - EMAIL_USER=${EMAIL_USER}  # variables para el envío del correo
       - EMAIL_PASS=${EMAIL_PASS}
