@@ -70,13 +70,8 @@ function normalizePositiveInteger(value, fallback) {
 }
 
 function validateRecordGame(body) {
-<<<<<<< HEAD
   const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh", "pastel_hvh"];
-  const allowedResults = ["won", "lost", "abandoned"];
-=======
-  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const allowedResults = ["won", "lost", "abandoned", "draw"];
->>>>>>> master
 
   const gameIdValidation = validateGameId(body.gameId);
   if (gameIdValidation.error) {
@@ -533,13 +528,8 @@ app.get("/users/:username/history", async (req, res) => {
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
-<<<<<<< HEAD
   const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh", "pastel_hvh"];
-  const validResults = ["won", "lost", "abandoned"];
-=======
-  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const validResults = ["won", "lost", "abandoned", "draw"];
->>>>>>> master
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
   const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
