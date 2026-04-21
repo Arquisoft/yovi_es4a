@@ -12,8 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { App } from "antd";
 import { clearUserSession, getUserSession } from "../utils/session";
 import { resolveAvatarSrc } from "../utils/avatar";
+import { useState } from "react";
 import HelpModal from "./HelpModal";
-
+import ProfileModal from "./ProfileModal";
 
 const { Title, Text } = Typography;
 
@@ -25,6 +26,8 @@ export default function AppHeader({ title }: AppHeaderProps) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
   const session = getUserSession();
+  const [profileOpen, setProfileOpen] = useState(false);
+
 
   function handleLogout() {
     modal.confirm({
@@ -49,10 +52,15 @@ export default function AppHeader({ title }: AppHeaderProps) {
     });
   }
 
+  function handleProfile() {
+    if (!session) return;
+    setProfileOpen(true);
+  }
+
   function handleProfileMenuClick(key: string) {
     switch (key) {
       case "profile":
-        //navigate("/profile");
+        handleProfile();
         break;
       case "history":
         navigate("/historial");
@@ -79,6 +87,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
       key: "profile",
       icon: <UserOutlined />,
       label: "Ver Perfil",
+      disabled: !session,
     },
     {
       key: "history",
@@ -116,63 +125,58 @@ export default function AppHeader({ title }: AppHeaderProps) {
   ];
 
   return (
-    <Card>
-      <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-        <Title level={2} style={{ margin: 0 }}>
-          {title}
-        </Title>
+    <>
+      <Card>
+        <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+          <Title level={2} style={{ margin: 0 }}>
+            {title}
+          </Title>
 
-        {/* <Space>
-          <Dropdown
-            menu={{
-              items: profileMenuItems,
-              onClick: ({ key }) => handleProfileMenuClick(key),
-            }}
-            trigger={["click"]}
-            placement="bottomRight"
-          >
-            <Button shape="circle" icon={<UserOutlined />} />
-          </Dropdown>
-        </Space> */}
+          <Space size={12}>
+            {session ? (
+              <Space size={8}>
+                <Text strong>{session.username}</Text>
+              </Space>
+            ) : (
+              <Text type="secondary">Invitado</Text>
+            )}
 
-        <Space size={12}>
-          {session ? (
-            <Space size={8}>
-              <Text strong>{session.username}</Text>
-            </Space>
-          ) : (
-            <Text type="secondary">Invitado</Text>
-          )}
+            <Dropdown
+              menu={{
+                items: profileMenuItems,
+                onClick: ({ key }) => handleProfileMenuClick(key),
+              }}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
+              <Button
+                shape="circle"
+                style={{ padding: 0, width: 40, height: 40 }}
+                icon={
+                  session ? (
+                    <Avatar
+                      size={32}
+                      src={resolveAvatarSrc(session.profilePicture)}
+                      icon={<UserOutlined />}
+                    />
+                  ) : (
+                    <Avatar size={32} icon={<UserOutlined />} />
+                  )
+                }
+              />
+            </Dropdown>
+          </Space>
+        </Flex>
+      </Card>
 
-          <Dropdown
-            menu={{
-              items: profileMenuItems,
-              onClick: ({ key }) => handleProfileMenuClick(key),
-            }}
-            trigger={["click"]}
-            placement="bottomRight"
-          >
-            <Button
-              shape="circle"
-              style={{ padding: 0, width: 40, height: 40 }}
-              icon={
-                session ? (
-                  <Avatar
-                    size={32}
-                    src={resolveAvatarSrc(session?.profilePicture)}
-                    icon={<UserOutlined />}
-                  />
-                ) : (
-                  <Avatar
-                    size={32}
-                    icon={<UserOutlined />}
-                  />
-                )
-              }
-            />
-          </Dropdown>
-        </Space>
-      </Flex>
-    </Card>
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        onLogout={() => {
+          setProfileOpen(false);
+          handleLogout();
+        }}
+      />
+    </>
   );
 }

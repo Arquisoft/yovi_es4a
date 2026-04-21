@@ -1,16 +1,28 @@
 Feature: Juego Y
 
-  Scenario: Navegar a selección de variante
+  Scenario: Navegar a Home tras continuar sin cuenta
     Given estoy en la página de inicio
     When pulso "Continuar sin cuenta"
-    Then veo la pantalla de selección de variantes
+    Then veo la variante "YOVI"
     And veo la variante "Clásico"
+    And veo la variante "Human vs. Bot"
 
   Scenario: Configurar y empezar partida HvB clásica
-    Given estoy en la pantalla de configuración de la variante "classic"
-    When pulso el botón "Jugar" en la sección HvB
+    Given estoy en la página de inicio
+    When pulso "Continuar sin cuenta"
+    And pulso el botón "Jugar" en la sección HvB
     Then veo la pantalla de selección de dificultad
     And veo las opciones "Fácil", "Medio", "Difícil" y "Demencial"
+
+    Scenario: Estoy en Home y cambio el modo de juego a "Tabu"
+      Given estoy en la página de inicio
+      When pulso "Continuar sin cuenta"
+      And pulso "Cambiar variante"
+      Then veo la pantalla de selección de variantes
+      When pulso "Tabu Y"
+      And pulso "Continuar con «Tabu Y»"
+      Then veo la variante "Tabu Y"
+      And veo la variante "Human vs. Human"
 
   @skip
   Scenario: Seleccionar dificultad e iniciar partida

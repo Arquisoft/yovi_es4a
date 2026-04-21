@@ -47,6 +47,7 @@ function buildUserStats(stats = {}) {
   const gamesPlayed      = stats.gamesPlayed      || 0;
   const gamesWon         = stats.gamesWon         || 0;
   const gamesLost        = stats.gamesLost        || 0;
+  const gamesDrawn       = stats.gamesDrawn       || 0;
   const gamesAbandoned   = stats.gamesAbandoned   || 0;
   const totalMoves       = stats.totalMoves       || 0;
   const currentWinStreak = stats.currentWinStreak || 0;
@@ -55,6 +56,7 @@ function buildUserStats(stats = {}) {
     gamesPlayed,
     gamesWon,
     gamesLost,
+    gamesDrawn,
     gamesAbandoned,
     totalMoves,
     currentWinStreak,
@@ -69,7 +71,7 @@ function normalizePositiveInteger(value, fallback) {
 
 function validateRecordGame(body) {
   const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const allowedResults = ["won", "lost", "abandoned"];
+  const allowedResults = ["won", "lost", "abandoned", "draw"];
 
   const gameIdValidation = validateGameId(body.gameId);
   if (gameIdValidation.error) {
@@ -88,7 +90,7 @@ function validateRecordGame(body) {
   }
 
   if (!allowedResults.includes(result)) {
-    return { error: "'result' debe ser 'won', 'lost' o 'abandoned'" };
+    return { error: "'result' debe ser 'won', 'lost', 'abandoned' o 'draw'" };
   }
 
   if (!Number.isFinite(boardSize) || boardSize <= 0) {
@@ -311,6 +313,124 @@ app.post('/login', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
+// PERFIL DE USUARIO
+app.get('/users/:username/profile', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  try {
+    const user = await User.findOne(
+      { username },
+      { username: 1, email: 1, profilePicture: 1, _id: 0 }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ username: user.username, email: user.email, profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR CONTRASEÑA
+app.put('/users/:username/password', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+  const { oldPassword, newPassword } = req.body;
+
+  if (typeof oldPassword !== 'string' || !oldPassword) {
+    return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const match = await bcrypt.compare(oldPassword, user.password);
+    if (!match) return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Contraseña actualizada correctamente.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR NOMBRE DE USUARIO
+app.patch('/users/:username/username', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const newUsernameValidation = validateUsername(req.body.newUsername);
+  if (newUsernameValidation.error) {
+    return res.status(400).json({ error: newUsernameValidation.error });
+  }
+  const newUsername = newUsernameValidation.value;
+
+  if (username === newUsername) {
+    return res.status(400).json({ error: 'El nuevo nombre de usuario debe ser diferente al actual.' });
+  }
+
+  try {
+    const existing = await User.findOne({ username: newUsername });
+    if (existing) return res.status(400).json({ error: 'Ese nombre de usuario ya está en uso.' });
+
+    const user = await User.findOneAndUpdate(
+      { username },
+      { username: newUsername },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Nombre de usuario actualizado correctamente.', username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// CAMBIAR AVATAR
+app.patch('/users/:username/avatar', async (req, res) => {
+  const usernameValidation = validateUsername(req.params.username);
+  if (usernameValidation.error) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  const username = usernameValidation.value;
+
+  const allowedAvatars = ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png'];
+  const profilePicture = typeof req.body.profilePicture === 'string' ? req.body.profilePicture.trim() : '';
+
+  if (!allowedAvatars.includes(profilePicture)) {
+    return res.status(400).json({ error: 'Avatar no válido.' });
+  }
+
+  try {
+    const user = await User.findOneAndUpdate(
+      { username },
+      { profilePicture },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    res.json({ message: 'Avatar actualizado correctamente.', profilePicture: user.profilePicture });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
 // REGISTRAR PARTIDA + ACTUALIZAR ESTADÍSTICAS
 app.post("/users/:username/games", async (req, res) => {
   const usernameValidation = validateUsername(req.params.username);
@@ -362,6 +482,9 @@ app.post("/users/:username/games", async (req, res) => {
     } else if (game.result === "abandoned") {
       inc["stats.gamesAbandoned"] = 1;
       nextWinStreak = 0;
+    } else if (game.result === "draw") {
+      inc["stats.gamesDrawn"] = 1;
+      nextWinStreak = 0;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -406,7 +529,7 @@ app.get("/users/:username/history", async (req, res) => {
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
   const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const validResults = ["won", "lost", "abandoned"];
+  const validResults = ["won", "lost", "abandoned", "draw"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
   const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
@@ -540,7 +663,7 @@ app.patch('/users/:username/stats', async (req, res) => {
  */
 app.get('/ranking', async (req, res) => {
   const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
-  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
+  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesDrawn', 'gamesAbandoned', 'totalMoves'];
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
   const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
   const sizeNum = Math.min(100, Math.max(1, Number.parseInt(pageSize || limit, 10) || 20));
@@ -563,6 +686,7 @@ app.get('/ranking', async (req, res) => {
         
         const won = weeklyGames.filter(g => g.result === 'won').length;
         const lost = weeklyGames.filter(g => g.result === 'lost').length;
+        const drawn = weeklyGames.filter(g => g.result === 'draw').length;
         const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
         const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
@@ -570,6 +694,7 @@ app.get('/ranking', async (req, res) => {
           gamesPlayed: weeklyGames.length,
           gamesWon: won,
           gamesLost: lost,
+          gamesDrawn: drawn,
           gamesAbandoned: abandoned,
           totalMoves: totalMoves,
           winRate: weeklyGames.length > 0 ? Math.round((won / weeklyGames.length) * 100) : 0
@@ -580,6 +705,7 @@ app.get('/ranking', async (req, res) => {
         gamesPlayed: stats.gamesPlayed || 0,
         gamesWon: stats.gamesWon || 0,
         gamesLost: stats.gamesLost || 0,
+        gamesDrawn: stats.gamesDrawn || 0,
         gamesAbandoned: stats.gamesAbandoned || 0,
         totalMoves: stats.totalMoves || 0,
         winRate: (stats.gamesPlayed > 0) ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0

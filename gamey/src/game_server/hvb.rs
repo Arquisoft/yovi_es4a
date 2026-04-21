@@ -83,7 +83,7 @@ fn ensure_hvb_session(session: &GameSession) -> Result<(), ApiErrorResponse> {
         ));
     }
 
-    if session.hvb_winner.is_some() {
+    if session.game.check_game_over() {
         return Err(ApiErrorResponse::conflict(
             "Game already finished",
             "game_finished",
@@ -94,10 +94,16 @@ fn ensure_hvb_session(session: &GameSession) -> Result<(), ApiErrorResponse> {
 }
 
 fn current_hvb_status(session: &GameSession) -> super::dto::GameStatus {
-    status_hvb(
-        session.hvb_next_is_human.unwrap_or(true),
-        session.hvb_winner,
-    )
+    if session.game.check_game_over() {
+        super::dto::GameStatus::Finished {
+            winner: session.hvb_winner,
+        }
+    } else {
+        status_hvb(
+            session.hvb_next_is_human.unwrap_or(true),
+            session.hvb_winner,
+        )
+    }
 }
 
 fn hvb_state_response(game_id: String, session: &GameSession) -> GameStateResponse {
@@ -170,7 +176,13 @@ fn require_bot_turn(session: &GameSession) -> Result<(), ApiErrorResponse> {
 
 fn apply_hvb_outcome(session: &mut GameSession, human_turn: bool) {
     if session.game.check_game_over() {
-        session.hvb_winner = Some(if human_turn { Winner::Human } else { Winner::Bot });
+        session.hvb_winner = match session.game.status() {
+            crate::GameStatus::Finished {
+                winner: Some(_),
+            } => Some(if human_turn { Winner::Human } else { Winner::Bot }),
+            crate::GameStatus::Finished { winner: None } => None,
+            crate::GameStatus::Ongoing { .. } => None,
+        };
         session.hvb_next_is_human = Some(human_turn);
     } else {
         session.hvb_winner = None;
@@ -444,13 +456,14 @@ mod tests {
 
     #[test]
     fn ensure_hvb_session_rejects_finished_game() {
-        let session = hvb_session(
+        let mut session = hvb_session(
             "owner".to_string(),
-            2,
+            1,
             Some(true),
-            Some(Winner::Human),
+            None,
             Some("random_bot"),
         );
+        session.game.add_move(human_movement(0, 1)).unwrap();
 
         let err = ensure_hvb_session(&session).unwrap_err();
         assert_eq!(err.0, StatusCode::CONFLICT);
@@ -760,13 +773,14 @@ mod tests {
         };
 
         let game_id = uuid::Uuid::new_v4().to_string();
-        let session = hvb_session(
+        let mut session = hvb_session(
             principal.key(),
-            2,
+            1,
             Some(true),
-            Some(Winner::Human),
+            None,
             Some("random_bot"),
         );
+        session.game.add_move(human_movement(0, 1)).unwrap();
         state.sessions.insert(game_id.clone(), session).await;
 
         let err = post_human_move(

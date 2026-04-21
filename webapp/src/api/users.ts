@@ -15,7 +15,7 @@ export type GameMode =
 export type HistoryGame = {
     gameId: string;
     mode: GameMode;
-    result: "won" | "lost" | "abandoned";
+    result: "won" | "lost" | "abandoned" | "draw";
     boardSize: number;
     totalMoves: number;
     opponent: string;
@@ -27,6 +27,7 @@ export type UserStats = {
     gamesPlayed: number;
     gamesWon: number;
     gamesLost: number;
+    gamesDrawn: number;
     gamesAbandoned: number;
     totalMoves: number;
     currentWinStreak: number;
@@ -49,7 +50,7 @@ export type UserHistoryResponse = {
 export type RecordUserGameRequest = {
     gameId: string;
     mode: GameMode;
-    result: "won" | "lost" | "abandoned";
+    result: "won" | "lost" | "abandoned" | "draw";
     boardSize: number;
     totalMoves: number;
     opponent?: string;
@@ -58,11 +59,34 @@ export type RecordUserGameRequest = {
 
 export type UserHistoryQuery = {
     mode?: "all" | GameMode;
-    result?: "all" | "won" | "lost" | "abandoned";
+    result?: "all" | "won" | "lost" | "abandoned" | "draw";
     sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };
 
 const USERS_API_URL = "/api/users";
+
+function validateUsername(username: string): string {
+    const normalizedUsername = username.trim();
+
+    if (!normalizedUsername)
+        throw new Error("El nombre de usuario es obligatorio.");
+
+    if (normalizedUsername.length < 3)
+        throw new Error("El nombre de usuario debe tener al menos 3 caracteres.");
+
+    if (normalizedUsername.length > 20)
+        throw new Error("El nombre de usuario no puede exceder los 20 caracteres.");
+
+    if (!/^[a-zA-Z0-9._-]+$/.test(normalizedUsername)) {
+        throw new Error("El usuario solo puede contener letras, números y los caracteres _ . -");
+    }
+
+    if (/^[._-]/.test(normalizedUsername) || /[._-]$/.test(normalizedUsername)) {
+        throw new Error("El nombre de usuario no puede empezar ni terminar con puntos o guiones.");
+    }
+
+    return normalizedUsername;
+}
 
 async function parseJson<T>(response: Response): Promise<T> {
     const data = await response.json();
@@ -100,7 +124,7 @@ export async function registerUser(body: {
     return parseJson<{ message: string }>(response);
 }
 
-export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "totalMoves" | "gamesAbandoned";
+export type SortByOption = "winRate" | "gamesWon" | "gamesPlayed" | "gamesLost" | "gamesDrawn" | "totalMoves" | "gamesAbandoned";
 
 export type RankingPodiumEntry = {
     username: string;
@@ -133,6 +157,7 @@ export async function getRanking(sortBy: SortByOption = "winRate", page = 1, pag
             gamesPlayed: number;
             gamesWon: number;
             gamesLost: number;
+            gamesDrawn: number;
             gamesAbandoned: number;
             totalMoves: number;
             winRate: number;
@@ -146,6 +171,8 @@ export async function getUserHistory(
     pageSize = 5,
     query?: UserHistoryQuery
 ): Promise<UserHistoryResponse> {
+    const validUsername = validateUsername(username);
+
     const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
@@ -161,15 +188,17 @@ export async function getUserHistory(
         params.set("sortBy", query.sortBy);
 
     const response = await fetch(
-        `${USERS_API_URL}/users/${encodeURIComponent(username)}/history?${params.toString()}`
+        `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/history?${params.toString()}`
     );
 
     return parseJson<UserHistoryResponse>(response);
 }
 
 export async function recordUserGame(username: string, body: RecordUserGameRequest) {
+    const validUsername = validateUsername(username);
+
     const response = await fetch(
-        `${USERS_API_URL}/users/${encodeURIComponent(username)}/games`,
+        `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/games`,
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -185,8 +214,10 @@ export async function recordUserGame(username: string, body: RecordUserGameReque
 }
 
 export async function getUserStats(username: string) {
+    const validUsername = validateUsername(username);
+
     const response = await fetch(
-        `${USERS_API_URL}/users/${encodeURIComponent(username)}/stats`
+        `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/stats`
     );
 
     return parseJson<{
@@ -194,4 +225,73 @@ export async function getUserStats(username: string) {
         profilePicture?: string;
         stats: UserStats;
     }>(response);
+}
+
+export async function getUserProfile(username: string) {
+    const validUsername = validateUsername(username);
+
+    const response = await fetch(
+        `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/profile`
+    );
+ 
+    return parseJson<{
+        username: string;
+        email: string;
+        profilePicture?: string;
+    }>(response);
+}
+
+export async function changePassword(
+  username: string,
+  oldPassword: string,
+  newPassword: string
+) {
+  const validUsername = validateUsername(username);
+
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/password`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword, newPassword }),
+    }
+  );
+
+  return parseJson<{ message: string }>(response);
+}
+
+export async function changeUsername(
+  username: string,
+  newUsername: string
+) {
+  const validUsername = validateUsername(username);
+
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/username`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newUsername }),
+    }
+  );
+
+  return parseJson<{ message: string; username: string }>(response);
+}
+
+export async function changeAvatar(
+  username: string,
+  profilePicture: string
+) {
+  const validUsername = validateUsername(username);
+
+  const response = await fetch(
+    `${USERS_API_URL}/users/${encodeURIComponent(validUsername)}/avatar`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePicture }),
+    }
+  );
+
+  return parseJson<{ message: string; profilePicture: string }>(response);
 }
