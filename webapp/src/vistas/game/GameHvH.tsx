@@ -98,12 +98,13 @@ export default function GameHvH() {
         move={(gameId, cellId) => hvhMove(gameId, cellId)}
         shouldCountMove={(turn) => turn === "player0"}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          if (!winner) return;
-
           const payload: RecordUserGameRequest = {
             gameId,
             mode: "classic_hvh",
-            result: winner === "player0" ? "won" : "lost",
+            result:
+              winner === "player0" ? "won" :
+              winner === "player1" ? "lost" :
+              "draw",
             boardSize: size,
             totalMoves,
             opponent: "Jugador local",
@@ -127,7 +128,9 @@ export default function GameHvH() {
           getResultText: (winner) =>
             winner === "player0"
               ? `${playerLabels.player0} ha ganado la partida.`
-              : `${playerLabels.player1} ha ganado la partida.`,
+              : winner === "player1"
+                ? `${playerLabels.player1} ha ganado la partida.`
+                : "La partida terminó en empate.",
         }}
         winnerPalette={{
           highlightedWinner: "player0",

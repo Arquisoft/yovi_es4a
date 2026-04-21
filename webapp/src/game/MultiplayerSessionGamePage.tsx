@@ -28,6 +28,7 @@ type Props = {
   onCellClick: (cellId: number) => void;
 
   myPlayer: string;
+  gameOver?: boolean;
   nextTurn: string | null;
   winner: string | null;
 
@@ -52,6 +53,7 @@ export default function MultiplayerSessionGamePage({
   boardDisabled,
   onCellClick,
   myPlayer,
+  gameOver = false,
   nextTurn,
   winner,
   hasNewMessages,
@@ -67,7 +69,7 @@ export default function MultiplayerSessionGamePage({
   const activeTurnColor = nextTurn === "player0" ? "#28BBF5" : "#ff7b00";
 
   const turnIndicator = useMemo(() => {
-    if (winner || !nextTurn)
+    if (gameOver || !nextTurn)
         return null;
 
     const turnText =
@@ -116,11 +118,11 @@ export default function MultiplayerSessionGamePage({
     myPlayer,
     nextTurn,
     onOpenChat,
-    winner,
+    gameOver,
   ]);
 
   const boardCardStyle = useMemo(() => {
-    if (!winner && nextTurn === myPlayer) {
+    if (!gameOver && nextTurn === myPlayer) {
       return {
         border: `2px solid ${myColor}`,
         boxShadow: `0 0 0 3px ${myColor}22`,
@@ -129,10 +131,10 @@ export default function MultiplayerSessionGamePage({
     }
 
     return {};
-  }, [myColor, myPlayer, nextTurn, winner]);
+  }, [gameOver, myColor, myPlayer, nextTurn]);
 
   const isWin = winner === myPlayer;
-  const shouldAnimate = !!winner && !animationFinished;
+  const shouldAnimate = gameOver && !!winner && !animationFinished;
 
   async function handleConfirmedAbandon() {
     try {
@@ -188,7 +190,7 @@ export default function MultiplayerSessionGamePage({
       hasBoard={hasBoard}
       emptyText={emptyText}
       onAbandon={handleAbandonGame}
-      abandonDisabled={loading || abandoning || !!winner}
+      abandonDisabled={loading || abandoning || gameOver}
       turnIndicator={turnIndicator}
       board={
         <Card
@@ -211,7 +213,7 @@ export default function MultiplayerSessionGamePage({
         </Card>
       }
       result={
-        winner ? (
+        gameOver ? (
           <Card>
             {shouldAnimate && (
               <div
@@ -242,7 +244,11 @@ export default function MultiplayerSessionGamePage({
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={4} style={{ margin: 0 }}>
-                  {isWin ? "👑 ¡HAS GANADO!" : "💀 HAS PERDIDO"}
+                  {winner === null
+                    ? "🤝 EMPATE"
+                    : isWin
+                      ? "👑 ¡HAS GANADO!"
+                      : "💀 HAS PERDIDO"}
                 </Title>
               </Flex>
 

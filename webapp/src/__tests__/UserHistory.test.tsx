@@ -29,6 +29,7 @@ vi.mock("../vistas/UserStats", () => ({
             <div>{title}</div>
             <div>{`W:${stats.gamesWon}`}</div>
             <div>{`L:${stats.gamesLost}`}</div>
+            <div>{`D:${stats.gamesDrawn}`}</div>
             <div>{`A:${stats.gamesAbandoned}`}</div>
         </div>
     ),
@@ -114,6 +115,7 @@ vi.mock("@ant-design/icons", () => ({
     CloseCircleOutlined: () => null,
     StopOutlined: () => null,
     UserOutlined: () => null,
+    MinusCircleOutlined: () => null,
 }));
 
 function buildHistoryResponse(overrides: any = {}) {
@@ -124,8 +126,10 @@ function buildHistoryResponse(overrides: any = {}) {
             gamesPlayed: 3,
             gamesWon: 1,
             gamesLost: 1,
+            gamesDrawn: 1,
             gamesAbandoned: 1,
             totalMoves: 20,
+            currentWinStreak: 0,
             winRate: 33,
         },
         pagination: {
@@ -189,6 +193,7 @@ describe("UserHistory", () => {
         expect(screen.getByText("Estadísticas")).toBeInTheDocument();
         expect(screen.getByText("W:1")).toBeInTheDocument();
         expect(screen.getByText("L:1")).toBeInTheDocument();
+        expect(screen.getByText("D:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
         expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
@@ -201,6 +206,33 @@ describe("UserHistory", () => {
         expect(screen.getByText("Empieza: human")).toBeInTheDocument();
         expect(screen.getByText("Tamaño: 7")).toBeInTheDocument();
         expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
+    });
+
+    it("muestra partidas empatadas y usa rival por defecto cuando falta opponent", async () => {
+        getUserHistoryMock.mockResolvedValueOnce(
+            buildHistoryResponse({
+                games: [
+                    {
+                        gameId: "g3",
+                        mode: "tabu_hvh",
+                        result: "draw",
+                        boardSize: 7,
+                        totalMoves: 14,
+                        opponent: "",
+                        startedBy: "",
+                        finishedAt: "2026-03-21T14:00:00.000Z",
+                    },
+                ],
+            }),
+        );
+
+        render(<UserHistory />);
+
+        expect(await screen.findByText("Empatada")).toBeInTheDocument();
+        expect(screen.getAllByText("Tabú HvH").length).toBeGreaterThan(0);
+        expect(screen.getByText("Tabú — Humano vs Humano")).toBeInTheDocument();
+        expect(screen.getByText("Rival: Jugador local")).toBeInTheDocument();
+        expect(screen.queryByText(/Empieza:/)).toBeNull();
     });
 
     it("muestra spinner mientras carga", () => {
@@ -229,8 +261,10 @@ describe("UserHistory", () => {
                     gamesPlayed: 0,
                     gamesWon: 0,
                     gamesLost: 0,
+                    gamesDrawn: 0,
                     gamesAbandoned: 0,
                     totalMoves: 0,
+                    currentWinStreak: 0,
                     winRate: 0,
                 },
                 pagination: {
@@ -365,6 +399,28 @@ describe("UserHistory", () => {
                 mode: "classic_hvb",
                 result: "won",
                 sortBy: "movesDesc",
+            });
+        });
+    });
+
+    it("permite filtrar por empatadas", async () => {
+        getUserHistoryMock.mockResolvedValue(buildHistoryResponse());
+
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalled();
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[1], {
+            target: { value: "draw" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "draw",
+                sortBy: "newest",
             });
         });
     });

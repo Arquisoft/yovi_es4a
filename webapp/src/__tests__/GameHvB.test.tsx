@@ -136,6 +136,18 @@ describe("GameHvB", () => {
     );
   });
 
+  it("normaliza tamaño inválido y starter desconocido", () => {
+    mockSearchParams = new URLSearchParams("size=1&bot=smart_bot&hvbstarter=otro");
+
+    render(<GameHvB />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    expect(props.deps).toEqual([7, "smart_bot", "human"]);
+    expect(props.resultConfig.subtitle).toBe(
+      "Tamaño: 7 · Bot: smart_bot · Empieza: Humano",
+    );
+  });
+
   it("start guarda config y crea la partida", async () => {
     vi.mocked(putConfig).mockResolvedValue({} as any);
     vi.mocked(createHvbGame).mockResolvedValue({
@@ -237,7 +249,7 @@ describe("GameHvB", () => {
     });
   });
 
-  it("no registra partida terminada si winner es null", async () => {
+  it("registra partida empatada si winner es null", async () => {
     const registerFinishedGame = vi.fn();
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
@@ -253,7 +265,15 @@ describe("GameHvB", () => {
       totalMoves: 3,
     });
 
-    expect(registerFinishedGame).not.toHaveBeenCalled();
+    expect(registerFinishedGame).toHaveBeenCalledWith({
+      gameId: "g2",
+      mode: "classic_hvb",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 3,
+      opponent: "random_bot",
+      startedBy: "human",
+    });
   });
 
   it("en abandono guarda la partida y luego la borra si hay sesión", async () => {
@@ -330,5 +350,18 @@ describe("GameHvB", () => {
     expect(authProps.open).toBe(true);
     expect(authProps.onClose).toBe(closeAuthModal);
     expect(authProps.onLoginSuccess).toBe(handleLoginSuccess);
+  });
+
+  it("configura correctamente celebrateWinner y los textos de resultado", () => {
+    render(<GameHvB />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    expect(props.celebrateWinner("human")).toBe(true);
+    expect(props.celebrateWinner("bot")).toBe(false);
+    expect(props.celebrateWinner(null)).toBe(false);
+    expect(props.resultConfig.getResultTitle("human")).toBe("¡Felicidades!");
+    expect(props.resultConfig.getResultTitle("bot")).toBe("Game Over");
+    expect(props.resultConfig.getResultTitle(null)).toBe("Empate");
+    expect(props.resultConfig.getResultText(null)).toContain("nadie ha conectado");
   });
 });

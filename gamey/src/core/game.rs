@@ -193,7 +193,12 @@ impl GameY {
             tracing::info!("Game was already over. Move ignored for status update.");
         } else if won {
             tracing::debug!("Player {} wins the game!", player);
-            self.status = GameStatus::Finished { winner: player };
+            self.status = GameStatus::Finished {
+                winner: Some(player),
+            };
+        } else if self.available_cells.is_empty() {
+            tracing::debug!("Board is full and the game ends in a draw.");
+            self.status = GameStatus::Finished { winner: None };
         } else {
             // tracing::debug!("No win yet..."); // Optional debug
             self.status = GameStatus::Ongoing {
@@ -207,7 +212,7 @@ impl GameY {
         match action {
             GameAction::Resign => {
                 self.status = GameStatus::Finished {
-                    winner: other_player(player),
+                    winner: Some(other_player(player)),
                 };
             }
             GameAction::Swap => {
@@ -505,7 +510,10 @@ impl From<&GameY> for YEN {
     fn from(game: &GameY) -> Self {
         let size = game.board_size;
         let turn = match game.status {
-            GameStatus::Finished { winner } => other_player(winner).id() as u32,
+            GameStatus::Finished {
+                winner: Some(winner),
+            } => other_player(winner).id() as u32,
+            GameStatus::Finished { winner: None } => 0,
             GameStatus::Ongoing { next_player } => next_player.id(),
         };
         let mut layout = String::new();
@@ -549,8 +557,8 @@ fn apply_player_color(symbol: String, player: Option<PlayerId>) -> String {
 pub enum GameStatus {
     /// The game is still in progress with the specified player to move next.
     Ongoing { next_player: PlayerId },
-    /// The game has ended with a winner.
-    Finished { winner: PlayerId },
+    /// The game has ended. `None` means draw.
+    Finished { winner: Option<PlayerId> },
 }
 
 #[cfg(test)]
@@ -668,7 +676,7 @@ mod tests {
 
         match game.status {
             GameStatus::Finished { winner } => {
-                assert_eq!(winner, PlayerId::new(0));
+                assert_eq!(winner, Some(PlayerId::new(0)));
             }
             _ => panic!("Game should be finished with a winner"),
         }
@@ -718,7 +726,7 @@ mod tests {
         let game = GameY::try_from(yen).unwrap();
         match game.status {
             GameStatus::Finished { winner } => {
-                assert_eq!(winner, PlayerId::new(0));
+                assert_eq!(winner, Some(PlayerId::new(0)));
             }
             _ => panic!("Game should be finished with a winner"),
         }
@@ -737,7 +745,7 @@ mod tests {
         let game = GameY::try_from(yen).unwrap();
         match game.status {
             GameStatus::Finished { winner } => {
-                assert_eq!(winner, PlayerId::new(0));
+                assert_eq!(winner, Some(PlayerId::new(0)));
             }
             other => panic!("Game should be finished with a winner. Found: {:?}", other),
         }
@@ -756,7 +764,7 @@ mod tests {
         let game = GameY::try_from(yen).unwrap();
         match game.status {
             GameStatus::Finished { winner } => {
-                assert_eq!(winner, PlayerId::new(0));
+                assert_eq!(winner, Some(PlayerId::new(0)));
             }
             other => panic!("Game should be finished with a winner. Found {:?}", other),
         }
