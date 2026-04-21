@@ -12,6 +12,7 @@ import {
     getMeta,
     getConfig,
     putConfig,
+    playBot,
 } from "../api/gamey";
 
 function jsonResponse(data: unknown, ok = true, status = 200) {
@@ -376,6 +377,47 @@ describe("gamey api client", () => {
             path: "/api/v1/hvh/games/g2",
             method: "DELETE",
         });
+    });
+
+    it("playBot devuelve un movimiento con coords", async () => {
+        const spy = mockFetchOk({
+            coords: { x: 1, y: 1, z: 0 },
+        });
+
+        const res = await playBot({
+            size: 3,
+            turn: 0,
+            players: ["B", "R"],
+            layout: "./../...",
+        }, "random_bot");
+
+        expect("coords" in res).toBe(true);
+        if ("coords" in res) {
+            expect(res.coords).toEqual({ x: 1, y: 1, z: 0 });
+        }
+
+        expectRequest(spy, {
+            path: "/play?",
+            method: "GET",
+        });
+    });
+
+    it("playBot acepta acciones especiales", async () => {
+        mockFetchOk({
+            action: "swap",
+        });
+
+        const res = await playBot({
+            size: 3,
+            turn: 0,
+            players: ["B", "R"],
+            layout: "./B./...",
+        });
+
+        expect("action" in res).toBe(true);
+        if ("action" in res) {
+            expect(res.action).toBe("swap");
+        }
     });
 
     it("lanza el mensaje del backend si fetch falla con json", async () => {

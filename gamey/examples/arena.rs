@@ -1,4 +1,4 @@
-use gamey::{GameY, GameStatus, MctsBot, MctsCompletoBot, YBot, Movement, PlayerId};
+use gamey::{GameY, GameStatus, MctsBot, MctsCompletoBot, Movement, YBot};
 use std::time::Instant;
 
 fn main() {
@@ -62,18 +62,22 @@ fn main() {
         let elapsed = start_time.elapsed();
         match game.status() {
             GameStatus::Finished { winner } => {
-                let mcts_won = if mcts_starts {
-                    winner.id() == 0
-                } else {
-                    winner.id() == 1
-                };
+                if let Some(winner) = winner {
+                    let mcts_won = if mcts_starts {
+                        winner.id() == 0
+                    } else {
+                        winner.id() == 1
+                    };
 
-                if mcts_won {
-                    println!("=> ¡Ganador: {}! (Tiempo: {:.2?})", mcts.name(), elapsed);
-                    mcts_wins += 1;
+                    if mcts_won {
+                        println!("=> ¡Ganador: {}! (Tiempo: {:.2?})", mcts.name(), elapsed);
+                        mcts_wins += 1;
+                    } else {
+                        println!("=> ¡Ganador: {}! (Tiempo: {:.2?})", completo.name(), elapsed);
+                        completo_wins += 1;
+                    }
                 } else {
-                    println!("=> ¡Ganador: {}! (Tiempo: {:.2?})", completo.name(), elapsed);
-                    completo_wins += 1;
+                    println!("=> Empate. (Tiempo: {:.2?})", elapsed);
                 }
             }
             _ => println!("Partida inacabada..."),

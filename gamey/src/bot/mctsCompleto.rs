@@ -3,7 +3,7 @@
 use rand::seq::IndexedRandom;
 use rand::Rng;
 
-use crate::{Coordinates, GameStatus, GameY, Movement, PlayerId};
+use crate::{BotDecision, Coordinates, GameStatus, GameY, Movement, PlayerId};
 use super::ybot::YBot;
 
 /// Nodo para el Monte Carlo Tree Search.
@@ -119,7 +119,7 @@ impl YBot for MctsCompletoBot {
         self.name
     }
 
-    fn choose_move(&self, board: &GameY) -> Option<Coordinates> {
+    fn choose_action(&self, board: &GameY) -> Option<BotDecision> {
         if board.available_cells().is_empty() {
             return None;
         }
@@ -254,7 +254,7 @@ impl YBot for MctsCompletoBot {
         }
 
         let best_move_index = arena[most_visited_idx].move_idx?;
-        Some(Coordinates::from_index(best_move_index, size))
+        Some(BotDecision::Move(Coordinates::from_index(best_move_index, size)))
     }
 }
 
