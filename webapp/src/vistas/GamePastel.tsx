@@ -2,17 +2,11 @@
  * GamePastel.tsx — Variante "Regla del Pastel" (Pie Rule)
  *
  * Flujo:
- *   1. FASE "place_neutral": Player 0 coloca la primera ficha (aparece en gris neutro).
- *   2. FASE "pie_choice": Player 1 decide:
- *        • "Quedarme con esa posición" → swap: la ficha pasa a ser de P1 (naranja)
- *          y Player 0 juega a continuación.
- *        • "Ceder la posición" → la ficha queda de P0 (azul), Player 1 juega siguiente.
+ *   1. FASE "place_neutral": Player que empieza coloca la primera ficha (gris).
+ *   2. FASE "pie_choice": El otro jugador decide:
+ *        • "Quedarme" → swap: los colores B↔R se invierten visualmente.
+ *        • "Ceder"    → sin cambio, la ficha queda del jugador original.
  *   3. FASE "playing": partida HvH estándar.
- *
- * Implementación:
- *   - Usa el backend HvH sin modificaciones.
- *   - La ficha "neutral" se envía al backend como movimiento de Player 0.
- *   - El swap se resuelve en el cliente: swapped=true invierte cómo se pintan B/R.
  */
 
 import { useState, useCallback, useRef } from "react";
@@ -20,6 +14,9 @@ import type React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Card, Flex, Space, Typography } from "antd";
 import { SwapOutlined, ArrowRightOutlined } from "@ant-design/icons";
+// @ts-ignore
+import Lottie from "lottie-react";
+import confettiAnimation from "../assets/Confetti.json";
 
 import GameShell from "../game/GameShell";
 import Board from "../game/Board";
@@ -61,6 +58,15 @@ function getStarterLabel(s: StarterHvH): string {
   return "Player 0";
 }
 
+const PLAYER_COLORS: Record<string, string> = {
+  player0: "#28BBF5",
+  player1: "#FF7B00",
+};
+const PLAYER_LABELS: Record<string, string> = {
+  player0: "Player 0",
+  player1: "Player 1",
+};
+
 export default function GamePastel() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -77,11 +83,14 @@ export default function GamePastel() {
   const [winner, setWinner] = useState<string | null>(null);
   const [nextTurn, setNextTurn] = useState<string | null>(null);
   const [moveCount, setMoveCount] = useState(0);
+  const [animationFinished, setAnimationFinished] = useState(false);
 
   // swapped=true: los colores B↔R se invierten visualmente (pie rule aplicada)
   const [swapped, setSwapped] = useState(false);
   // cellId de la primera ficha (para mostrarla en gris durante pie_choice)
   const [neutralCellId, setNeutralCellId] = useState<number | null>(null);
+  // jugador real que pone la ficha neutral (resuelto por el backend)
+  const [firstPlayer, setFirstPlayer] = useState<string>("player0");
 
   const initDone = useRef(false);
 
@@ -106,9 +115,11 @@ export default function GamePastel() {
       try {
         await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvhStarter });
         const resp: GameStateResponse = await createHvhGame({ size, hvh_starter: hvhStarter });
+        const resolvedFirst = resp.status.state === "ongoing" ? (resp.status.next ?? "player0") : "player0";
         setGameId(resp.game_id);
         setYen(resp.yen);
-        setNextTurn(resp.status.state === "ongoing" ? (resp.status.next ?? null) : null);
+        setNextTurn(resolvedFirst);
+        setFirstPlayer(resolvedFirst);
         setPhase("place_neutral");
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Error al crear la partida");
@@ -117,6 +128,8 @@ export default function GamePastel() {
       }
     })();
   });
+
+  const secondPlayer = firstPlayer === "player0" ? "player1" : "player0";
 
   // ─── Click en celda ───────────────────────────────────────────────────────
   const handleCellClick = useCallback(async (cellId: number) => {
@@ -177,13 +190,11 @@ export default function GamePastel() {
 
   // ─── Pie choice ───────────────────────────────────────────────────────────
   function handleSwap() {
-    // P1 se queda la posición → los colores se invierten
     setSwapped(true);
     setPhase("playing");
   }
 
   function handlePass() {
-    // P1 cede → sin cambio visual, juega P1 a continuación
     setSwapped(false);
     setPhase("playing");
   }
@@ -208,11 +219,9 @@ export default function GamePastel() {
 
   // ─── Celdas para el tablero ───────────────────────────────────────────────
   const cells: Cell[] = yen ? parseYenToCells(yen).map((cell) => {
-    // Ficha neutral: mostrar en gris durante pie_choice
     if (phase === "pie_choice" && cell.cellId === neutralCellId) {
       return { ...cell, value: "N" };
     }
-    // Swap activo: invertir colores B ↔ R
     if (swapped) {
       if (cell.value === "B") return { ...cell, value: "R" };
       if (cell.value === "R") return { ...cell, value: "B" };
@@ -220,17 +229,12 @@ export default function GamePastel() {
     return cell;
   }) : [];
 
-  const isFinished = phase === "finished";
-  const hasBoard   = !!yen && !loading && !error;
-  const boardDisabled = loading || phase === "pie_choice" || isFinished;
+  // ─── Turno visual ─────────────────────────────────────────────────────────
+  const secondPlayer2 = firstPlayer === "player0" ? "player1" : "player0";
 
-  // ─── Turno visual (igual que SessionGamePage) ─────────────────────────────
-  // Durante place_neutral: turno de Player 0
-  // Durante pie_choice:    turno de Player 1 (está decidiendo)
-  // Durante playing:       turno según nextTurn del backend, invertido si swapped
   const visualNext: string | null = (() => {
-    if (phase === "place_neutral") return "player0";
-    if (phase === "pie_choice")    return "player1";
+    if (phase === "place_neutral") return firstPlayer;
+    if (phase === "pie_choice")    return secondPlayer2;
     if (phase === "playing") {
       if (!nextTurn) return null;
       return swapped
@@ -240,18 +244,9 @@ export default function GamePastel() {
     return null;
   })();
 
-  const PLAYER_COLORS: Record<string, string> = {
-    player0: "#28BBF5",
-    player1: "#FF7B00",
-  };
-  const PLAYER_LABELS: Record<string, string> = {
-    player0: "Player 0",
-    player1: "Player 1",
-  };
-
   const activeColor = visualNext ? PLAYER_COLORS[visualNext] : null;
 
-  const boardCardStyle: React.CSSProperties = activeColor && !isFinished
+  const boardCardStyle: React.CSSProperties = activeColor && phase !== "finished"
     ? {
         border: `2px solid ${activeColor}`,
         boxShadow: `0 0 0 3px ${activeColor}22`,
@@ -259,21 +254,22 @@ export default function GamePastel() {
       }
     : {};
 
-  const turnIndicator = !isFinished && hasBoard && activeColor ? (
-    <Card
-      size="small"
-      style={{ borderLeft: `6px solid ${activeColor}` }}
-    >
+  const turnIndicator = phase !== "finished" && !!yen && !loading && activeColor ? (
+    <Card size="small" style={{ borderLeft: `6px solid ${activeColor}` }}>
       <Text strong>
         Turno actual:{" "}
         <span style={{ color: activeColor }}>
           {phase === "pie_choice"
-            ? "Player 1 — Elige tu bando"
+            ? `${PLAYER_LABELS[secondPlayer2]} — Elige tu bando`
             : PLAYER_LABELS[visualNext!]}
         </span>
       </Text>
     </Card>
   ) : null;
+
+  const isFinished = phase === "finished";
+  const hasBoard   = !!yen && !loading && !error;
+  const boardDisabled = loading || phase === "pie_choice" || isFinished;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -309,8 +305,8 @@ export default function GamePastel() {
                           ¡Regla del Pastel!
                         </Title>
                         <Text type="secondary" style={{ fontSize: 13 }}>
-                          Player 0 ha colocado la primera ficha (gris).
-                          Player 1, ¿quieres esa posición o prefieres cederla?
+                          {PLAYER_LABELS[firstPlayer]} ha colocado la primera ficha (gris).{" "}
+                          {PLAYER_LABELS[secondPlayer]}, ¿quieres esa posición o prefieres cederla?
                         </Text>
                       </div>
                     </Flex>
@@ -320,7 +316,7 @@ export default function GamePastel() {
                         size="large"
                         icon={<SwapOutlined />}
                         onClick={handleSwap}
-                        style={{ background: PLAYER_COLORS.player1, borderColor: PLAYER_COLORS.player1 }}
+                        style={{ background: PLAYER_COLORS[secondPlayer], borderColor: PLAYER_COLORS[secondPlayer] }}
                         data-testid="pastel-swap-btn"
                       >
                         Quedarme con esa posición
@@ -363,27 +359,58 @@ export default function GamePastel() {
         }
         result={
           isFinished ? (
-            <Space direction="vertical" size={16} style={{ width: "100%", textAlign: "center" }}>
-              <Title level={3} style={{ margin: 0 }}>
-                {winner === "player0"
-                  ? "🔵 ¡Player 0 ha ganado!"
-                  : winner === "player1"
-                    ? "🟠 ¡Player 1 ha ganado!"
-                    : "Partida finalizada"}
-              </Title>
-              {canOfferGuestSave && (
-                <Button
-                  type="default"
-                  loading={savingPendingGame}
-                  onClick={() => handleGuestSaveRequested({ gameId: gameId!, winner, totalMoves: moveCount })}
+            <Card>
+              {/* Animación fullscreen */}
+              {winner !== null && !animationFinished && (
+                <div
+                  style={{
+                    position: "fixed",
+                    top: 0, left: 0,
+                    width: "100vw", height: "100vh",
+                    zIndex: 9999,
+                    pointerEvents: "none",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                 >
-                  Guardar partida
-                </Button>
+                  <Lottie
+                    animationData={confettiAnimation}
+                    loop={false}
+                    onComplete={() => setAnimationFinished(true)}
+                  />
+                </div>
               )}
-              <Button type="primary" onClick={() => navigate("/home")}>
-                Volver al inicio
-              </Button>
-            </Space>
+
+              <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                <Flex justify="center">
+                  <Title level={4} style={{ margin: 0 }}>
+                    Partida finalizada
+                  </Title>
+                </Flex>
+                <Flex justify="center">
+                  <Title level={5} style={{ margin: 0 }}>
+                    {winner === "player0"
+                      ? "Player 0 ha ganado."
+                      : winner === "player1"
+                        ? "Player 1 ha ganado."
+                        : "La partida ha terminado."}
+                  </Title>
+                </Flex>
+                <Flex justify="center" gap={16} wrap="wrap">
+                  {canOfferGuestSave && (
+                    <Button
+                      type="primary"
+                      loading={savingPendingGame}
+                      onClick={() => handleGuestSaveRequested({ gameId: gameId!, winner, totalMoves: moveCount })}
+                    >
+                      Guardar esta partida
+                    </Button>
+                  )}
+                  <Button onClick={() => navigate("/home")}>Volver a Home</Button>
+                </Flex>
+              </Space>
+            </Card>
           ) : null
         }
       />
