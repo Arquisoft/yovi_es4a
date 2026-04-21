@@ -116,7 +116,7 @@ function hvhRouteForVariant(variantId: VariantId): string {
 }
 
 // Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel", "3dy"];
+const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel", "3dy", "master"];
 const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 // ─── Props ───────────────────────────────────────────────────────────────────
