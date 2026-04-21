@@ -211,6 +211,22 @@ jobs:
             set -euxo pipefail
             cd /opt/yovi/yovi_es4a
             git pull
+            
+            # 1. DESCARGA E INICIO
             docker compose pull
             docker compose up -d --remove-orphans
+            
+            # 2. VALIDACIÓN (Health Check)
+            echo "Aguardando consolidación de servicios..."
+            sleep 15
+            if docker compose ps | grep -q "Exit"; then
+              echo "Error crítico: Al menos un contenedor falló tras iniciar."
+              docker compose logs
+              exit 1
+            fi
+            
+            echo "Despliegue operativo:"
             docker compose ps
+            
+            # 3. LIMPIEZA (Prevenir disco lleno en VM)
+            docker image prune -af
