@@ -211,7 +211,7 @@ export function useMultiplayerGameSession({
         setYen(r.yen);
         setGameOver(r.status.state === "finished");
         setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
-        setNextTurn(initialTurn);
+        setNextTurn(r.status.next ?? null);
 
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", {

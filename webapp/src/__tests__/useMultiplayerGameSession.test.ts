@@ -409,7 +409,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(7);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 7, undefined);
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 7, undefined, undefined);
     expect(socketMock.emit).toHaveBeenLastCalledWith("playMove", {
       code: "ROOM1",
       cellId: 7,
@@ -533,7 +533,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(4);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 4, "host-123");
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 4, "host-123", undefined);
   });
 
   it("muestra message.error si hvhMove falla", async () => {
@@ -592,7 +592,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(9);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 9, undefined);
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 9, undefined, undefined);
     expect(socketMock.emit).toHaveBeenCalledWith("playMove", {
       code: "ROOM1",
       cellId: 9,
