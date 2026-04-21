@@ -14,8 +14,6 @@ import type React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button, Card, Flex, Space, Typography } from "antd";
 import { SwapOutlined, ArrowRightOutlined } from "@ant-design/icons";
-// @ts-ignore
-import Lottie from "lottie-react";
 import confettiAnimation from "../assets/Confetti.json";
 
 import GameShell from "../game/GameShell";
@@ -377,11 +375,6 @@ export default function GamePastel() {
                     alignItems: "center",
                   }}
                 >
-                  <Lottie
-                    animationData={confettiAnimation}
-                    loop={false}
-                    onComplete={() => setAnimationFinished(true)}
-                  />
                 </div>
               )}
 
