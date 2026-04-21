@@ -3,7 +3,7 @@
 //! This module provides the CLI application for playing Y games interactively.
 
 use crate::{
-    Coordinates, GameAction, MctsBot, RandomBot, Movement, RenderOptions, YBot, YBotRegistry, game
+    Coordinates, GameAction, MctsBot, MctsCompletoBot, RandomBot, Movement, RenderOptions, YBot, YBotRegistry, game
 };
 use crate::{GameStatus, GameY, PlayerId};
 use anyhow::Result;
@@ -67,7 +67,8 @@ pub fn run_cli_game() -> Result<()> {
     // Registro de bots disponibles
     let bots_registry = YBotRegistry::new()
         .with_bot(Arc::new(RandomBot))
-        .with_bot(Arc::new(MctsBot::new("mcts_test", 15000))); // Nivel de dificultad alto
+        .with_bot(Arc::new(MctsBot::new("mcts_test", 15000))) // Nivel de dificultad alto
+        .with_bot(Arc::new(MctsCompletoBot::new("mcts_completo", 15000)));
 
     let bot: Arc<dyn YBot> = match bots_registry.find(&args.bot) {
         Some(b) => b,
@@ -184,8 +185,8 @@ pub fn parse_command(input: &str, bound: u32) -> Command {
     let parts: Vec<&str> = input.split_whitespace().collect();
     if parts.is_empty() { return Command::None; }
     match parts[0] {
-        "save" => if parts.len() < 2 { Command::Error { message: "Filename required".into() } } else { Command::Save { filename: parts[1].into() } },
-        "load" => if parts.len() < 2 { Command::Error { message: "Filename required".into() } } else { Command::Load { filename: parts[1].into() } },
+        "save" => parse_file_command(&parts, |f| Command::Save { filename: f }),
+        "load" => parse_file_command(&parts, |f| Command::Load { filename: f }),
         "resign" => Command::Resign,
         "help" => Command::Help,
         "exit" => Command::Exit,
@@ -196,6 +197,19 @@ pub fn parse_command(input: &str, bound: u32) -> Command {
             Ok(idx) => Command::Place { idx },
             Err(e) => Command::Error { message: format!("Error parsing: {}", e) },
         },
+    }
+}
+
+fn parse_file_command<F>(parts: &[&str], constructor: F) -> Command
+where
+    F: FnOnce(String) -> Command,
+{
+    if parts.len() < 2 {
+        Command::Error {
+            message: "Filename required".into(),
+        }
+    } else {
+        constructor(parts[1].into())
     }
 }
 
