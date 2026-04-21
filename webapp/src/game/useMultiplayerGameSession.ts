@@ -169,9 +169,9 @@ export function useMultiplayerGameSession({
 
     async function initHost() {
       try {
-        const initialTurn: "player0" | "player1" = config?.mode === "fortune_coin_hvh" 
-            ? (Math.random() < 0.5 ? "player0" : "player1") 
-            : "player0";
+        const initialTurn: "player0" | "player1" = config?.mode === "fortune_coin_hvh"
+          ? (Math.random() < 0.5 ? "player0" : "player1")
+          : "player0";
 
         await putConfig({
           size: config!.size,

@@ -73,7 +73,7 @@ export default function MultiplayerSessionGamePage({
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !nextTurn)
-        return null;
+      return null;
 
     const turnText =
       nextTurn === myPlayer ? "🟢 ¡TU TURNO!" : "⌛ Esperando rival...";
@@ -140,8 +140,8 @@ export default function MultiplayerSessionGamePage({
     return {};
   }, [gameOver, myColor, myPlayer, nextTurn]);
 
-  const effectivelyWhoWon = mode === "whynot_hvh" 
-    ? (winner === "player0" ? "player1" : "player0") 
+  const effectivelyWhoWon = mode === "whynot_hvh"
+    ? (winner === "player0" ? "player1" : "player0")
     : winner;
   const isWin = effectivelyWhoWon === myPlayer;
   const shouldAnimate = gameOver && !!winner && !animationFinished;
