@@ -7,7 +7,9 @@ type Props = {
   size: number;
   cells: Cell[];
   disabled?: boolean;
-  disabledCells?: Set<number>; 
+  disabledCells?: Set<number>;
+  /** Celdas neutrales (regla del pastel): se muestran en gris medio, sin dueño. */
+  neutralCells?: Set<number>;
   onCellClick: (cellId: number) => void;
 };
 
@@ -36,7 +38,7 @@ function playBop() {
   }
 }
 
-export default function Board({ size, cells, disabled = false, disabledCells, onCellClick }: Props) {
+export default function Board({ size, cells, disabled = false, disabledCells, neutralCells, onCellClick }: Props) {
   const rows: Cell[][] = Array.from({ length: size }, () => []);
   for (const cell of cells) rows[cell.row].push(cell);
 
@@ -130,6 +132,7 @@ export default function Board({ size, cells, disabled = false, disabledCells, on
 
               const bg =
                 disabledCells?.has(cell.cellId) ? "#555" :  // agujero
+                neutralCells?.has(cell.cellId)  ? "#b0b0b0" : // ficha neutral (pie rule)
                 isHint
                   ? "#52c41a"
                   : cell.value === "B"

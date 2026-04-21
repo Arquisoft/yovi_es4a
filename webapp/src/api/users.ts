@@ -4,7 +4,8 @@ export type GameMode =
     | "tabu_hvh"
     | "holey_hvh"
     | "fortune_dice_hvh"
-    | "poly_hvh";
+    | "poly_hvh"
+    | "pastel_hvh";
 
 export type HistoryGame = {
     gameId: string;

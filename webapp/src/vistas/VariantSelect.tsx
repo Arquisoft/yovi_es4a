@@ -58,7 +58,7 @@ export const VARIANTS: Variant[] = [
     description: "Un jugador coloca la primera pieza, el otro elige bando.",
     detail:
       "El Jugador 1 elige dónde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posición (intercambiar bandos) o ceder el turno. Elimina la ventaja de salir primero.",
-    implemented: false,
+    implemented: true,
   },
   {
     id: "master",
