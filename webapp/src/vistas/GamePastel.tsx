@@ -246,13 +246,20 @@ export default function GamePastel() {
 
   const activeColor = visualNext ? PLAYER_COLORS[visualNext] : null;
 
-  const boardCardStyle: React.CSSProperties = activeColor && phase !== "finished"
-    ? {
-        border: `2px solid ${activeColor}`,
-        boxShadow: `0 0 0 3px ${activeColor}22`,
-        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-      }
-    : {};
+  const isFinished = phase === "finished";
+  const hasBoard   = !!yen && !loading && !error;
+  const boardDisabled = loading || phase === "pie_choice" || isFinished;
+
+  const boardCardStyle: React.CSSProperties = (() => {
+    if (isFinished && winner === "player0") return { background: "#28bbf532" };
+    if (isFinished && winner === "player1") return { background: "#ff7b0033" };
+    if (activeColor && !isFinished) return {
+      border: `2px solid ${activeColor}`,
+      boxShadow: `0 0 0 3px ${activeColor}22`,
+      transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    };
+    return {};
+  })();
 
   const turnIndicator = phase !== "finished" && !!yen && !loading && activeColor ? (
     <Card size="small" style={{ borderLeft: `6px solid ${activeColor}` }}>
@@ -266,10 +273,6 @@ export default function GamePastel() {
       </Text>
     </Card>
   ) : null;
-
-  const isFinished = phase === "finished";
-  const hasBoard   = !!yen && !loading && !error;
-  const boardDisabled = loading || phase === "pie_choice" || isFinished;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
