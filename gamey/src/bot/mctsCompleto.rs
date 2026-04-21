@@ -143,7 +143,7 @@ impl YBot for MctsCompletoBot {
             // -------------------------------------------------------------
             // Mientras el nodo actual esté totalmente expandido y no sea el fin del juego, 
             // aplicamos UCT para bajar al mejor hijo.
-            while match current_board.status() { GameStatus::Ongoing{..} => true, _ => false }
+            while !current_board.check_game_over()
                   && arena[current_node_idx].unexpanded_moves.is_empty() 
                   && !arena[current_node_idx].children.is_empty() 
             {
@@ -180,18 +180,14 @@ impl YBot for MctsCompletoBot {
                 
                 // Actualizamos el tablero virtual para reflejar el camino que tomamos
                 let move_val = arena[current_node_idx].move_idx.unwrap();
-                let mover = current_board.next_player().unwrap();
-                let _ = current_board.add_move(Movement::Placement {
-                    player: mover,
-                    coords: Coordinates::from_index(move_val, size),
-                });
+                apply_placement_from_idx(&mut current_board, move_val, size);
             }
 
             // -------------------------------------------------------------
             // FASE 2: EXPANSIÓN
             // -------------------------------------------------------------
             // Si llegamos a un nodo que tiene movimientos por descubrir, descubrimos UNO.
-            if match current_board.status() { GameStatus::Ongoing{..} => true, _ => false } 
+            if !current_board.check_game_over() 
                && !arena[current_node_idx].unexpanded_moves.is_empty() 
             {
                 let unexpanded = &mut arena[current_node_idx].unexpanded_moves;
@@ -204,10 +200,7 @@ impl YBot for MctsCompletoBot {
                 let mover = current_board.next_player().unwrap();
                 
                 // Lo aplicamos en nuestro mini tablero simulado
-                let _ = current_board.add_move(Movement::Placement {
-                    player: mover,
-                    coords: Coordinates::from_index(move_idx, size),
-                });
+                apply_placement_from_idx(&mut current_board, move_idx, size);
 
                 // Lo añadimos al árbol de verdad
                 let new_node = MctsNode::new(Some(current_node_idx), Some(move_idx), Some(mover), &current_board);
@@ -262,5 +255,67 @@ impl YBot for MctsCompletoBot {
 
         let best_move_index = arena[most_visited_idx].move_idx?;
         Some(Coordinates::from_index(best_move_index, size))
+    }
+}
+
+/// Helper function to reduce duplication: applies a move based solely on index.
+fn apply_placement_from_idx(board: &mut GameY, move_idx: u32, size: u32) {
+    if let Some(player) = board.next_player() {
+        let coords = Coordinates::from_index(move_idx, size);
+        let _ = board.add_move(Movement::Placement { player, coords });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{GameY, Movement, PlayerId};
+
+    #[test]
+    fn test_mcts_completo_bot_name() {
+        let bot = MctsCompletoBot::new("mcts_hard", 1000);
+        assert_eq!(bot.name(), "mcts_hard");
+    }
+
+    #[test]
+    fn test_mcts_completo_bot_returns_move_on_empty_board() {
+        let bot = MctsCompletoBot::new("mcts_hard", 1000);
+        let game = GameY::new(5);
+        let chosen_move = bot.choose_move(&game);
+        assert!(chosen_move.is_some());
+    }
+
+    #[test]
+    fn test_mcts_completo_bot_returns_valid_coordinates() {
+        let bot = MctsCompletoBot::new("mcts_hard", 100);
+        let game = GameY::new(5);
+        let coords = bot.choose_move(&game).unwrap();
+        let index = coords.to_index(game.board_size());
+        assert!(index < 15);
+    }
+
+    #[test]
+    fn test_mcts_completo_bot_returns_none_on_full_board() {
+        let bot = MctsCompletoBot::new("mcts_hard", 1000);
+        let mut game = GameY::new(2);
+        // Llenamos el tablero (tamaño 2 tiene 3 celdas)
+        let moves = vec![
+            Movement::Placement { player: PlayerId::new(0), coords: Coordinates::new(1, 0, 0) },
+            Movement::Placement { player: PlayerId::new(1), coords: Coordinates::new(0, 1, 0) },
+            Movement::Placement { player: PlayerId::new(0), coords: Coordinates::new(0, 0, 1) },
+        ];
+        for mv in moves {
+            let _ = game.add_move(mv);
+        }
+        let chosen_move = bot.choose_move(&game);
+        assert!(chosen_move.is_none());
+    }
+
+    #[test]
+    fn test_apply_placement_helper() {
+        let mut board = GameY::new(3);
+        apply_placement_from_idx(&mut board, 0, 3);
+        assert_eq!(board.available_cells().len(), 5); // size 3 has 6 cells, 1 assigned
+        assert_eq!(board.next_player(), Some(PlayerId::new(1)));
     }
 }
