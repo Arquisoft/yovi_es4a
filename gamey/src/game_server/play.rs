@@ -4,7 +4,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{Coordinates, GameY, Movement, YEN};
+use crate::{BotDecision, Coordinates, GameAction, GameY, YEN};
 
 use super::{error::ApiErrorResponse, state::GameServerState, API_V1};
 
@@ -18,20 +18,26 @@ pub struct PlayQuery {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PlayResponse {
-    pub api_version: String,
-    pub bot_id: String,
-    pub coords: Coordinates,
-    pub position: YEN,
+#[serde(untagged)]
+pub enum PlayResponse {
+    Move { coords: Coordinates },
+    Action { action: PlayAction },
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PlayAction {
+    Swap,
+    Resign,
 }
 
 /// GET /play?position=<json-yen-url-encoded>&bot_id=<bot>&api_version=v1
 ///
 /// `position` contiene un YEN serializado como JSON dentro del query param.
 /// 
-/// La respuesta incluye:
+/// La respuesta incluye solo la acción elegida por el bot:
 /// - coords: coordenadas elegidas por el bot
-/// - position: YEN resultante tras aplicar la jugada
+/// - action: acción especial como swap o resign
 pub async fn play(
     State(state): State<GameServerState>,
     Query(query): Query<PlayQuery>,
@@ -77,10 +83,6 @@ pub async fn play(
         ));
     }
 
-    let next_player = game.next_player().ok_or_else(|| {
-        ApiErrorResponse::conflict("Position has no next player", "missing_next_player")
-    })?;
-
     let bot = state.bots.find(&bot_id).ok_or_else(|| {
         let mut names = state.bots.names();
         names.sort();
@@ -95,32 +97,42 @@ pub async fn play(
         )
     })?;
 
-    let coords = bot.choose_move(&game).ok_or_else(|| {
+    let decision = bot.choose_action(&game).ok_or_else(|| {
         ApiErrorResponse::conflict(
-            "No valid moves available for the bot",
+            "Bot could not choose an action for the given position",
             "no_valid_moves",
         )
     })?;
 
-    let mut next_position = game.clone();
-    next_position
-        .add_move(Movement::Placement {
-            player: next_player,
-            coords,
-        })
-        .map_err(|e| {
-            ApiErrorResponse::conflict(
-                format!("Bot selected an invalid move: {e}"),
-                "invalid_bot_move",
-            )
-        })?;
+    let response = match decision {
+        BotDecision::Move(coords) => {
+            // Validate that the move chosen by the bot is legal for the given position.
+            let next_player = game.next_player().ok_or_else(|| {
+                ApiErrorResponse::conflict("Position has no next player", "missing_next_player")
+            })?;
+            let mut next_position = game.clone();
+            next_position
+                .add_move(crate::Movement::Placement {
+                    player: next_player,
+                    coords,
+                })
+                .map_err(|e| {
+                    ApiErrorResponse::conflict(
+                        format!("Bot selected an invalid move: {e}"),
+                        "invalid_bot_move",
+                    )
+                })?;
+            PlayResponse::Move { coords }
+        }
+        BotDecision::Action(GameAction::Swap) => PlayResponse::Action {
+            action: PlayAction::Swap,
+        },
+        BotDecision::Action(GameAction::Resign) => PlayResponse::Action {
+            action: PlayAction::Resign,
+        },
+    };
 
-    Ok(Json(PlayResponse {
-        api_version,
-        bot_id,
-        coords,
-        position: YEN::from(&next_position),
-    }))
+    Ok(Json(response))
 }
 
 #[cfg(test)]
@@ -130,10 +142,14 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
+    use http_body_util::BodyExt;
+    use serde_json::Value;
+    use std::sync::Arc;
     use tower::ServiceExt;
 
     use crate::game_server::create_router;
     use crate::game_server::state::GameServerState;
+    use crate::YBot;
 
     fn percent_encode(input: &str) -> String {
         input.bytes()
@@ -156,7 +172,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_returns_move_and_next_position() {
+    async fn play_returns_move_only() {
         let app = create_router(GameServerState::new_default());
         let yen = YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
 
@@ -177,6 +193,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert!(json.get("coords").is_some());
+        assert!(json.get("api_version").is_none());
+        assert!(json.get("bot_id").is_none());
+        assert!(json.get("position").is_none());
     }
 
     #[tokio::test]
@@ -264,5 +287,51 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    struct ActionBot;
+
+    impl YBot for ActionBot {
+        fn name(&self) -> &str {
+            "action_bot"
+        }
+
+        fn choose_action(&self, _board: &GameY) -> Option<BotDecision> {
+            Some(BotDecision::Action(GameAction::Swap))
+        }
+    }
+
+    #[tokio::test]
+    async fn play_can_return_swap_action() {
+        let bots = crate::YBotRegistry::new().with_bot(Arc::new(ActionBot));
+        let state = GameServerState {
+            bots: Arc::new(bots),
+            sessions: crate::game_server::sessions::SessionStore::new(),
+            config_store: crate::game_server::state::config_store::ConfigStore::new(),
+        };
+        let app = create_router(state);
+        let yen = YEN::new(3, 0, vec!['B', 'R'], "./../...".to_string());
+
+        let uri = format!(
+            "/play?position={}&bot_id=action_bot",
+            build_position_query(&yen)
+        );
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(uri)
+                    .method("GET")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json, serde_json::json!({ "action": "swap" }));
     }
 }

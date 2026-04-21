@@ -168,12 +168,9 @@ export type HvhMoveResponse = {
 // API EXTERNA DE BOTS
 // --------------------------------------------------------------------------------------
 
-export type PlayBotResponse = {
-  api_version: string;
-  bot_id: string;
-  coords: MoveCoords;
-  position: YEN;
-};
+export type PlayBotResponse =
+  | { coords: MoveCoords }
+  | { action: "swap" | "resign" };
 
 export async function playBot(
   position: YEN,

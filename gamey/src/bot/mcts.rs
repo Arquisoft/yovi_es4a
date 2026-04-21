@@ -1,6 +1,6 @@
 use rand::seq::IndexedRandom;
 
-use crate::{Coordinates, GameY, GameStatus, Movement, PlayerId};
+use crate::{BotDecision, Coordinates, GameY, GameStatus, Movement, PlayerId};
 use super::ybot::YBot;
 
 pub struct MctsBot {
@@ -57,7 +57,7 @@ impl YBot for MctsBot {
 
     /// TOMA DE DECISIÓN:
     /// Evalúa cada movimiento posible realizando múltiples simulaciones para cada uno.
-    fn choose_move(&self, board: &GameY) -> Option<Coordinates> {
+    fn choose_action(&self, board: &GameY) -> Option<BotDecision> {
         // Obtenemos información básica del estado actual
         let available_cells = board.available_cells();
         let my_player = board.next_player()?; // Quién soy yo (el bot).
@@ -108,7 +108,7 @@ impl YBot for MctsBot {
         }
 
         // Devolvemos las coordenadas que estadísticamente dieron más victorias.
-        best_move
+        best_move.map(BotDecision::Move)
     }
 }
 
