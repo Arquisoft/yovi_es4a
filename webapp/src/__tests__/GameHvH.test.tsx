@@ -111,6 +111,16 @@ describe("GameHvH", () => {
     expect(props.resultConfig.subtitle).toBe("Tamaño: 8 · Empieza: Aleatorio");
   });
 
+  it("normaliza tamaño inválido y starter desconocido", () => {
+    mockSearchParams = new URLSearchParams("size=0&hvhstarter=desconocido");
+
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    expect(props.deps).toEqual([7, "player0"]);
+    expect(props.resultConfig.subtitle).toBe("Tamaño: 7 · Empieza: Player 0");
+  });
+
   it("start guarda config y crea la partida", async () => {
     vi.mocked(putConfig).mockResolvedValue({} as any);
     vi.mocked(createHvhGame).mockResolvedValue({
@@ -206,7 +216,7 @@ describe("GameHvH", () => {
     });
   });
 
-  it("no registra partida terminada si winner es null", async () => {
+  it("registra partida empatada si winner es null", async () => {
     const registerFinishedGame = vi.fn();
     vi.mocked(useDeferredGameSave).mockReturnValue({
       ...deferredGameSaveState,
@@ -222,7 +232,15 @@ describe("GameHvH", () => {
       totalMoves: 3,
     });
 
-    expect(registerFinishedGame).not.toHaveBeenCalled();
+    expect(registerFinishedGame).toHaveBeenCalledWith({
+      gameId: "g2",
+      mode: "classic_hvh",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 3,
+      opponent: "Jugador local",
+      startedBy: "player0",
+    });
   });
 
   it("registra abandono y borra la partida", async () => {
@@ -299,5 +317,17 @@ describe("GameHvH", () => {
     expect(authProps.open).toBe(true);
     expect(authProps.onClose).toBe(closeAuthModal);
     expect(authProps.onLoginSuccess).toBe(handleLoginSuccess);
+  });
+
+  it("configura correctamente celebrateWinner y los textos de resultado", () => {
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    expect(props.celebrateWinner("player0")).toBe(true);
+    expect(props.celebrateWinner("player1")).toBe(true);
+    expect(props.celebrateWinner(null)).toBe(false);
+    expect(props.resultConfig.getResultText("player0")).toContain("Player 0");
+    expect(props.resultConfig.getResultText("player1")).toContain("Player 1");
+    expect(props.resultConfig.getResultText(null)).toContain("empate");
   });
 });

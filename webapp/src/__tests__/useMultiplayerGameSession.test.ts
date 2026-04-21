@@ -11,7 +11,7 @@ import {
   hvhMove,
   deleteHvhGame,
 } from "../api/gamey";
-import { generateHoles, getAdjacentCells } from "../game/variants";
+import { generateHoles, getAdjacentCells, hasPlayableCells } from "../game/variants";
 import { message } from "antd";
 
 vi.mock("../api/socket", () => ({
@@ -36,6 +36,7 @@ vi.mock("../api/gamey", () => ({
 vi.mock("../game/variants", () => ({
   generateHoles: vi.fn(),
   getAdjacentCells: vi.fn(),
+  hasPlayableCells: vi.fn(),
 }));
 
 vi.mock("antd", async () => {
@@ -59,6 +60,7 @@ describe("useMultiplayerGameSession", () => {
   const mockedDeleteHvhGame = vi.mocked(deleteHvhGame);
   const mockedGenerateHoles = vi.mocked(generateHoles);
   const mockedGetAdjacentCells = vi.mocked(getAdjacentCells);
+  const mockedHasPlayableCells = vi.mocked(hasPlayableCells);
   const mockedMessage = vi.mocked(message);
 
   beforeEach(() => {
@@ -82,6 +84,7 @@ describe("useMultiplayerGameSession", () => {
 
     mockedGenerateHoles.mockReturnValue(new Set<number>([1, 3]));
     mockedGetAdjacentCells.mockReturnValue(new Set<number>([5, 6]));
+    mockedHasPlayableCells.mockReturnValue(true);
 
     mockedGetHvhGame.mockResolvedValue({
       game_id: "game-1",
@@ -407,7 +410,7 @@ describe("useMultiplayerGameSession", () => {
     });
 
     expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 7, undefined);
-    expect(socketMock.emit).toHaveBeenCalledWith("playMove", {
+    expect(socketMock.emit).toHaveBeenLastCalledWith("playMove", {
       code: "ROOM1",
       cellId: 7,
     });
