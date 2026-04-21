@@ -704,7 +704,7 @@ mod tests {
             State(state),
             headers,
             Path("not-a-uuid".to_string()),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -729,7 +729,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -755,7 +755,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -787,7 +787,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -812,7 +812,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -837,7 +837,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 99 }),
+            Json(CellMoveRequest { cell_id: 99, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -864,7 +864,7 @@ mod tests {
             State(state),
             headers,
             Path(game_id),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap_err();
@@ -889,7 +889,7 @@ mod tests {
             State(state.clone()),
             headers,
             Path(game_id.clone()),
-            Json(CellMoveRequest { cell_id: 0 }),
+            Json(CellMoveRequest { cell_id: 0, next_player: None }),
         )
         .await
         .unwrap();
