@@ -65,7 +65,7 @@ impl MctsCompletoBot {
         
         loop {
             match virtual_board.status() {
-                GameStatus::Finished { winner } => return Some(*winner),
+                GameStatus::Finished { winner } => return (*winner).into(),
                 GameStatus::Ongoing { next_player } => {
                     let available = virtual_board.available_cells();
                     if available.is_empty() {

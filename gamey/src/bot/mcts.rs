@@ -25,7 +25,7 @@ impl MctsBot {
         loop {
             match virtual_board.status() {
                 // Si la partida virtual terminó, devolvemos quién ganó.
-                GameStatus::Finished { winner } => return Some(*winner),
+                GameStatus::Finished { winner } => return (*winner).into(),
                 
                 // Si la partida sigue, elegimos un movimiento al azar entre los disponibles.
                 GameStatus::Ongoing { next_player } => {
