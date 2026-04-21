@@ -59,7 +59,7 @@ export const VARIANTS: Variant[] = [
     description: "Un jugador coloca la primera pieza, el otro elige bando.",
     detail:
       "El Jugador 1 elige dónde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posición (intercambiar bandos) o ceder el turno. Elimina la ventaja de salir primero.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "master",
@@ -125,7 +125,7 @@ export const VARIANTS: Variant[] = [
     description: "Gana el primero en conectar los tres lados... ¡en conectar pierde!",
     detail:
       "Las reglas son idénticas al Y clásico, pero el objetivo se invierte: el primer jugador que forme una conexión de los tres lados del tablero con sus piezas ¡pierde la partida! Hay que conectar al adversario sin conectarse uno mismo.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "poly_y",
@@ -136,7 +136,7 @@ export const VARIANTS: Variant[] = [
     description: "Tablero de 5+ lados. Gana quien conquiste más esquinas.",
     detail:
       "Se juega en un tablero poligonal con un número impar de lados (mínimo 5). Un jugador «posee» una esquina si tiene un grupo de piezas que toca los dos lados que forman dicha esquina. Gana quien consiga poseer más esquinas al final.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "hex",
@@ -147,7 +147,7 @@ export const VARIANTS: Variant[] = [
     description: "Juego relacionado con Y pero en tablero rómbico de 11×11.",
     detail:
       "Jugado en un tablero rómbico (habitualmente 11×11). Cada jugador intenta conectar sus dos lados opuestos del tablero. No hay empates posibles. Comparte ADN matemático con el juego Y y es un clásico de la teoría de juegos.",
-    implemented: true,
+    implemented: false,
   },
   {
     id: "3dy",
@@ -158,7 +158,7 @@ export const VARIANTS: Variant[] = [
     description: "Juego Y en 3D. Conecta las caras de un tetraedro.",
     detail:
       "Se juega en varios niveles superpuestos. Cada nivel es un tablero Y más pequeño. Los jugadores deben conectar las caras del tetraedro 3D mediante una cadena continua de piezas.",
-    implemented: true,
+    implemented: false,
   },
 ];
 

@@ -59,12 +59,8 @@ export type UseMultiplayerGameSessionResult = {
   setHasNewMessages: (val: boolean) => void;
   handleSendChat: (text: string) => void;
 
-  // Variants
   piecesLeft: number;
   diceValue: number;
-  swapped: boolean;
-  moveCount: number;
-  handleSwapRoles: () => void;
 };
 
 export function useMultiplayerGameSession({
@@ -97,14 +93,10 @@ export function useMultiplayerGameSession({
   // Variants state
   const [piecesLeft, setPiecesLeft] = useState(1);
   const [diceValue, setDiceValue] = useState(1);
-  const [swapped, setSwapped] = useState(false);
-  const [moveCount, setMoveCount] = useState(0);
 
   const myPlayer = useMemo(() => {
-    const base = role === "guest" ? "player1" : "player0";
-    if (swapped) return base === "player0" ? "player1" : "player0";
-    return base;
-  }, [role, swapped]);
+    return role === "guest" ? "player1" : "player0";
+  }, [role]);
 
   const myColor = myPlayer === "player0" ? "#1677ff" : "#ff7b00";
 
@@ -251,8 +243,6 @@ export function useMultiplayerGameSession({
       player0: { username: null, profilePicture: null },
       player1: { username: null, profilePicture: null },
     });
-    setMoveCount(0);
-    setSwapped(false);
 
     if (role === "host" && config && code)
       void initHost();
@@ -325,7 +315,6 @@ export function useMultiplayerGameSession({
     }
 
     function onVariantUpdate(update: any) {
-      if (update.swapped !== undefined) setSwapped(update.swapped);
       if (update.piecesLeft !== undefined) setPiecesLeft(update.piecesLeft);
       if (update.diceValue !== undefined) setDiceValue(update.diceValue);
       if (update.nextTurnOverride !== undefined) {
@@ -427,7 +416,6 @@ export function useMultiplayerGameSession({
           setGameOver(false);
           setWinner(null);
           setNextTurn(r.status.next ?? null);
-          setMoveCount(prev => prev + 1);
 
           // Update local pieces/dice
           if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
@@ -505,14 +493,6 @@ export function useMultiplayerGameSession({
     onLeaveLobby();
   }, [code, gameId, onLeaveLobby, role]);
 
-  const handleSwapRoles = useCallback(() => {
-    if (role === "guest" && moveCount === 1 && !swapped) {
-      setSwapped(true);
-      socket.emit("variantUpdate", { code, swapped: true });
-      message.success("Has intercambiado roles.");
-    }
-  }, [role, moveCount, swapped, code]);
-
   const handleSendChat = useCallback((text: string) => {
     if (!text.trim()) return;
     socket.emit("sendMessage", { code, text: text.trim() });
@@ -540,9 +520,6 @@ export function useMultiplayerGameSession({
     // Variants
     piecesLeft,
     diceValue,
-    swapped,
-    moveCount,
-    handleSwapRoles,
   };
 }
 

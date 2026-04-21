@@ -140,9 +140,6 @@ describe("GameMultiplayer", () => {
       handleSendChat: vi.fn(),
       piecesLeft: 1,
       diceValue: 1,
-      swapped: false,
-      moveCount: 0,
-      handleSwapRoles: vi.fn(),
     });
 
     mockedParseYenToCells.mockReturnValue([
@@ -209,9 +206,6 @@ describe("GameMultiplayer", () => {
       handleSendChat: vi.fn(),
       piecesLeft: 1,
       diceValue: 1,
-      swapped: false,
-      moveCount: 0,
-      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);
@@ -243,9 +237,6 @@ describe("GameMultiplayer", () => {
       handleSendChat: vi.fn(),
       piecesLeft: 1,
       diceValue: 1,
-      swapped: false,
-      moveCount: 0,
-      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);
@@ -394,9 +385,6 @@ describe("GameMultiplayer", () => {
       handleSendChat: vi.fn(),
       piecesLeft: 1,
       diceValue: 1,
-      swapped: false,
-      moveCount: 0,
-      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);

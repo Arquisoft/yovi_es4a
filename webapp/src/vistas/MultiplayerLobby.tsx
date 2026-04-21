@@ -164,7 +164,7 @@ export default function MultiplayerLobby() {
                       value={modeId} 
                       onChange={setModeId} 
                       style={{ width: "100%" }}
-                      options={VARIANTS.map(v => ({ value: v.id, label: `${v.emoji} ${v.label}` }))}
+                      options={VARIANTS.filter(v => v.implemented).map(v => ({ value: v.id, label: `${v.emoji} ${v.label}` }))}
                     />
 
                     <Text strong style={{ marginTop: 10, display: "block" }}>Tamaño del tablero:</Text>

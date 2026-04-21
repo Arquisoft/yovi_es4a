@@ -140,10 +140,7 @@ export default function MultiplayerSessionGamePage({
     return {};
   }, [gameOver, myColor, myPlayer, nextTurn]);
 
-  const effectivelyWhoWon = mode === "whynot_hvh"
-    ? (winner === "player0" ? "player1" : "player0")
-    : winner;
-  const isWin = effectivelyWhoWon === myPlayer;
+  const isWin = winner === myPlayer;
   const shouldAnimate = gameOver && !!winner && !animationFinished;
 
   async function handleConfirmedAbandon() {
@@ -261,12 +258,6 @@ export default function MultiplayerSessionGamePage({
                       : "💀 HAS PERDIDO"}
                 </Title>
               </Flex>
-
-              {mode === "whynot_hvh" && (
-                <Flex justify="center">
-                  <Text type="secondary">En WhY not, el primero que conecta pierde.</Text>
-                </Flex>
-              )}
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Button type="primary" onClick={onBack}>
