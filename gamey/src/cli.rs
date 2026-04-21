@@ -94,8 +94,14 @@ pub fn run_cli_game() -> Result<()> {
         println!("{}", game.render(&render_options));
         let status = game.status();
         match status {
-            GameStatus::Finished { winner } => {
+            GameStatus::Finished {
+                winner: Some(winner),
+            } => {
                 println!("Game over! Winner: {}", winner);
+                break;
+            }
+            GameStatus::Finished { winner: None } => {
+                println!("Game over! Draw.");
                 break;
             }
             GameStatus::Ongoing { next_player } => {

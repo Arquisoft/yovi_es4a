@@ -20,6 +20,7 @@ import {
   CloseCircleOutlined,
   StopOutlined,
   UserOutlined,
+  MinusCircleOutlined,
 } from "@ant-design/icons";
 import AppHeader from "./AppHeader";
 import UserStatsSummary from "./UserStats";
@@ -50,7 +51,31 @@ function resultTag(result: HistoryGame["result"]) {
     case "lost":
       return <Tag color="error" icon={<CloseCircleOutlined />} style={resultTagStyle}>Perdida</Tag>;
     case "abandoned":
-      return <Tag color="default" icon={<StopOutlined />} style={resultTagStyle}>Abandonada</Tag>;
+      return (
+        <Tag
+          icon={<StopOutlined />}
+          style={{
+            ...resultTagStyle,
+            background: "#f5f5f5",
+            color: "#595959",
+          }}
+        >
+          Abandonada
+        </Tag>
+      );
+    case "draw":
+      return (
+        <Tag
+          icon={<MinusCircleOutlined />}
+          style={{
+            ...resultTagStyle,
+            background: "#fafafa",
+            color: "#999999",
+          }}
+        >
+          Empatada
+        </Tag>
+      );
     default:
       return <Tag style={resultTagStyle}>{result}</Tag>;
   }
@@ -148,7 +173,7 @@ export default function UserHistory() {
   const [modeFilter, setModeFilter] = useState<
     "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh"
   >("all");
-  const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned">("all");
+  const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned" | "draw">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
 
   useEffect(() => {
@@ -249,6 +274,7 @@ export default function UserHistory() {
                           { value: "won", label: "Ganadas" },
                           { value: "lost", label: "Perdidas" },
                           { value: "abandoned", label: "Abandonadas" },
+                          { value: "draw", label: "Empatadas" },
                         ]}
                       />
 

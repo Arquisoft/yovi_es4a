@@ -104,12 +104,13 @@ export default function GameHvB() {
         onHint={(gameId) => hvbHint(gameId).then((r) => r.hint_cell_id)}
         shouldCountMove={(turn) => turn === "human"}
         onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          if (!winner) return;
-
           const payload: RecordUserGameRequest = {
             gameId,
             mode: "classic_hvb",
-            result: winner === "human" ? "won" : "lost",
+            result:
+              winner === "human" ? "won" :
+              winner === "bot" ? "lost" :
+              "draw",
             boardSize: size,
             totalMoves,
             opponent: botId,
@@ -133,11 +134,15 @@ export default function GameHvB() {
           )}`,
           abandonOkText: "Sí, abandonar",
           getResultTitle: (winner) =>
-            winner === "human" ? "¡Felicidades!" : "Game Over",
+            winner === "human" ? "¡Felicidades!" :
+            winner === "bot" ? "Game Over" :
+            "Empate",
           getResultText: (winner) =>
             winner === "human"
               ? "Has ganado la partida."
-              : `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`,
+              : winner === "bot"
+                ? `Ha ganado ${participantLabels.bot}. ¡Inténtalo de nuevo!`
+                : "El tablero se ha llenado y nadie ha conectado los tres lados.",
         }}
         winnerPalette={{
           highlightedWinner: "human",

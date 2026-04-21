@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type SessionGameStatus =
     | { state: "ongoing"; next?: string }
-    | { state: "finished"; winner?: string };
+    | { state: "finished"; winner?: string | null };
 
 export type SessionGameStartResponse<YEN> = {
     game_id: string;

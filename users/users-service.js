@@ -47,6 +47,7 @@ function buildUserStats(stats = {}) {
   const gamesPlayed      = stats.gamesPlayed      || 0;
   const gamesWon         = stats.gamesWon         || 0;
   const gamesLost        = stats.gamesLost        || 0;
+  const gamesDrawn       = stats.gamesDrawn       || 0;
   const gamesAbandoned   = stats.gamesAbandoned   || 0;
   const totalMoves       = stats.totalMoves       || 0;
   const currentWinStreak = stats.currentWinStreak || 0;
@@ -55,6 +56,7 @@ function buildUserStats(stats = {}) {
     gamesPlayed,
     gamesWon,
     gamesLost,
+    gamesDrawn,
     gamesAbandoned,
     totalMoves,
     currentWinStreak,
@@ -69,7 +71,7 @@ function normalizePositiveInteger(value, fallback) {
 
 function validateRecordGame(body) {
   const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const allowedResults = ["won", "lost", "abandoned"];
+  const allowedResults = ["won", "lost", "abandoned", "draw"];
 
   const gameIdValidation = validateGameId(body.gameId);
   if (gameIdValidation.error) {
@@ -88,7 +90,7 @@ function validateRecordGame(body) {
   }
 
   if (!allowedResults.includes(result)) {
-    return { error: "'result' debe ser 'won', 'lost' o 'abandoned'" };
+    return { error: "'result' debe ser 'won', 'lost', 'abandoned' o 'draw'" };
   }
 
   if (!Number.isFinite(boardSize) || boardSize <= 0) {
@@ -480,6 +482,9 @@ app.post("/users/:username/games", async (req, res) => {
     } else if (game.result === "abandoned") {
       inc["stats.gamesAbandoned"] = 1;
       nextWinStreak = 0;
+    } else if (game.result === "draw") {
+      inc["stats.gamesDrawn"] = 1;
+      nextWinStreak = 0;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -524,7 +529,7 @@ app.get("/users/:username/history", async (req, res) => {
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
   const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
-  const validResults = ["won", "lost", "abandoned"];
+  const validResults = ["won", "lost", "abandoned", "draw"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
   const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
@@ -658,7 +663,7 @@ app.patch('/users/:username/stats', async (req, res) => {
  */
 app.get('/ranking', async (req, res) => {
   const { sortBy = 'winRate', page = 1, pageSize, limit } = req.query;
-  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesAbandoned', 'totalMoves'];
+  const validSortFields = ['winRate', 'gamesWon', 'gamesPlayed', 'gamesLost', 'gamesDrawn', 'gamesAbandoned', 'totalMoves'];
   const sortField = validSortFields.includes(sortBy) ? sortBy : 'winRate';
   const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
   const sizeNum = Math.min(100, Math.max(1, Number.parseInt(pageSize || limit, 10) || 20));
@@ -681,6 +686,7 @@ app.get('/ranking', async (req, res) => {
         
         const won = weeklyGames.filter(g => g.result === 'won').length;
         const lost = weeklyGames.filter(g => g.result === 'lost').length;
+        const drawn = weeklyGames.filter(g => g.result === 'draw').length;
         const abandoned = weeklyGames.filter(g => g.result === 'abandoned').length;
         const totalMoves = weeklyGames.reduce((acc, g) => acc + (g.totalMoves || 0), 0);
 
@@ -688,6 +694,7 @@ app.get('/ranking', async (req, res) => {
           gamesPlayed: weeklyGames.length,
           gamesWon: won,
           gamesLost: lost,
+          gamesDrawn: drawn,
           gamesAbandoned: abandoned,
           totalMoves: totalMoves,
           winRate: weeklyGames.length > 0 ? Math.round((won / weeklyGames.length) * 100) : 0
@@ -698,6 +705,7 @@ app.get('/ranking', async (req, res) => {
         gamesPlayed: stats.gamesPlayed || 0,
         gamesWon: stats.gamesWon || 0,
         gamesLost: stats.gamesLost || 0,
+        gamesDrawn: stats.gamesDrawn || 0,
         gamesAbandoned: stats.gamesAbandoned || 0,
         totalMoves: stats.totalMoves || 0,
         winRate: (stats.gamesPlayed > 0) ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0

@@ -251,6 +251,7 @@ describe("MultiplayerSessionGamePage", () => {
         boardDisabled
         onCellClick={onCellClickMock}
         myPlayer="player0"
+        gameOver
         nextTurn="player0"
         winner="player1"
         hasNewMessages={false}
@@ -338,6 +339,7 @@ describe("MultiplayerSessionGamePage", () => {
         boardDisabled={true}
         onCellClick={onCellClickMock}
         myPlayer="player0"
+        gameOver
         nextTurn={null}
         winner="player0"
         hasNewMessages={false}
@@ -369,6 +371,7 @@ describe("MultiplayerSessionGamePage", () => {
         boardDisabled
         onCellClick={onCellClickMock}
         myPlayer="player0"
+        gameOver
         nextTurn={null}
         winner="player1"
         hasNewMessages={false}
@@ -397,6 +400,7 @@ describe("MultiplayerSessionGamePage", () => {
         boardDisabled
         onCellClick={onCellClickMock}
         myPlayer="player0"
+        gameOver
         nextTurn={null}
         winner="player0"
         hasNewMessages={false}
