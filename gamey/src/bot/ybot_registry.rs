@@ -66,7 +66,7 @@ impl Default for YBotRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Coordinates, GameY, RandomBot};
+    use crate::{BotDecision, GameY, RandomBot};
 
     /// A mock bot for testing purposes.
     struct MockBot {
@@ -86,7 +86,7 @@ mod tests {
             &self.name
         }
 
-        fn choose_move(&self, _board: &GameY) -> Option<Coordinates> {
+        fn choose_action(&self, _board: &GameY) -> Option<BotDecision> {
             None
         }
     }

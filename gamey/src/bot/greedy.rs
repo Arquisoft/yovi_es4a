@@ -1,4 +1,4 @@
-use crate::{Coordinates, GameY, YBot};
+use crate::{BotDecision, Coordinates, GameY, YBot};
 
 /// Bot Greedy mejorado para el Juego de Y.
 /// Se enfoca en el "Potencial de Conectividad" para unir los tres lados.
@@ -9,7 +9,7 @@ impl YBot for GreedyBot {
         "greedy_bot"
     }
 
-    fn choose_move(&self, board: &GameY) -> Option<Coordinates> {
+    fn choose_action(&self, board: &GameY) -> Option<BotDecision> {
         let available_cells = board.available_cells();
         let size = board.board_size();
 
@@ -50,7 +50,7 @@ impl YBot for GreedyBot {
                 (coords, score)
             })
             .min_by_key(|&(_, score)| score)
-            .map(|(coords, _)| coords)
+            .map(|(coords, _)| BotDecision::Move(coords))
     }
 }
 
