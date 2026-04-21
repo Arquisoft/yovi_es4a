@@ -35,6 +35,7 @@ type ResultConfig = {
 type TurnPresentation = {
   label: string;
   color: string;
+  labelColor?: string;
 };
 
 type TurnConfig = {
@@ -75,6 +76,7 @@ type Props<TYen extends GameYEN> = {
   celebrateWinner?: (winner: string | null) => boolean;
   shouldCountMove?: (turn: string | null) => boolean;
   turnIndicator?: React.ReactNode;
+  turnIndicatorExtra?: React.ReactNode;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -94,6 +96,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   disabledCells,
   shouldCountMove,
   turnIndicator: customTurnIndicator,
+  turnIndicatorExtra,
 }: Props<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -247,7 +250,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
         <Flex justify="space-between" align="center">
           <Text strong>
             {turnConfig.textPrefix ?? "Turno actual:"}{" "}
-            <span style={{ color: activeTurn.color }}>{activeTurn.label}</span>
+            <span style={{ color: activeTurn.labelColor ?? activeTurn.color }}>{activeTurn.label}</span>
+            {turnIndicatorExtra}
           </Text>
           {onHint && (
             <Button

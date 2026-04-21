@@ -10,6 +10,7 @@ import {
 import SessionGamePage from "../game/SessionGamePage";
 import { getUserSession } from "../utils/session";
 import { recordUserGame } from "../api/users";
+import "../estilos/VariantVisuals.css";
 
 function parseBoardSize(raw: string | null): number {
   const parsed = Number(raw ?? "7");
@@ -111,12 +112,17 @@ export default function GameMaster() {
         otherWinnerBackground: "#ff7b0033",
       }}
       turnConfig={{
-        textPrefix: `✌️ Master: Quedan ${piecesLeft} piezas — Turno:`,
+        textPrefix: `Master`,
         turns: {
           player0: { label: "Player 0", color: "#28BBF5" },
           player1: { label: "Player 1", color: "#FF7B00" },
         },
       }}
+      turnIndicatorExtra={
+        <div className={`moves-indicator move-active`} style={{ marginLeft: 8, display: "inline-flex" }}>
+          <span>⚡</span> {piecesLeft} mov.
+        </div>
+      }
     />
   );
 }

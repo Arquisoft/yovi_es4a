@@ -1,6 +1,9 @@
 import { useSearchParams } from "react-router-dom";
-import { useCallback } from "react";
-import { message } from "antd";
+import { useState, useCallback } from "react";
+import { message, Typography } from "antd";
+import "../estilos/VariantVisuals.css";
+
+const { Text } = Typography;
 
 import {
   createHvhGame,
@@ -25,9 +28,12 @@ function flipCoin(): "player0" | "player1" {
 export default function GameFortuneCoin() {
   const [searchParams] = useSearchParams();
   const size = parseBoardSize(searchParams.get("size"));
+  const [isFlipping, setIsFlipping] = useState(false);
 
   const start = useCallback(async () => {
     const initialTurn = flipCoin();
+    setIsFlipping(true);
+    setTimeout(() => setIsFlipping(false), 600);
     await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: initialTurn });
     const res = await createHvhGame({ size, hvh_starter: initialTurn });
     message.info(`🪙 Moneda lanzada: Empieza ${initialTurn === "player0" ? "Player 0 (Azul)" : "Player 1 (Naranja)"}`);
@@ -35,6 +41,8 @@ export default function GameFortuneCoin() {
   }, [size]);
 
   const move = useCallback(async (gameId: string, cellId: number) => {
+    setIsFlipping(true);
+    setTimeout(() => setIsFlipping(false), 600);
     const next = flipCoin();
     const nextInt = next === "player0" ? 0 : 1;
     const res = await hvhMove(gameId, cellId, undefined, nextInt);
@@ -93,12 +101,22 @@ export default function GameFortuneCoin() {
         otherWinnerBackground: "#ff7b0033",
       }}
       turnConfig={{
-        textPrefix: "🪙 Lanza moneda... Turno:",
+        textPrefix: "Moneda",
         turns: {
           player0: { label: "Player 0", color: "#28BBF5" },
           player1: { label: "Player 1", color: "#FF7B00" },
         },
       }}
+      turnIndicatorExtra={
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginLeft: 8 }}>
+          <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
+             🪙
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Lanzando...
+          </Text>
+        </div>
+      }
     />
   );
 }

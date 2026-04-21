@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Badge } from "antd";
+import { Flex, Typography } from "antd";
+
+const { Text } = Typography;
 
 import MultiplayerSessionGamePage from "../game/MultiplayerSessionGamePage";
 import { parseYenToCells } from "../game/yen";
@@ -10,6 +12,8 @@ import {
   type MultiplayerRole,
 } from "../game/useMultiplayerGameSession";
 import MultiplayerChatDrawer from "./MultiplayerChatDrawer";
+import "../estilos/VariantVisuals.css";
+import { useEffect } from "react";
 
 function getModeTitle(mode: string | undefined): string {
   if (mode === "classic_hvh") return "Clásico Online";
@@ -71,6 +75,25 @@ export default function GameMultiplayer() {
     return yen ? parseYenToCells(yen) : [];
   }, [yen]);
 
+  const [isRolling, setIsRolling] = useState(false);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    if (diceValue) {
+      setIsRolling(true);
+      const timer = setTimeout(() => setIsRolling(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [diceValue]);
+
+  useEffect(() => {
+    if (nextTurn) {
+      setIsFlipping(true);
+      const timer = setTimeout(() => setIsFlipping(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [nextTurn]);
+
   const opponentName = useMemo(() => {
     const opponent =
       myPlayer === "player0"
@@ -81,17 +104,33 @@ export default function GameMultiplayer() {
   }, [myPlayer, playerProfiles]);
 
   const turnIndicatorExtra = (
-    <>
+    <Flex gap={12} align="center">
       {config?.mode === "master_hvh" && (
-        <Badge count={piecesLeft} overflowCount={9} style={{ backgroundColor: "#52c41a" }} title="Movimientos restantes" />
+        <div className={`moves-indicator ${nextTurn === myPlayer ? "move-active" : ""}`}>
+          <span>⚡</span> {piecesLeft} mov.
+        </div>
       )}
       {config?.mode === "fortune_dice_hvh" && (
         <>
-          <Badge count={diceValue} overflowCount={9} style={{ backgroundColor: "#faad14" }} title="Valor del dado" />
-          <Badge count={piecesLeft} overflowCount={9} style={{ backgroundColor: "#52c41a" }} title="Movimientos restantes" />
+          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
+            {diceValue}
+          </div>
+          <div className={`moves-indicator ${nextTurn === myPlayer && piecesLeft > 0 ? "move-active" : ""}`}>
+            {piecesLeft} piezas
+          </div>
         </>
       )}
-    </>
+      {config?.mode === "fortune_coin_hvh" && (
+        <>
+          <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
+            {nextTurn === "player0" ? "A" : "N"}
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Lanzando moneda...
+          </Text>
+        </>
+      )}
+    </Flex>
   );
 
   return (
