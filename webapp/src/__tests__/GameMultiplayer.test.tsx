@@ -133,6 +133,16 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      // New properties:
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
+      swapped: false,
+      moveCount: 0,
+      handleSwapRoles: vi.fn(),
     });
 
     mockedParseYenToCells.mockReturnValue([
@@ -193,6 +203,15 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
+      swapped: false,
+      moveCount: 0,
+      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);
@@ -218,6 +237,15 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
+      swapped: false,
+      moveCount: 0,
+      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);
@@ -360,6 +388,15 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
+      swapped: false,
+      moveCount: 0,
+      handleSwapRoles: vi.fn(),
     });
 
     render(<GameMultiplayer />);
