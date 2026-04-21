@@ -205,7 +205,7 @@ describe("GameWhyNot", () => {
     });
   });
 
-  it("ignora onGameFinished si winner es null", async () => {
+  it("registra partida empatada si winner es null", async () => {
     const registerFinishedGame = vi.fn();
 
     vi.mocked(useDeferredGameSave).mockReturnValue({
@@ -222,7 +222,15 @@ describe("GameWhyNot", () => {
       totalMoves: 3,
     });
 
-    expect(registerFinishedGame).not.toHaveBeenCalled();
+    expect(registerFinishedGame).toHaveBeenCalledWith({
+      gameId: "g-null",
+      mode: "why_not_hvh",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 3,
+      opponent: "Jugador local (WhY Not)",
+      startedBy: "player0",
+    });
   });
 
   it("registra abandono y borra la partida", async () => {

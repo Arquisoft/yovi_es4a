@@ -26,9 +26,9 @@ import {
   type YEN,
 } from "../api/gamey";
 import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import { recordUserGame } from "../api/users";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
+import { hasPlayableCells } from "../game/variants";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -89,7 +89,6 @@ function adjacentCells(cellId: number, boardSize: number): Set<number> {
 
 export default function GameTabu() {
   const [searchParams] = useSearchParams();
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
@@ -102,42 +101,18 @@ export default function GameTabu() {
   const currentPlayerRef = useRef<"player0" | "player1">("player0");
 
   const [tabuCells, setTabuCells] = useState<Set<number>>(new Set());
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
+      boardSize: size,
+      mode: "tabu_hvh",
+      opponent: "Jugador local (Tabú)",
+      startedBy: hvh_starter,
+      deleteGame: deleteHvhGame,
+    });
 
   function computeTabu(lastOpponentCell: number | null): Set<number> {
     if (lastOpponentCell === null) return new Set();
     return adjacentCells(lastOpponentCell, size);
-  }
-
-  async function registerFinishedGame(gameId: string, winner: string | null, totalMoves: number) {
-    const session = getUserSession();
-    if (!session || !winner || savedGameIdsRef.current.has(gameId)) return;
-    await recordUserGame(session.username, {
-      gameId,
-      mode: "tabu_hvh",
-      result: winner === "player0" ? "won" : "lost",
-      boardSize: size,
-      totalMoves,
-      opponent: "Jugador local (Tabú)",
-      startedBy: hvh_starter,
-    });
-    savedGameIdsRef.current.add(gameId);
-  }
-
-  async function registerAbandonedGame(gameId: string, totalMoves: number) {
-    const session = getUserSession();
-    if (session && !savedGameIdsRef.current.has(gameId)) {
-      await recordUserGame(session.username, {
-        gameId,
-        mode: "tabu_hvh",
-        result: "abandoned",
-        boardSize: size,
-        totalMoves,
-        opponent: "Jugador local (Tabú)",
-        startedBy: hvh_starter,
-      });
-      savedGameIdsRef.current.add(gameId);
-    }
-    await deleteHvhGame(gameId);
   }
 
   const move = useCallback(async (
@@ -157,6 +132,13 @@ export default function GameTabu() {
       // Las celdas tabú para el próximo turno son las adyacentes a la jugada del jugador actual
       const newTabu = computeTabu(cellId);
       setTabuCells(newTabu);
+
+      if (!hasPlayableCells(result.yen, newTabu)) {
+        return {
+          ...result,
+          status: { state: "finished", winner: null },
+        };
+      }
     } else {
       setTabuCells(new Set());
     }
@@ -192,7 +174,11 @@ export default function GameTabu() {
         abandonOkText: "Abandonar",
         getResultTitle: () => "Partida finalizada",
         getResultText: (winner) =>
-          winner === "player0" ? "Player 0 ha ganado." : "Player 1 ha ganado.",
+          winner === "player0"
+            ? "Player 0 ha ganado."
+            : winner === "player1"
+              ? "Player 1 ha ganado."
+              : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
       }}
       winnerPalette={{
         highlightedWinner: "player0",

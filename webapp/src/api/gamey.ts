@@ -127,7 +127,7 @@ export type Winner = "human" | "bot" | "player0" | "player1";
 
 export type GameStatus =
   | { state: "ongoing"; next: NextTurn }
-  | { state: "finished"; winner: Winner };
+  | { state: "finished"; winner?: Winner | null };
 
 export type GameStateResponse = {
   game_id: string;
@@ -168,12 +168,9 @@ export type HvhMoveResponse = {
 // API EXTERNA DE BOTS
 // --------------------------------------------------------------------------------------
 
-export type PlayBotResponse = {
-  api_version: string;
-  bot_id: string;
-  coords: MoveCoords;
-  position: YEN;
-};
+export type PlayBotResponse =
+  | { coords: MoveCoords }
+  | { action: "swap" | "resign" };
 
 export async function playBot(
   position: YEN,

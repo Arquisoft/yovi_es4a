@@ -85,6 +85,7 @@ async function main() {
 
     const gamesWon       = games.filter(g => g.result === 'won').length;
     const gamesLost      = games.filter(g => g.result === 'lost').length;
+    const gamesDrawn     = games.filter(g => g.result === 'draw').length;
     const gamesAbandoned = games.filter(g => g.result === 'abandoned').length;
     const totalMoves     = games.reduce((acc, g) => acc + g.totalMoves, 0);
 
@@ -97,7 +98,7 @@ async function main() {
       profilePicture:    u.avatar,
       createdAt:         new Date(),
       isVerified:        true,
-      stats: { gamesPlayed: games.length, gamesWon, gamesLost, gamesAbandoned, totalMoves, winRate },
+      stats: { gamesPlayed: games.length, gamesWon, gamesLost, gamesDrawn, gamesAbandoned, totalMoves, winRate },
       gameHistory:       games.map(g => ({ ...g, finishedAt: new Date(g.finishedAt) })), // Castear string a Date
     });
 

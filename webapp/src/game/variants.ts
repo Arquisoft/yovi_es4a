@@ -1,3 +1,5 @@
+import type { YEN } from "../api/gamey";
+
 /** Calcula el índice lineal a partir de coordenadas baricéntricas. */
 function toIndex(x: number, y: number, boardSize: number): number {
   const r = (boardSize - 1) - x;
@@ -307,9 +309,27 @@ export function createLocalHvHResultConfig(
     subtitle: subtitleParts.join(" · "),
     abandonOkText: "Abandonar",
     getResultTitle: () => "Partida finalizada",
-    getResultText: (winner: string | null) =>
-      winner === "player0"
+    getResultText: (winner: string | null) => {
+      if (winner === null)
+        return "La partida terminó en empate.";
+
+      return winner === "player0"
         ? `${LOCAL_HVH_PLAYER_LABELS.player0} ha ganado la partida.`
-        : `${LOCAL_HVH_PLAYER_LABELS.player1} ha ganado la partida.`,
+        : `${LOCAL_HVH_PLAYER_LABELS.player1} ha ganado la partida.`;
+    },
   };
+}
+
+export function hasPlayableCells(yen: YEN, blockedCells: Set<number> = new Set()): boolean {
+  let cellId = 0;
+
+  for (const row of yen.layout.split("/")) {
+    for (const cell of row) {
+      if (cell === "." && !blockedCells.has(cellId))
+        return true;
+      cellId += 1;
+    }
+  }
+
+  return false;
 }

@@ -77,6 +77,10 @@ async function saveGameForUser(username, game) {
     inc["stats.gamesAbandoned"] = 1;
     nextWinStreak = 0;
   }
+  else if (game.result === "draw") {
+    inc["stats.gamesDrawn"] = 1;
+    nextWinStreak = 0;
+  }
 
   await User.findByIdAndUpdate(
     user._id,
@@ -286,6 +290,12 @@ module.exports = function setupSocketHandler(io) {
         await persistRoomHistory(room, {
           hostResult: 'lost',
           guestResult: 'won',
+        });
+      }
+      else if (winner == null) {
+        await persistRoomHistory(room, {
+          hostResult: 'draw',
+          guestResult: 'draw',
         });
       }
     });

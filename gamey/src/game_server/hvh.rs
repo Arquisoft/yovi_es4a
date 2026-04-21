@@ -187,7 +187,13 @@ pub async fn post_move(
     let finished = session.game.check_game_over();
 
     if finished {
-        session.hvh_winner = Some(played_by);
+        session.hvh_winner = match session.game.status() {
+            crate::GameStatus::Finished {
+                winner: Some(_),
+            } => Some(played_by),
+            crate::GameStatus::Finished { winner: None } => None,
+            crate::GameStatus::Ongoing { .. } => None,
+        };
     } else {
         session.hvh_next_player = Some(1 - played_by);
     }
@@ -628,7 +634,7 @@ mod tests {
 
         match res.0.status {
             GameStatus::Finished { winner } => {
-                assert!(matches!(winner, super::super::dto::Winner::Player1))
+                assert!(matches!(winner, Some(super::super::dto::Winner::Player1)))
             }
             _ => panic!("expected finished"),
         }

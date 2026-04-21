@@ -11,7 +11,7 @@ import {
   putConfig,
   type YEN,
 } from "../api/gamey";
-import { generateHoles, getAdjacentCells } from "./variants";
+import { generateHoles, getAdjacentCells, hasPlayableCells } from "./variants";
 
 export type MultiplayerRole = "host" | "guest";
 export type MultiplayerConfig = {
@@ -51,16 +51,33 @@ function resolveWinnerByMode(
   return winner;
 }
 
+export type UseMultiplayerGameSessionResult = {
+  gameId: string | null;
+  yen: YEN | null;
+  loading: boolean;
+  gameOver?: boolean;
+  winner: string | null;
+  nextTurn: string | null;
+  error: string;
+  disabledCells: Set<number>;
+  myPlayer: string;
+  myColor: string;
+  playerProfiles: MultiplayerPlayerProfiles;
+  handleCellClick: (cellId: number) => Promise<void>;
+  handleAbandon: () => Promise<void>;
+};
+
 export function useMultiplayerGameSession({
   code,
   role,
   config,
   onInvalidState,
   onLeaveLobby,
-}: UseMultiplayerGameSessionArgs) {
+}: UseMultiplayerGameSessionArgs): UseMultiplayerGameSessionResult {
   const [gameId, setGameId] = useState<string | null>(null);
   const [yen, setYen] = useState<YEN | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [nextTurn, setNextTurn] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -95,19 +112,30 @@ export function useMultiplayerGameSession({
         const r = await getHvhGame(gId, effectiveOverrideId);
         setYen(r.yen);
 
-        if (config?.mode === "tabu_hvh" && lastMoveCellId !== undefined)
-          setDisabledCells(getAdjacentCells(lastMoveCellId, r.yen.size));
-        else if (config?.mode === "holey_hvh")
-          setDisabledCells(forcedHoles || holes);
-        else
-          setDisabledCells(new Set());      
+        const nextBlockedCells =
+          config?.mode === "tabu_hvh" && lastMoveCellId !== undefined
+            ? getAdjacentCells(lastMoveCellId, r.yen.size)
+            : config?.mode === "holey_hvh"
+              ? (forcedHoles || holes)
+              : new Set<number>();
+
+        setDisabledCells(nextBlockedCells);
 
         if (r.status.state === "finished") {
+          setGameOver(true);
           setWinner(resolveWinnerByMode(r.status.winner ?? null, config?.mode));
           setNextTurn(null);
           setDisabledCells(new Set());
         }
         else {
+          if (!hasPlayableCells(r.yen, nextBlockedCells)) {
+            setGameOver(true);
+            setWinner(null);
+            setNextTurn(null);
+            return;
+          }
+
+          setGameOver(false);
           setWinner(null);
           setNextTurn(r.status.next ?? null);
         }
@@ -160,6 +188,7 @@ export function useMultiplayerGameSession({
 
         setGameId(r.game_id);
         setYen(r.yen);
+        setGameOver(r.status.state === "finished");
         setWinner(
           r.status.state === "finished"
             ? resolveWinnerByMode(r.status.winner ?? null, config?.mode)
@@ -189,6 +218,7 @@ export function useMultiplayerGameSession({
     setLoading(true);
     setGameId(null);
     setYen(null);
+    setGameOver(false);
     setWinner(null);
     setNextTurn(null);
     setHostClientId(null);
@@ -277,7 +307,7 @@ export function useMultiplayerGameSession({
         !gameId ||
         nextTurn !== myPlayer ||
         loading ||
-        winner ||
+        gameOver ||
         !!error ||
         disabledCells.has(cellId)
       ) {
@@ -293,8 +323,15 @@ export function useMultiplayerGameSession({
         const r = await hvhMove(gameId, cellId, overrideClientId);
         setYen(r.yen);
 
+        const nextBlockedCells =
+          config?.mode === "tabu_hvh"
+            ? getAdjacentCells(cellId, r.yen.size)
+            : config?.mode === "holey_hvh"
+              ? holes
+              : new Set<number>();
+
         if (config?.mode === "tabu_hvh")
-          setDisabledCells(new Set());
+          setDisabledCells(nextBlockedCells);
 
         if (r.status.state === "finished") {
           const resolvedWinner = resolveWinnerByMode(
@@ -302,6 +339,7 @@ export function useMultiplayerGameSession({
             config?.mode,
           );
 
+          setGameOver(true);
           setWinner(resolvedWinner);
           setNextTurn(null);
           setDisabledCells(new Set());
@@ -318,6 +356,16 @@ export function useMultiplayerGameSession({
           return;
         }
 
+        if (!hasPlayableCells(r.yen, nextBlockedCells)) {
+          setGameOver(true);
+          setWinner(null);
+          setNextTurn(null);
+          socket.emit("playMove", { code, cellId });
+          socket.emit("finishGame", { code, winner: null });
+          return;
+        }
+
+        setGameOver(false);
         setWinner(null);
         setNextTurn(r.status.next ?? null);
 
@@ -341,7 +389,7 @@ export function useMultiplayerGameSession({
       myPlayer,
       nextTurn,
       role,
-      winner,
+      gameOver,
     ],
   );
 
@@ -364,6 +412,7 @@ export function useMultiplayerGameSession({
     gameId,
     yen,
     loading,
+    gameOver,
     winner,
     nextTurn,
     error,

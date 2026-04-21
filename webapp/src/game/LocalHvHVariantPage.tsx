@@ -78,12 +78,15 @@ export default function LocalHvHVariantPage({
     winner: string | null;
     totalMoves: number;
   }) {
-    if (!winner) return;
-
     const payload: RecordUserGameRequest = {
       gameId,
       mode,
-      result: winner === "player0" ? "won" : "lost",
+      result:
+        winner === null
+          ? "draw"
+          : winner === "player0"
+            ? "won"
+            : "lost",
       boardSize: size,
       totalMoves,
       opponent,

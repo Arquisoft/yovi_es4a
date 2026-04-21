@@ -17,6 +17,7 @@ vi.mock("../api/users", () => ({
         const labels: Record<string, string> = {
             classic_hvb: "Clásico — Humano vs Bot",
             classic_hvh: "Clásico — Humano vs Humano",
+            tabu_hvh: "Tabú — Humano vs Humano",
             why_not_hvh: "WhY Not — Humano vs Humano",
         };
         return labels[mode] ?? mode;
@@ -25,6 +26,7 @@ vi.mock("../api/users", () => ({
         const labels: Record<string, string> = {
             classic_hvb: "Clásico HvB",
             classic_hvh: "Clásico HvH",
+            tabu_hvh: "Tabú HvH",
             why_not_hvh: "WhY Not HvH",
         };
         return labels[mode] ?? mode;
@@ -34,6 +36,7 @@ vi.mock("../api/users", () => ({
         { value: "all", label: "Todos los modos" },
         { value: "classic_hvb", label: "Clásico HvB" },
         { value: "classic_hvh", label: "Clásico HvH" },
+        { value: "tabu_hvh", label: "Tabú HvH" },
         { value: "why_not_hvh", label: "WhY Not HvH" },
     ],
 }));
@@ -56,6 +59,7 @@ vi.mock("../vistas/UserStats", () => ({
             <div>{title}</div>
             <div>{`W:${stats.gamesWon}`}</div>
             <div>{`L:${stats.gamesLost}`}</div>
+            <div>{`D:${stats.gamesDrawn}`}</div>
             <div>{`A:${stats.gamesAbandoned}`}</div>
         </div>
     ),
@@ -137,6 +141,7 @@ vi.mock("@ant-design/icons", () => ({
     CloseCircleOutlined: () => null,
     StopOutlined: () => null,
     UserOutlined: () => null,
+    MinusCircleOutlined: () => null,
 }));
 
 function buildHistoryResponse(overrides: any = {}) {
@@ -147,6 +152,7 @@ function buildHistoryResponse(overrides: any = {}) {
             gamesPlayed: 3,
             gamesWon: 1,
             gamesLost: 1,
+            gamesDrawn: 1,
             gamesAbandoned: 1,
             totalMoves: 23,
             winRate: 33,
@@ -223,6 +229,7 @@ describe("UserHistory", () => {
         expect(screen.getByText("Estadísticas")).toBeInTheDocument();
         expect(screen.getByText("W:1")).toBeInTheDocument();
         expect(screen.getByText("L:1")).toBeInTheDocument();
+        expect(screen.getByText("D:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
         expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
@@ -236,6 +243,35 @@ describe("UserHistory", () => {
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
         expect(screen.getByText("Perdida")).toBeInTheDocument();
+    });
+
+    it("muestra partidas empatadas y usa rival por defecto cuando falta opponent", async () => {
+        getUserHistoryMock.mockResolvedValueOnce(
+            buildHistoryResponse({
+                games: [
+                    {
+                        gameId: "g3",
+                        mode: "tabu_hvh",
+                        result: "draw",
+                        boardSize: 7,
+                        totalMoves: 14,
+                        opponent: "",
+                        startedBy: "",
+                        finishedAt: "2026-03-21T14:00:00.000Z",
+                    },
+                ],
+            }),
+        );
+
+        render(<UserHistory />);
+
+        expect(await screen.findByText("Empatada")).toBeInTheDocument();
+        expect(screen.getAllByText("Tabú HvH").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Tabú — Humano vs Humano").length).toBeGreaterThan(0);
+        expect(
+            screen.getByText((_, element) => element?.textContent === "Rival: Jugador local")
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/Empieza:/)).toBeNull();
     });
 
     it("muestra spinner mientras carga", () => {
@@ -264,10 +300,11 @@ describe("UserHistory", () => {
                     gamesPlayed: 0,
                     gamesWon: 0,
                     gamesLost: 0,
+                    gamesDrawn: 0,
                     gamesAbandoned: 0,
                     totalMoves: 0,
-                    winRate: 0,
                     currentWinStreak: 0,
+                    winRate: 0,
                 },
                 pagination: {
                     page: 1,
@@ -401,6 +438,28 @@ describe("UserHistory", () => {
                 mode: "classic_hvb",
                 result: "won",
                 sortBy: "movesDesc",
+            });
+        });
+    });
+
+    it("permite filtrar por empatadas", async () => {
+        getUserHistoryMock.mockResolvedValue(buildHistoryResponse());
+
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalled();
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[1], {
+            target: { value: "draw" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "draw",
+                sortBy: "newest",
             });
         });
     });

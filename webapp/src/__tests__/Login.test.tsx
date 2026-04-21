@@ -33,7 +33,7 @@ vi.mock("antd", async () => {
 });
 
 describe("LoginForm", () => {
-  beforeAll(() => {
+  function installMatchMediaMock() {
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
@@ -47,10 +47,18 @@ describe("LoginForm", () => {
         dispatchEvent: vi.fn(),
       })),
     });
+  }
+
+  beforeAll(() => {
+    installMatchMediaMock();
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    loginUserMock.mockReset();
+    saveUserSessionMock.mockReset();
+    mockNavigate.mockReset();
+    installMatchMediaMock();
   });
 
   it("renderiza campos y botón", async () => {
