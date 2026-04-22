@@ -140,7 +140,7 @@ export function useMultiplayerGameSession({
 
           setGameOver(false);
           setWinner(null);
-          setNextTurn(r.status.next ?? null);
+          setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
         }
       }
       catch (e: any) {
@@ -211,7 +211,7 @@ export function useMultiplayerGameSession({
         setYen(r.yen);
         setGameOver(r.status.state === "finished");
         setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
-        setNextTurn(r.status.next ?? null);
+        setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
 
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", {

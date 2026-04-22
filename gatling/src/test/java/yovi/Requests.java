@@ -57,8 +57,8 @@ public class Requests {
             .post("/api/v1/hvb/games/#{hvbGameId}/moves")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{\"cell_id\":0}"))
-            .check(status().in(200, 409, 422))
+            .body(StringBody("{\"cell_id\":#{randomInt(0,24)}}"))
+            .check(status().in(200, 400, 409, 422))
     );
 
     public static final ChainBuilder postBotMove = exec(
@@ -128,8 +128,8 @@ public class Requests {
             .post("/api/v1/hvh/games/#{hvhGameId}/moves")
             .header("Content-Type", "application/json")
             .header("X-Client-Id", "gatling-#{userId}")
-            .body(StringBody("{\"cell_id\":0}"))
-            .check(status().in(200, 409, 422))
+            .body(StringBody("{\"cell_id\":#{randomInt(0,24)}}"))
+            .check(status().in(200, 400, 409, 422))
     );
 
     public static final ChainBuilder deleteHvHGame = exec(
@@ -164,5 +164,37 @@ public class Requests {
             .queryParam("limit", "20")
             .check(status().is(200))
             .check(jsonPath("$.ranking").exists())
+    );
+
+    // ── Usuarios y Estadísticas ───────────────────────────────────────────────
+
+    public static final ChainBuilder getUserProfile = exec(
+        http("GET /api/users/{username}/profile")
+            .get(Config.USERS_BASE_PATH + "/gatling-#{userId}/profile")
+            .check(status().in(200, 404))
+    );
+
+    public static final ChainBuilder getUserStats = exec(
+        http("GET /api/users/{username}/stats")
+            .get(Config.USERS_BASE_PATH + "/gatling-#{userId}/stats")
+            .check(status().in(200, 404))
+    );
+
+    public static final ChainBuilder getUserHistory = exec(
+        http("GET /api/users/{username}/history")
+            .get(Config.USERS_BASE_PATH + "/gatling-#{userId}/history")
+            .queryParam("page", "1")
+            .queryParam("pageSize", "5")
+            .check(status().in(200, 404))
+    );
+
+    public static final ChainBuilder postGameHistory = exec(
+        http("POST /api/users/{username}/games")
+            .post(Config.USERS_BASE_PATH + "/gatling-#{userId}/games")
+            .header("Content-Type", "application/json")
+            .body(StringBody(
+                "{\"gameId\":\"#{randomUuid()}\",\"mode\":\"classic_hvb\",\"result\":\"won\",\"opponent\":\"bot\",\"startedBy\":\"human\",\"boardSize\":5,\"totalMoves\":10}"
+            ))
+            .check(status().in(201, 400, 404, 409))
     );
 }

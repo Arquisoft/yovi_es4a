@@ -16,9 +16,8 @@ public class StressSimulation extends Simulation {
         .contentTypeHeader("application/json");
 
     // ── Escenario pesado: HvB con bot ─────────────────────────────────────────
-    // FIX heredado de Requests.java: postHvBMove ahora envía {"cell_id":0}
-    // en lugar de {"x":0,"y":0,"z":0}, por lo que los movimientos ya no fallan
-    // con 422 en cada iteración de estrés.
+    // postHvBMove ahora envía {"cell_id": #{randomInt(0,24)}}
+    // para evitar colisiones excesivas y que el motor trabaje procesando movimientos reales.
 
     ScenarioBuilder heavyHvBScenario = scenario("Stress — HvB bot-move")
         .exec(session -> session.set("userId", "stress-" + session.userId()))
@@ -42,7 +41,13 @@ public class StressSimulation extends Simulation {
         .pause(Duration.ofMillis(100))
         .exec(Requests.getRanking)
         .pause(Duration.ofMillis(100))
-        .exec(Requests.playExternal);
+        .exec(Requests.playExternal)
+        .pause(Duration.ofMillis(100))
+        .exec(Requests.getUserProfile)
+        .pause(Duration.ofMillis(100))
+        .exec(Requests.getUserStats)
+        .pause(Duration.ofMillis(100))
+        .exec(Requests.getUserHistory);
 
     // ── Escenario: bot externo en ráfaga ──────────────────────────────────────
 
@@ -59,21 +64,21 @@ public class StressSimulation extends Simulation {
 
         setUp(
             heavyHvBScenario.injectClosed(
-                incrementConcurrentUsers(5)
+                incrementConcurrentUsers(10)
                     .times(5)
                     .eachLevelLasting(stepDuration)
-                    .startingFrom(5)
+                    .startingFrom(10)
             ),
             lightScenario.injectClosed(
                 constantConcurrentUsers(0).during(Duration.ofSeconds(5)),
-                incrementConcurrentUsers(3)
+                incrementConcurrentUsers(15)
                     .times(5)
                     .eachLevelLasting(stepDuration)
-                    .startingFrom(3)
+                    .startingFrom(15)
             ),
             botExternalScenario.injectOpen(
                 nothingFor(Duration.ofSeconds(10)),
-                atOnceUsers(5)
+                atOnceUsers(20)
             )
         ).protocols(httpProtocol)
          .assertions(

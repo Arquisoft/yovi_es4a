@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import GameMultiplayer from "../vistas/GameMultiplayer";
-import { socket } from "../api/socket";
 import { useMultiplayerGameSession } from "../game/useMultiplayerGameSession";
 import { parseYenToCells } from "../game/yen";
 
@@ -105,7 +104,7 @@ vi.mock("../vistas/MultiplayerChatDrawer", () => ({
 }));
 
 describe("GameMultiplayer", () => {
-  const mockedSocket = vi.mocked(socket);
+  // const mockedSocket = vi.mocked(socket);
   const mockedUseMultiplayerGameSession = vi.mocked(useMultiplayerGameSession);
   const mockedParseYenToCells = vi.mocked(parseYenToCells);
 
