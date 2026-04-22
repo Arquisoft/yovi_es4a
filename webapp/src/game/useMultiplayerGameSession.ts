@@ -63,6 +63,15 @@ export type UseMultiplayerGameSessionResult = {
   diceValue: number;
 };
 
+function mapWinnerForMode(mode: string | undefined, winner: string | null): string | null {
+  if (mode !== "why_not_hvh" && mode !== "whynot_hvh") {
+    return winner;
+  }
+  if (winner === "player0") return "player1";
+  if (winner === "player1") return "player0";
+  return winner;
+}
+
 export function useMultiplayerGameSession({
   code,
   role,
@@ -126,7 +135,7 @@ export function useMultiplayerGameSession({
 
         if (r.status.state === "finished") {
           setGameOver(true);
-          setWinner(r.status.winner ?? null);
+          setWinner(mapWinnerForMode(config?.mode, r.status.winner ?? null));
           setNextTurn(null);
           setDisabledCells(new Set());
         }
@@ -210,8 +219,12 @@ export function useMultiplayerGameSession({
         setGameId(r.game_id);
         setYen(r.yen);
         setGameOver(r.status.state === "finished");
-        setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
-        setNextTurn(r.status.next ?? null);
+        setWinner(
+          r.status.state === "finished"
+            ? mapWinnerForMode(config?.mode, r.status.winner ?? null)
+            : null,
+        );
+        setNextTurn(r.status.state === "ongoing" ? r.status.next ?? null : null);
 
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", {
@@ -400,7 +413,8 @@ export function useMultiplayerGameSession({
 
         if (r.status.state === "finished") {
           setGameOver(true);
-          setWinner(r.status.winner ?? null);
+          const resolvedWinner = mapWinnerForMode(config?.mode, r.status.winner ?? null);
+          setWinner(resolvedWinner);
           setNextTurn(null);
           setDisabledCells(new Set());
         }
@@ -450,7 +464,7 @@ export function useMultiplayerGameSession({
         if (r.status.state === "finished") {
           socket.emit("finishGame", {
             code,
-            winner: r.status.winner ?? null,
+            winner: mapWinnerForMode(config?.mode, r.status.winner ?? null),
           });
         }
       }

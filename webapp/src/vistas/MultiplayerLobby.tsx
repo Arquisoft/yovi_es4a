@@ -4,7 +4,7 @@ import { ArrowLeftOutlined, NodeIndexOutlined, UsergroupAddOutlined, CopyOutline
 import { useNavigate } from "react-router-dom";
 import AppHeader from "./AppHeader";
 import { socket } from "../api/socket";
-import { VARIANTS } from "./VariantSelect";
+import { VARIANTS } from "../game/variants";
 import { getUserSession } from "../utils/session";
 
 const { Title, Text, Paragraph } = Typography;
@@ -18,7 +18,7 @@ const MODE_MAP: Record<string, string> = {
   poly_y: "poly_hvh",
   pastel: "pastel_hvh",
   master: "master_hvh",
-  why_not: "whynot_hvh",
+  why_not: "why_not_hvh",
   hex: "hex_hvh",
   "3dy": "3dy_hvh",
 };

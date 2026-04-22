@@ -1,5 +1,6 @@
+import { useCallback, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useState, useCallback, useRef } from "react";
+
 import {
   createHvhGame,
   deleteHvhGame,
@@ -8,118 +9,127 @@ import {
   type YEN,
 } from "../api/gamey";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
-import { recordUserGame } from "../api/users";
+import type {
+  SessionGameMoveResponse,
+  SessionGameStartResponse,
+} from "../game/useSessionGame";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+import {
+  createLocalHvHResultConfig,
+  LOCAL_HVH_TURN_CONFIG,
+  LOCAL_HVH_WINNER_PALETTE,
+  parseBoardSize,
+  parseHvHStarter,
+} from "../game/variants";
 import "../estilos/VariantVisuals.css";
 
-function parseBoardSize(raw: string | null): number {
-  const parsed = Number(raw ?? "7");
-  return Number.isFinite(parsed) && parsed >= 2 ? parsed : 7;
+type TurnPlayer = "player0" | "player1";
+
+function oppositePlayer(player: TurnPlayer): TurnPlayer {
+  return player === "player0" ? "player1" : "player0";
 }
 
 export default function GameMaster() {
   const [searchParams] = useSearchParams();
+
   const size = parseBoardSize(searchParams.get("size"));
-  
-  // State to track pieces left for the current player
+  const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
+
   const [piecesLeft, setPiecesLeft] = useState(2);
-  const nextPlayerRef = useRef<"player0" | "player1">("player0");
+  const currentPlayerRef = useRef<TurnPlayer>("player0");
 
-  const start = useCallback(async () => {
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
+      boardSize: size,
+      mode: "master_hvh",
+      opponent: "Jugador local (Master Y)",
+      startedBy: hvhStarter,
+      deleteGame: deleteHvhGame,
+    });
+
+  const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
     setPiecesLeft(2);
-    nextPlayerRef.current = "player0";
-    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: "player0" });
-    const res = await createHvhGame({ size, hvh_starter: "player0" });
-    return {
-        ...res,
-        status: { state: "ongoing", next: "player0" } as any
-    };
-  }, [size]);
 
-  const move = useCallback(async (gameId: string, cellId: number) => {
-    const currentPlayer = nextPlayerRef.current;
-    const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
-    
-    // Si quedan piezas por poner (estamos en la primera de las 2), forzamos que el "siguiente" siga siendo el actual
-    const nextPlayerOverride = newPiecesLeft === 1 ? (currentPlayer === "player0" ? 0 : 1) : undefined;
-    
-    const res = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
-    
-    if (res.status.state === "finished") return { ...res, status: res.status as any };
+    await putConfig({
+      size,
+      hvb_starter: "human",
+      bot_id: null,
+      hvh_starter: hvhStarter,
+    });
 
-    setPiecesLeft(newPiecesLeft);
-
-    if (newPiecesLeft === 1) {
-        // Still the same player's turn
-        return {
-            ...res,
-            status: { ...res.status, next: nextPlayerRef.current } as any
-        };
-    } else {
-        // Turn passes
-        const next = nextPlayerRef.current === "player0" ? "player1" : "player0";
-        nextPlayerRef.current = next;
-        return {
-            ...res,
-            status: { ...res.status, next: next } as any
-        };
+    const game = await createHvhGame({ size, hvh_starter: hvhStarter });
+    if (game.status.state === "ongoing") {
+      currentPlayerRef.current = (game.status.next ?? "player0") as TurnPlayer;
+      return {
+        ...game,
+        status: { state: "ongoing", next: currentPlayerRef.current },
+      };
     }
+
+    return game;
+  }, [hvhStarter, size]);
+
+  const move = useCallback(async (
+    gameId: string,
+    cellId: number,
+  ): Promise<SessionGameMoveResponse<YEN>> => {
+    const currentPlayer = currentPlayerRef.current;
+    const remainingAfterMove = piecesLeft === 2 ? 1 : 2;
+
+    const nextPlayerOverride =
+      remainingAfterMove === 1 ? (currentPlayer === "player0" ? 0 : 1) : undefined;
+
+    const result = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
+
+    if (result.status.state === "finished") {
+      return result;
+    }
+
+    setPiecesLeft(remainingAfterMove);
+
+    if (remainingAfterMove === 1) {
+      return {
+        ...result,
+        status: { state: "ongoing", next: currentPlayer },
+      };
+    }
+
+    const nextPlayer = oppositePlayer(currentPlayer);
+    currentPlayerRef.current = nextPlayer;
+    return {
+      ...result,
+      status: { state: "ongoing", next: nextPlayer },
+    };
   }, [piecesLeft]);
 
   return (
     <SessionGamePage<YEN>
-      deps={[size]}
+      deps={[size, hvhStarter]}
       start={start}
       move={move}
+      shouldCountMove={(turn) => turn === "player0"}
       onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        const session = getUserSession();
-        if (!session || !winner) return;
-        
-        await recordUserGame(session.username, {
-          gameId,
-          mode: "master_hvh",
-          result: winner === "player0" ? "won" : "lost",
-          boardSize: size,
-          totalMoves,
-          opponent: "Jugador local (Master Y)",
-          startedBy: "player0",
-        });
+        await registerFinishedGame(gameId, winner, totalMoves);
       }}
       onGameAbandoned={async ({ gameId, totalMoves }) => {
-        const session = getUserSession();
-        if (session) {
-          await recordUserGame(session.username, {
-            gameId,
-            mode: "master_hvh",
-            result: "abandoned",
-            boardSize: size,
-            totalMoves,
-            opponent: "Jugador local (Master Y)",
-            startedBy: "player0",
-          });
-        }
-        await deleteHvhGame(gameId);
+        await registerAbandonedGame(gameId, totalMoves);
       }}
-      resultConfig={{
-        title: "Juego Y — Master Y (2 piezas/turno)",
-        subtitle: `Tamaño: ${size} · Cada jugador coloca exactly 2 piezas`,
-        getResultTitle: () => "Partida finalizada",
-        getResultText: (winner) => `${winner === "player0" ? "Player 0" : "Player 1"} ha ganado.`
-      }}
-      winnerPalette={{
-        highlightedWinner: "player0",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
+      resultConfig={createLocalHvHResultConfig(
+        "Juego Y - Master Y",
+        size,
+        hvhStarter,
+        "Cada turno obliga a colocar 2 piezas",
+      )}
+      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
       turnConfig={{
-        textPrefix: `Master`,
-        turns: {
-          player0: { label: "Player 0", color: "#28BBF5" },
-          player1: { label: "Player 1", color: "#FF7B00" },
-        },
+        ...LOCAL_HVH_TURN_CONFIG,
+        textPrefix: "Master:",
       }}
       turnIndicatorExtra={
-        <div className={`moves-indicator move-active`} style={{ marginLeft: 8, display: "inline-flex" }}>
+        <div
+          className="moves-indicator move-active"
+          style={{ marginLeft: 8, display: "inline-flex" }}
+        >
           <span>⚡</span> {piecesLeft} mov.
         </div>
       }

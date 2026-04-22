@@ -1,5 +1,21 @@
 const mongoose = require('mongoose');
 
+const GAME_MODE_ENUM = [
+    "classic_hvb",
+    "classic_hvh",
+    "tabu_hvh",
+    "holey_hvh",
+    "fortune_dice_hvh",
+    "poly_hvh",
+    "pastel_hvh",
+    "master_hvh",
+    "fortune_coin_hvh",
+    "why_not_hvh",
+    "whynot_hvh",
+    "3dy_hvh",
+    "hex_hvh",
+];
+
 const gameHistorySchema = new mongoose.Schema(
     {
         gameId: {
@@ -8,7 +24,7 @@ const gameHistorySchema = new mongoose.Schema(
         },
         mode: {
             type: String,
-            enum: ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"],
+            enum: GAME_MODE_ENUM,
             required: true,
         },
         result: {

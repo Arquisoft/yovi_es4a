@@ -22,6 +22,7 @@ function getModeTitle(mode: string | undefined): string {
   if (mode === "master_hvh") return "Master (Doble Mov)";
   if (mode === "fortune_dice_hvh") return "Fortune (Dados)";
   if (mode === "fortune_coin_hvh") return "Fortune (Moneda)";
+  if (mode === "why_not_hvh" || mode === "whynot_hvh") return "WhY Not";
   return mode?.split("_")[0].toUpperCase() ?? "YOVI";
 }
 

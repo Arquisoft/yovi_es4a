@@ -12,6 +12,25 @@ const User = require('./users-model');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+const CANONICAL_GAME_MODES = [
+  "classic_hvb",
+  "classic_hvh",
+  "tabu_hvh",
+  "holey_hvh",
+  "fortune_dice_hvh",
+  "poly_hvh",
+  "pastel_hvh",
+  "master_hvh",
+  "fortune_coin_hvh",
+  "why_not_hvh",
+  "3dy_hvh",
+  "hex_hvh",
+];
+const LEGACY_GAME_MODE_ALIASES = {
+  whynot_hvh: "why_not_hvh",
+};
+const ACCEPTED_GAME_MODES = [...CANONICAL_GAME_MODES, ...Object.keys(LEGACY_GAME_MODE_ALIASES)];
+
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
 if (process.env.NODE_ENV !== 'test') {
@@ -69,8 +88,12 @@ function normalizePositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function normalizeGameMode(mode) {
+  const trimmedMode = typeof mode === "string" ? mode.trim() : "";
+  return LEGACY_GAME_MODE_ALIASES[trimmedMode] || trimmedMode;
+}
+
 function validateRecordGame(body) {
-  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const allowedResults = ["won", "lost", "abandoned", "draw"];
 
   const gameIdValidation = validateGameId(body.gameId);
@@ -78,15 +101,16 @@ function validateRecordGame(body) {
     return { error: gameIdValidation.error };
   }
 
-  const mode = typeof body.mode === "string" ? body.mode.trim() : "";
+  const rawMode = typeof body.mode === "string" ? body.mode.trim() : "";
+  const mode = normalizeGameMode(rawMode);
   const result = typeof body.result === "string" ? body.result.trim() : "";
   const opponent = typeof body.opponent === "string" ? body.opponent.trim() : "";
   const startedBy = typeof body.startedBy === "string" ? body.startedBy.trim() : "";
   const boardSize = Number(body.boardSize);
   const totalMoves = Number(body.totalMoves);
 
-  if (!allowedModes.includes(mode)) {
-    return { error: "'mode' debe ser 'classic_hvb', 'classic_hvh', 'tabu_hvh', 'holey_hvh', 'fortune_dice_hvh' o 'poly_hvh'" };
+  if (!ACCEPTED_GAME_MODES.includes(rawMode) && !CANONICAL_GAME_MODES.includes(mode)) {
+    return { error: `'mode' debe ser uno de: ${CANONICAL_GAME_MODES.join(", ")}` };
   }
 
   if (!allowedResults.includes(result)) {
@@ -528,11 +552,11 @@ app.get("/users/:username/history", async (req, res) => {
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
-  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const validResults = ["won", "lost", "abandoned", "draw"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
-  const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
+  const requestedMode = normalizeGameMode(req.query.mode);
+  const mode = CANONICAL_GAME_MODES.includes(requestedMode) ? requestedMode : null;
   const result = validResults.includes(req.query.result) ? req.query.result : null;
   const sortBy = validSorts.includes(req.query.sortBy) ? req.query.sortBy : "newest";
 
@@ -545,7 +569,12 @@ app.get("/users/:username/history", async (req, res) => {
     if (!user)
       return res.status(404).json({ error: "Usuario no encontrado" });
 
-    let history = Array.isArray(user.gameHistory) ? [...user.gameHistory] : [];
+    let history = Array.isArray(user.gameHistory)
+      ? user.gameHistory.map((game) => ({
+          ...game,
+          mode: normalizeGameMode(game.mode),
+        }))
+      : [];
 
     if (mode)
       history = history.filter((game) => game.mode === mode);

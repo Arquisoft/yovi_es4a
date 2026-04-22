@@ -1,9 +1,6 @@
+import { useCallback, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useState, useCallback } from "react";
 import { message, Typography } from "antd";
-import "../estilos/VariantVisuals.css";
-
-const { Text } = Typography;
 
 import {
   createHvhGame,
@@ -13,16 +10,29 @@ import {
   type YEN,
 } from "../api/gamey";
 import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
-import { recordUserGame } from "../api/users";
+import type {
+  SessionGameMoveResponse,
+  SessionGameStartResponse,
+} from "../game/useSessionGame";
+import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+import {
+  createLocalHvHResultConfig,
+  LOCAL_HVH_TURN_CONFIG,
+  LOCAL_HVH_WINNER_PALETTE,
+  parseBoardSize,
+} from "../game/variants";
+import "../estilos/VariantVisuals.css";
 
-function parseBoardSize(raw: string | null): number {
-  const parsed = Number(raw ?? "7");
-  return Number.isFinite(parsed) && parsed >= 2 ? parsed : 7;
+const { Text } = Typography;
+
+type TurnPlayer = "player0" | "player1";
+
+function flipCoin(): TurnPlayer {
+  return Math.random() < 0.5 ? "player0" : "player1";
 }
 
-function flipCoin(): "player0" | "player1" {
-  return Math.random() < 0.5 ? "player0" : "player1";
+function describePlayer(player: TurnPlayer): string {
+  return player === "player0" ? "Player 0 (Azul)" : "Player 1 (Naranja)";
 }
 
 export default function GameFortuneCoin() {
@@ -30,87 +40,99 @@ export default function GameFortuneCoin() {
   const size = parseBoardSize(searchParams.get("size"));
   const [isFlipping, setIsFlipping] = useState(false);
 
-  const start = useCallback(async () => {
-    const initialTurn = flipCoin();
-    setIsFlipping(true);
-    setTimeout(() => setIsFlipping(false), 600);
-    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: initialTurn });
-    const res = await createHvhGame({ size, hvh_starter: initialTurn });
-    message.info(`🪙 Moneda lanzada: Empieza ${initialTurn === "player0" ? "Player 0 (Azul)" : "Player 1 (Naranja)"}`);
-    return res;
-  }, [size]);
+  const { registerFinishedGame, registerAbandonedGame } =
+    useLocalVariantGameSave({
+      boardSize: size,
+      mode: "fortune_coin_hvh",
+      opponent: "Jugador local (Fortune Moneda)",
+      startedBy: "random",
+      deleteGame: deleteHvhGame,
+    });
 
-  const move = useCallback(async (gameId: string, cellId: number) => {
+  const animateCoin = useCallback(() => {
     setIsFlipping(true);
-    setTimeout(() => setIsFlipping(false), 600);
-    const next = flipCoin();
-    const nextInt = next === "player0" ? 0 : 1;
-    const res = await hvhMove(gameId, cellId, undefined, nextInt);
-    if (res.status.state === "finished") return { ...res, status: res.status as any };
-
-    message.info(`🪙 ¡Moneda! Siguiente turno: ${next === "player0" ? "Player 0 (Azul)" : "Player 1 (Naranja)"}`);
-    return {
-        ...res,
-        status: { ...res.status, next } as any
-    };
+    window.setTimeout(() => setIsFlipping(false), 600);
   }, []);
+
+  const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
+    const initialTurn = flipCoin();
+    animateCoin();
+
+    await putConfig({
+      size,
+      hvb_starter: "human",
+      bot_id: null,
+      hvh_starter: initialTurn,
+    });
+
+    const game = await createHvhGame({ size, hvh_starter: initialTurn });
+    message.info(`🪙 Moneda lanzada: empieza ${describePlayer(initialTurn)}`);
+
+    if (game.status.state === "ongoing") {
+      return {
+        ...game,
+        status: { state: "ongoing", next: initialTurn },
+      };
+    }
+
+    return game;
+  }, [animateCoin, size]);
+
+  const move = useCallback(async (
+    gameId: string,
+    cellId: number,
+  ): Promise<SessionGameMoveResponse<YEN>> => {
+    animateCoin();
+
+    const nextPlayer = flipCoin();
+    const nextPlayerOverride = nextPlayer === "player0" ? 0 : 1;
+    const result = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
+
+    if (result.status.state === "finished") {
+      return result;
+    }
+
+    message.info(`🪙 Moneda lanzada: siguiente turno para ${describePlayer(nextPlayer)}`);
+    return {
+      ...result,
+      status: { state: "ongoing", next: nextPlayer },
+    };
+  }, [animateCoin]);
 
   return (
     <SessionGamePage<YEN>
       deps={[size]}
       start={start}
       move={move}
+      shouldCountMove={(turn) => turn === "player0"}
       onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        const session = getUserSession();
-        if (!session || !winner) return;
-        
-        await recordUserGame(session.username, {
-          gameId,
-          mode: "fortune_coin_hvh",
-          result: winner === "player0" ? "won" : "lost",
-          boardSize: size,
-          totalMoves,
-          opponent: "Jugador local (Fortune Moneda)",
-          startedBy: "player0",
-        });
+        await registerFinishedGame(gameId, winner, totalMoves);
       }}
       onGameAbandoned={async ({ gameId, totalMoves }) => {
-        const session = getUserSession();
-        if (session) {
-          await recordUserGame(session.username, {
-            gameId,
-            mode: "fortune_coin_hvh",
-            result: "abandoned",
-            boardSize: size,
-            totalMoves,
-            opponent: "Jugador local (Fortune Moneda)",
-            startedBy: "player0",
-          });
-        }
-        await deleteHvhGame(gameId);
+        await registerAbandonedGame(gameId, totalMoves);
       }}
-      resultConfig={{
-        title: "Juego Y — Fortune Moneda",
-        subtitle: `Tamaño: ${size} · Se lanza una moneda cada turno`,
-        getResultTitle: () => "Partida finalizada",
-        getResultText: (winner) => `${winner === "player0" ? "Player 0" : "Player 1"} ha ganado.`
-      }}
-      winnerPalette={{
-        highlightedWinner: "player0",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
+      resultConfig={createLocalHvHResultConfig(
+        "Juego Y - Fortune Moneda",
+        size,
+        "random",
+        "Cada turno depende de una moneda",
+      )}
+      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
       turnConfig={{
-        textPrefix: "Moneda",
-        turns: {
-          player0: { label: "Player 0", color: "#28BBF5" },
-          player1: { label: "Player 1", color: "#FF7B00" },
-        },
+        ...LOCAL_HVH_TURN_CONFIG,
+        textPrefix: "Moneda:",
       }}
       turnIndicatorExtra={
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginLeft: 8 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            marginLeft: 8,
+          }}
+        >
           <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
-             🪙
+            🪙
           </div>
           <Text type="secondary" style={{ fontSize: 12 }}>
             Lanzando...
