@@ -17,6 +17,7 @@ import GameFortuneCoin from "./vistas/GameFortuneCoin";
 import GameFortuneDice from "./vistas/GameFortuneDice";
 import GameHoley from "./vistas/GameHoley";
 import GameMaster from "./vistas/GameMaster";
+import GamePastel from "./vistas/GamePastel";
 import GamePolyY from "./vistas/GamePolyY";
 import GameTabu from "./vistas/GameTabu";
 import GameWhyNot from "./vistas/GameWhyNot";
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="/game-hvh" element={<GameHvH />} />
 
         <Route path="/game-master" element={<GameMaster />} />
+        <Route path="/game-pastel" element={<GamePastel />} />
         <Route path="/game-fortune-coin" element={<GameFortuneCoin />} />
         <Route path="/game-fortune-dice" element={<GameFortuneDice />} />
         <Route path="/game-tabu" element={<GameTabu />} />

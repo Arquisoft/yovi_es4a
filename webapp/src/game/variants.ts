@@ -137,7 +137,7 @@ export const VARIANTS: Variant[] = [
     "orange",
     "Un jugador coloca la primera pieza, el otro elige bando.",
     "El Jugador 1 elige donde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posicion o ceder el turno.",
-    false,
+    true,
   ),
   createVariant(
     "master",
@@ -268,6 +268,16 @@ export const HVH_ONLY_VARIANTS: VariantId[] = [
 ];
 
 export const STANDALONE_VARIANTS: VariantId[] = ["hex"];
+
+export const MULTIPLAYER_VARIANTS: VariantId[] = [
+  "classic",
+  "tabu",
+  "holey",
+  "master",
+  "fortune_coin",
+  "fortune_dice",
+  "why_not",
+];
 
 export type StarterHvH = "player0" | "player1" | "random";
 

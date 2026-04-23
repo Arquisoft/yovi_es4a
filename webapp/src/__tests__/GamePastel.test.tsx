@@ -11,6 +11,7 @@ import useDeferredGameSave from "../game/useDeferredGameSave";
 // ─── Mocks de navegación y params ────────────────────────────────────────────
 
 const navigateMock = vi.fn();
+const modalConfirmMock = vi.fn(({ onOk }: { onOk?: () => void | Promise<void> }) => onOk?.());
 let mockSearchParams = new URLSearchParams("size=7&hvhstarter=player0");
 
 vi.mock("react-router-dom", async () => {
@@ -44,6 +45,13 @@ vi.mock("../game/useDeferredGameSave", () => ({
 vi.mock("lottie-react", () => ({ default: () => <div>Lottie</div> }));
 
 vi.mock("antd", () => ({
+  App: {
+    useApp: () => ({
+      modal: {
+        confirm: modalConfirmMock,
+      },
+    }),
+  },
   Button: ({ children, onClick, disabled, loading, ...props }: any) => (
     <button onClick={onClick} disabled={disabled || loading} {...props}>{children}</button>
   ),
