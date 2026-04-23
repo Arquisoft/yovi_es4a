@@ -20,50 +20,23 @@ import { Alert } from "antd";
 
 import {
   createHvhGame,
-  deleteHvhGame,
   hvhMove,
   putConfig,
   type YEN,
 } from "../api/gamey";
-import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import SessionGamePage from "../game/SessionGamePage";
-import { hasPlayableCells } from "../game/variants";
-import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
-import AuthModal from "./registroLogin/AuthModal";
-
-type StarterHvH = "player0" | "player1" | "random";
-
-function parseBoardSize(raw: string | null): number {
-  const n = Number(raw ?? "7");
-  return Number.isFinite(n) && n >= 2 ? n : 7;
-}
-
-function parseHvHStarter(raw: string | null): StarterHvH {
-  const v = (raw ?? "player0").toLowerCase();
-  if (v === "player1") return "player1";
-  if (v === "random") return "random";
-  return "player0";
-}
-
-function secureRandomInt(maxExclusive: number): number {
-  const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  return array[0] % maxExclusive;
-}
-
-function generateHoles(totalCells: number): Set<number> {
-  const count = Math.max(1, Math.min(Math.floor(totalCells * 0.12), 15));
-  const holes = new Set<number>();
-  const allCells = Array.from({ length: totalCells }, (_, i) => i);
-
-  // Shuffle y tomar los primeros `count`
-  for (let i = allCells.length - 1; i > 0; i--) {
-    const j = secureRandomInt(i + 1);
-    [allCells[i], allCells[j]] = [allCells[j], allCells[i]];
-  }
-  allCells.slice(0, count).forEach((c) => holes.add(c));
-  return holes;
-}
+import LocalHvHSessionLayout from "../game/LocalHvHSessionLayout";
+import type {
+  SessionGameMoveResponse,
+  SessionGameStartResponse,
+} from "../game/useSessionGame";
+import {
+  generateHoles,
+  hasPlayableCells,
+  LOCAL_HVH_TURN_CONFIG,
+  LOCAL_HVH_WINNER_PALETTE,
+  parseBoardSize,
+  parseHvHStarter,
+} from "../game/variants";
 
 export default function GameHoley() {
   const [searchParams] = useSearchParams();
@@ -72,26 +45,8 @@ export default function GameHoley() {
   const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
 
   const totalCells = (size * (size + 1)) / 2;
-
-  // Los agujeros se generan una vez al montar el componente
-  const holesRef = useRef<Set<number>>(generateHoles(totalCells));
-  const [holes, setHoles] = useState<Set<number>>(holesRef.current);
-  const {
-    authModalOpen,
-    savingPendingGame,
-    canOfferGuestSave,
-    registerFinishedGame,
-    registerAbandonedGame,
-    handleGuestSaveRequested,
-    handleLoginSuccess,
-    closeAuthModal,
-  } = useLocalVariantGameSave({
-    boardSize: size,
-    mode: "holey_hvh",
-    opponent: "Jugador local (Holey)",
-    startedBy: hvhStarter,
-    deleteGame: deleteHvhGame,
-  });
+  const [holes, setHoles] = useState<Set<number>>(() => generateHoles(totalCells));
+  const holesRef = useRef<Set<number>>(holes);
 
   const move = useCallback(async (
     gameId: string,
@@ -117,7 +72,7 @@ export default function GameHoley() {
     // Regenerar agujeros al iniciar nueva partida
     const newHoles = generateHoles(totalCells);
     holesRef.current = newHoles;
-    setHoles(newHoles); // <-- ESTO FORZARÁ A RENDERIZAR LOS NUEVOS AGUJEROS
+    setHoles(newHoles);
 
     await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvhStarter });
     return createHvhGame({ size, hvh_starter: hvhStarter });
@@ -131,21 +86,17 @@ export default function GameHoley() {
         showIcon
         style={{ marginBottom: 8, maxWidth: 600, margin: "0 auto 8px" }}
       />
-      <SessionGamePage<YEN>
-        disabledCells={holes}  
+
+      <LocalHvHSessionLayout<YEN>
+        boardSize={size}
+        mode="holey_hvh"
+        opponent="Jugador local (Holey)"
+        startedBy={hvhStarter}
+        disabledCells={holes}
         deps={[size, hvhStarter]}
         start={start}
         move={move}
         shouldCountMove={(turn) => turn === "player0"}
-        onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          await registerFinishedGame(gameId, winner, totalMoves);
-        }}
-        onGameAbandoned={async ({ gameId, totalMoves }) => {
-          await registerAbandonedGame(gameId, totalMoves);
-        }}
-        canOfferGuestSave={canOfferGuestSave}
-        onGuestSaveRequested={handleGuestSaveRequested}
-        guestSaveLoading={savingPendingGame}
         resultConfig={{
           title: "Juego Y — Holey Y",
           subtitle: `Tamaño: ${size} · ${holes.size} agujero(s) en el tablero`,
@@ -158,24 +109,8 @@ export default function GameHoley() {
                 ? "Player 1 ha ganado."
                 : "No quedan casillas jugables fuera de los agujeros. La partida terminó en empate.",
         }}
-        winnerPalette={{
-          highlightedWinner: "player0",
-          highlightedBackground: "#28bbf532",
-          otherWinnerBackground: "#ff7b0033",
-        }}
-        turnConfig={{
-          textPrefix: "Turno actual:",
-          turns: {
-            player0: { label: "Player 0", color: "#28BBF5" },
-            player1: { label: "Player 1", color: "#FF7B00" },
-          },
-        }}
-      />
-
-      <AuthModal
-        open={authModalOpen}
-        onClose={closeAuthModal}
-        onLoginSuccess={handleLoginSuccess}
+        winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+        turnConfig={LOCAL_HVH_TURN_CONFIG}
       />
     </>
   );

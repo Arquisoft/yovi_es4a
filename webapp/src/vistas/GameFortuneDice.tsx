@@ -3,17 +3,15 @@ import { useSearchParams } from "react-router-dom";
 
 import {
   createHvhGame,
-  deleteHvhGame,
   hvhMove,
   putConfig,
   type YEN,
 } from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+import LocalHvHSessionLayout from "../game/LocalHvHSessionLayout";
 import type {
   SessionGameMoveResponse,
   SessionGameStartResponse,
 } from "../game/useSessionGame";
-import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 import {
   createLocalHvHResultConfig,
   LOCAL_HVH_TURN_CONFIG,
@@ -21,7 +19,6 @@ import {
   parseBoardSize,
   parseHvHStarter,
 } from "../game/variants";
-import AuthModal from "./registroLogin/AuthModal";
 import "../estilos/VariantVisuals.css";
 
 type TurnPlayer = "player0" | "player1";
@@ -41,36 +38,32 @@ export default function GameFortuneDice() {
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
+  const [diceValue, setDiceValue] = useState(() => rollDice());
+  const [piecesLeft, setPiecesLeft] = useState(diceValue);
 
   const currentPlayerRef = useRef<TurnPlayer>("player0");
-  const piecesLeftRef = useRef(rollDice());
-
-  const [diceValue, setDiceValue] = useState(piecesLeftRef.current);
-  const [piecesLeft, setPiecesLeft] = useState(piecesLeftRef.current);
+  const piecesLeftRef = useRef(diceValue);
+  const rollTimerRef = useRef<number | null>(null);
   const [isRolling, setIsRolling] = useState(false);
 
-  useEffect(() => {
-    setIsRolling(true);
-    const timer = setTimeout(() => setIsRolling(false), 600);
-    return () => clearTimeout(timer);
-  }, [diceValue]);
+  const showRoll = useCallback((value: number) => {
+    if (rollTimerRef.current !== null) {
+      window.clearTimeout(rollTimerRef.current);
+    }
 
-  const {
-    authModalOpen,
-    savingPendingGame,
-    canOfferGuestSave,
-    registerFinishedGame,
-    registerAbandonedGame,
-    handleGuestSaveRequested,
-    handleLoginSuccess,
-    closeAuthModal,
-  } = useLocalVariantGameSave({
-    boardSize: size,
-    mode: "fortune_dice_hvh",
-    opponent: "Jugador local (Fortune Dado)",
-    startedBy: hvhStarter,
-    deleteGame: deleteHvhGame,
-  });
+    setIsRolling(true);
+    setDiceValue(value);
+    rollTimerRef.current = window.setTimeout(() => {
+      setIsRolling(false);
+      rollTimerRef.current = null;
+    }, 600);
+  }, []);
+
+  useEffect(() => () => {
+    if (rollTimerRef.current !== null) {
+      window.clearTimeout(rollTimerRef.current);
+    }
+  }, []);
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
     await putConfig({
@@ -84,7 +77,7 @@ export default function GameFortuneDice() {
     const firstRoll = rollDice();
 
     piecesLeftRef.current = firstRoll;
-    setDiceValue(firstRoll);
+    showRoll(firstRoll);
     setPiecesLeft(firstRoll);
 
     if (game.status.state === "ongoing") {
@@ -96,7 +89,7 @@ export default function GameFortuneDice() {
     }
 
     return game;
-  }, [hvhStarter, size]);
+  }, [hvhStarter, showRoll, size]);
 
   const move = useCallback(async (
     gameId: string,
@@ -127,66 +120,53 @@ export default function GameFortuneDice() {
 
     currentPlayerRef.current = nextPlayer;
     piecesLeftRef.current = nextRoll;
-    setDiceValue(nextRoll);
+    showRoll(nextRoll);
     setPiecesLeft(nextRoll);
 
     return {
       ...result,
       status: { state: "ongoing", next: nextPlayer },
     };
-  }, []);
+  }, [showRoll]);
 
   return (
-    <>
-      <SessionGamePage<YEN>
-        deps={[size, hvhStarter]}
-        start={start}
-        move={move}
-        shouldCountMove={(turn) => turn === "player0"}
-        onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          await registerFinishedGame(gameId, winner, totalMoves);
-        }}
-        onGameAbandoned={async ({ gameId, totalMoves }) => {
-          await registerAbandonedGame(gameId, totalMoves);
-        }}
-        canOfferGuestSave={canOfferGuestSave}
-        onGuestSaveRequested={handleGuestSaveRequested}
-        guestSaveLoading={savingPendingGame}
-        resultConfig={createLocalHvHResultConfig(
-          "Juego Y - Fortune Dado",
-          size,
-          hvhStarter,
-          "Las piezas por turno dependen del dado",
-        )}
-        winnerPalette={LOCAL_HVH_WINNER_PALETTE}
-        turnConfig={{
-          ...LOCAL_HVH_TURN_CONFIG,
-          textPrefix: "Dado:",
-        }}
-        turnIndicatorExtra={
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 12,
-              marginLeft: 8,
-            }}
-          >
-            <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
-              {diceValue}
-            </div>
-            <div className="moves-indicator move-active">
-              {piecesLeft} piezas
-            </div>
+    <LocalHvHSessionLayout<YEN>
+      boardSize={size}
+      mode="fortune_dice_hvh"
+      opponent="Jugador local (Fortune Dado)"
+      startedBy={hvhStarter}
+      deps={[size, hvhStarter]}
+      start={start}
+      move={move}
+      shouldCountMove={(turn) => turn === "player0"}
+      resultConfig={createLocalHvHResultConfig(
+        "Juego Y - Fortune Dado",
+        size,
+        hvhStarter,
+        "Las piezas por turno dependen del dado",
+      )}
+      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+      turnConfig={{
+        ...LOCAL_HVH_TURN_CONFIG,
+        textPrefix: "Dado:",
+      }}
+      turnIndicatorExtra={
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            marginLeft: 8,
+          }}
+        >
+          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
+            {diceValue}
           </div>
-        }
-      />
-
-      <AuthModal
-        open={authModalOpen}
-        onClose={closeAuthModal}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    </>
+          <div className="moves-indicator move-active">
+            {piecesLeft} piezas
+          </div>
+        </div>
+      }
+    />
   );
 }

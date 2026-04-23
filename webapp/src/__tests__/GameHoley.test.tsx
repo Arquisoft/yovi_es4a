@@ -13,6 +13,7 @@ import { hasPlayableCells } from "../game/variants";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 const sessionGamePageMock = vi.fn();
+const authModalMock = vi.fn();
 const registerFinishedGameMock = vi.fn();
 const registerAbandonedGameMock = vi.fn();
 
@@ -33,23 +34,49 @@ vi.mock("../api/gamey", () => ({
   putConfig: vi.fn(),
 }));
 
-vi.mock("../game/variants", () => ({
-  hasPlayableCells: vi.fn(),
-}));
+vi.mock("../game/variants", async () => {
+  const actual = await vi.importActual<any>("../game/variants");
+  return {
+    ...actual,
+    hasPlayableCells: vi.fn(),
+  };
+});
 
 vi.mock("../game/useLocalVariantGameSave", () => ({
   default: vi.fn(),
 }));
 
-vi.mock("../game/SessionGamePage", () => ({
+vi.mock("../game/LocalHvHSessionLayout", () => ({
   default: (props: any) => {
-    sessionGamePageMock(props);
-    return <div>SessionGamePage</div>;
-  },
-}));
+    const save = (useLocalVariantGameSave as any)({
+      boardSize: props.boardSize,
+      mode: props.mode,
+      opponent: props.opponent,
+      startedBy: props.startedBy,
+      deleteGame: deleteHvhGame,
+    });
 
-vi.mock("../vistas/registroLogin/AuthModal", () => ({
-  default: () => <div>AuthModal</div>,
+    sessionGamePageMock({
+      ...props,
+      onGameFinished: async ({ gameId, winner, totalMoves }: any) => {
+        await save.registerFinishedGame(gameId, winner, totalMoves);
+      },
+      onGameAbandoned: async ({ gameId, totalMoves }: any) => {
+        await save.registerAbandonedGame(gameId, totalMoves);
+      },
+      canOfferGuestSave: save.canOfferGuestSave,
+      onGuestSaveRequested: save.handleGuestSaveRequested,
+      guestSaveLoading: save.savingPendingGame,
+    });
+
+    authModalMock({
+      open: save.authModalOpen,
+      onClose: save.closeAuthModal,
+      onLoginSuccess: save.handleLoginSuccess,
+    });
+
+    return <div>LocalHvHSessionLayout</div>;
+  },
 }));
 
 describe("GameHoley", () => {
@@ -58,8 +85,14 @@ describe("GameHoley", () => {
     mockSearchParams = new URLSearchParams("size=7&hvhstarter=player0");
 
     vi.mocked(useLocalVariantGameSave).mockReturnValue({
+      authModalOpen: false,
+      savingPendingGame: false,
+      canOfferGuestSave: true,
       registerFinishedGame: registerFinishedGameMock,
       registerAbandonedGame: registerAbandonedGameMock,
+      handleGuestSaveRequested: vi.fn(),
+      handleLoginSuccess: vi.fn(),
+      closeAuthModal: vi.fn(),
     } as any);
 
     vi.mocked(createHvhGame).mockResolvedValue({
@@ -85,7 +118,7 @@ describe("GameHoley", () => {
     expect(screen.getByText(/agujero\(s\) en el tablero/)).toBeInTheDocument();
   });
 
-  it("normaliza parámetros inválidos", () => {
+  it("normaliza parametros invalidos", () => {
     mockSearchParams = new URLSearchParams("size=-4&hvhstarter=inventado");
 
     render(<GameHoley />);

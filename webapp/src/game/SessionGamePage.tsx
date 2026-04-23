@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Flex, Space, Typography } from "antd";
 import { BulbOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -54,7 +54,7 @@ type AbandonedGamePayload = {
   totalMoves: number;
 };
 
-type Props<TYen extends GameYEN> = {
+export type SessionGamePageProps<TYen extends GameYEN> = {
   deps: readonly unknown[];
   start: () => Promise<SessionGameStartResponse<TYen>>;
   move: (
@@ -99,7 +99,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
   mapWinner,
   turnIndicator: customTurnIndicator,
   turnIndicatorExtra,
-}: Props<TYen>) {
+}: SessionGamePageProps<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
   const botTurnInFlight = useRef(false);
@@ -177,7 +177,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     });
   }
 
-  async function handleHint() {
+  const handleHint = useCallback(async () => {
     if (!onHint || !gameId || hintUsed) return;
     setHintLoading(true);
     try {
@@ -189,7 +189,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     } finally {
       setHintLoading(false);
     }
-  }
+  }, [gameId, hintUsed, onHint]);
 
   function handleGuestSaveRequest() {
     if (!gameId || !gameOver) return;
@@ -285,6 +285,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
     loading,
     nextTurn,
     gameId,
+    handleHint,
+    turnIndicatorExtra,
   ]);
 
   useEffect(() => {

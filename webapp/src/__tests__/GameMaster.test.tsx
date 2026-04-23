@@ -30,17 +30,36 @@ vi.mock("../game/useLocalVariantGameSave", () => ({
   default: vi.fn(),
 }));
 
-vi.mock("../game/SessionGamePage", () => ({
+vi.mock("../game/LocalHvHSessionLayout", () => ({
   default: (props: any) => {
-    sessionGamePageMock(props);
-    return <div>SessionGamePage</div>;
-  },
-}));
+    const save = (useLocalVariantGameSave as any)({
+      boardSize: props.boardSize,
+      mode: props.mode,
+      opponent: props.opponent,
+      startedBy: props.startedBy,
+      deleteGame: deleteHvhGame,
+    });
 
-vi.mock("../vistas/registroLogin/AuthModal", () => ({
-  default: (props: any) => {
-    authModalMock(props);
-    return <div>AuthModal</div>;
+    sessionGamePageMock({
+      ...props,
+      onGameFinished: async ({ gameId, winner, totalMoves }: any) => {
+        await save.registerFinishedGame(gameId, winner, totalMoves);
+      },
+      onGameAbandoned: async ({ gameId, totalMoves }: any) => {
+        await save.registerAbandonedGame(gameId, totalMoves);
+      },
+      canOfferGuestSave: save.canOfferGuestSave,
+      onGuestSaveRequested: save.handleGuestSaveRequested,
+      guestSaveLoading: save.savingPendingGame,
+    });
+
+    authModalMock({
+      open: save.authModalOpen,
+      onClose: save.closeAuthModal,
+      onLoginSuccess: save.handleLoginSuccess,
+    });
+
+    return <div>LocalHvHSessionLayout</div>;
   },
 }));
 

@@ -20,73 +20,25 @@ import { useSearchParams } from "react-router-dom";
 
 import {
   createHvhGame,
-  deleteHvhGame,
   hvhMove,
   putConfig,
   type YEN,
 } from "../api/gamey";
-import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import SessionGamePage from "../game/SessionGamePage";
-import { hasPlayableCells } from "../game/variants";
-import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
-import AuthModal from "./registroLogin/AuthModal";
+import LocalHvHSessionLayout from "../game/LocalHvHSessionLayout";
+import type {
+  SessionGameMoveResponse,
+  SessionGameStartResponse,
+} from "../game/useSessionGame";
+import {
+  getAdjacentCells,
+  hasPlayableCells,
+  LOCAL_HVH_PLAYER_LABELS,
+  LOCAL_HVH_WINNER_PALETTE,
+  parseBoardSize,
+  parseHvHStarter,
+} from "../game/variants";
 
-type StarterHvH = "player0" | "player1" | "random";
-
-function parseBoardSize(raw: string | null): number {
-  const n = Number(raw ?? "7");
-  return Number.isFinite(n) && n >= 2 ? n : 7;
-}
-
-function parseHvHStarter(raw: string | null): StarterHvH {
-  const v = (raw ?? "player0").toLowerCase();
-  if (v === "player1") return "player1";
-  if (v === "random") return "random";
-  return "player0";
-}
-
-/** Calcula el índice lineal a partir de coordenadas baricéntricas. */
-function toIndex(x: number, y: number, boardSize: number): number {
-  const r = (boardSize - 1) - x;
-  const rowStart = (r * (r + 1)) / 2;
-  return rowStart + y;
-}
-
-/** Dado un cellId, devuelve el conjunto de cellIds adyacentes (válidos). */
-function adjacentCells(cellId: number, boardSize: number): Set<number> {
-  // Recuperar coordenadas baricéntricas del índice
-  const iF = cellId;
-  const r = Math.floor((Math.sqrt(8 * iF + 1) - 1) / 2);
-  const rowStart = (r * (r + 1)) / 2;
-  const c = cellId - rowStart;
-
-  const x = boardSize - 1 - r;
-  const y = c;
-  const z = (boardSize - 1) - x - y;
-
-  const candidates: [number, number, number][] = [];
-
-  if (x > 0) {
-    candidates.push([x - 1, y + 1, z]);
-    candidates.push([x - 1, y, z + 1]);
-  }
-  if (y > 0) {
-    candidates.push([x + 1, y - 1, z]);
-    candidates.push([x, y - 1, z + 1]);
-  }
-  if (z > 0) {
-    candidates.push([x + 1, y, z - 1]);
-    candidates.push([x, y + 1, z - 1]);
-  }
-
-  const result = new Set<number>();
-  for (const [nx, ny] of candidates) {
-    if (nx >= 0 && ny >= 0 && nx + ny <= boardSize - 1) {
-      result.add(toIndex(nx, ny, boardSize));
-    }
-  }
-  return result;
-}
+type TurnPlayer = "player0" | "player1";
 
 export default function GameTabu() {
   const [searchParams] = useSearchParams();
@@ -94,42 +46,20 @@ export default function GameTabu() {
   const size = parseBoardSize(searchParams.get("size"));
   const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
 
-  // Última celda jugada por cada jugador
-  const lastMoveByPlayerRef = useRef<{ player0: number | null; player1: number | null }>({
+  const lastMoveByPlayerRef = useRef<Record<TurnPlayer, number | null>>({
     player0: null,
     player1: null,
   });
-  const currentPlayerRef = useRef<"player0" | "player1">("player0");
+  const currentPlayerRef = useRef<TurnPlayer>("player0");
 
   const [tabuCells, setTabuCells] = useState<Set<number>>(new Set());
-  const {
-    authModalOpen,
-    savingPendingGame,
-    canOfferGuestSave,
-    registerFinishedGame,
-    registerAbandonedGame,
-    handleGuestSaveRequested,
-    handleLoginSuccess,
-    closeAuthModal,
-  } = useLocalVariantGameSave({
-    boardSize: size,
-    mode: "tabu_hvh",
-    opponent: "Jugador local (Tabú)",
-    startedBy: hvhStarter,
-    deleteGame: deleteHvhGame,
-  });
-
-  function computeTabu(lastOpponentCell: number | null): Set<number> {
-    if (lastOpponentCell === null) return new Set();
-    return adjacentCells(lastOpponentCell, size);
-  }
 
   const move = useCallback(async (
     gameId: string,
     cellId: number,
   ): Promise<SessionGameMoveResponse<YEN>> => {
     const player = currentPlayerRef.current;
-    const opponent: "player0" | "player1" = player === "player0" ? "player1" : "player0";
+    const opponent: TurnPlayer = player === "player0" ? "player1" : "player0";
 
     const result = await hvhMove(gameId, cellId);
 
@@ -139,7 +69,7 @@ export default function GameTabu() {
     if (result.status.state === "ongoing") {
       currentPlayerRef.current = opponent;
       // Las celdas tabú para el próximo turno son las adyacentes a la jugada del jugador actual
-      const newTabu = computeTabu(cellId);
+      const newTabu = getAdjacentCells(cellId, size);
       setTabuCells(newTabu);
 
       if (!hasPlayableCells(result.yen, newTabu)) {
@@ -165,53 +95,36 @@ export default function GameTabu() {
   }, [size, hvhStarter]);
 
   return (
-    <>
-      <SessionGamePage<YEN>
-        disabledCells={tabuCells}
-        deps={[size, hvhStarter]}
-        start={start}
-        move={move}
-        shouldCountMove={(turn) => turn === "player0"}
-        onGameFinished={async ({ gameId, winner, totalMoves }) => {
-          await registerFinishedGame(gameId, winner, totalMoves);
-        }}
-        onGameAbandoned={async ({ gameId, totalMoves }) => {
-          await registerAbandonedGame(gameId, totalMoves);
-        }}
-        canOfferGuestSave={canOfferGuestSave}
-        onGuestSaveRequested={handleGuestSaveRequested}
-        guestSaveLoading={savingPendingGame}
-        resultConfig={{
-          title: "Juego Y — Tabu Y",
-          subtitle: `Tamaño: ${size} · No puedes jugar adyacente al rival`,
-          abandonOkText: "Abandonar",
-          getResultTitle: () => "Partida finalizada",
-          getResultText: (winner) =>
-            winner === "player0"
-              ? "Player 0 ha ganado."
-              : winner === "player1"
-                ? "Player 1 ha ganado."
-                : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
-        }}
-        winnerPalette={{
-          highlightedWinner: "player0",
-          highlightedBackground: "#28bbf532",
-          otherWinnerBackground: "#ff7b0033",
-        }}
-        turnConfig={{
-          textPrefix: `🚫 ${tabuCells.size} casilla(s) prohibida(s) — turno:`,
-          turns: {
-            player0: { label: "Player 0", color: "#28BBF5" },
-            player1: { label: "Player 1", color: "#FF7B00" },
-          },
-        }}
-      />
-
-      <AuthModal
-        open={authModalOpen}
-        onClose={closeAuthModal}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    </>
+    <LocalHvHSessionLayout<YEN>
+      boardSize={size}
+      mode="tabu_hvh"
+      opponent="Jugador local (Tabu)"
+      startedBy={hvhStarter}
+      disabledCells={tabuCells}
+      deps={[size, hvhStarter]}
+      start={start}
+      move={move}
+      shouldCountMove={(turn) => turn === "player0"}
+      resultConfig={{
+        title: "Juego Y — Tabu Y",
+        subtitle: `Tamaño: ${size} · No puedes jugar adyacente al rival`,
+        abandonOkText: "Abandonar",
+        getResultTitle: () => "Partida finalizada",
+        getResultText: (winner) =>
+          winner === "player0"
+            ? "Player 0 ha ganado."
+            : winner === "player1"
+              ? "Player 1 ha ganado."
+              : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
+      }}
+      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+      turnConfig={{
+        textPrefix: `🚫 ${tabuCells.size} casilla(s) prohibida(s) — turno:`,
+        turns: {
+          player0: { label: LOCAL_HVH_PLAYER_LABELS.player0, color: "#28BBF5" },
+          player1: { label: LOCAL_HVH_PLAYER_LABELS.player1, color: "#FF7B00" },
+        },
+      }}
+    />
   );
 }
