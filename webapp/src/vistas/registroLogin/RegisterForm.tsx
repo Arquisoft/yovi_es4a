@@ -107,9 +107,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         profilePicture,
       });
 
-      const successMessage = embedded
-        ? "Cuenta creada correctamente. Cuando la verifiques por correo y luego inicies sesión, podrás guardar partidas en tu cuenta."
-        : data.message;
+      // En modo E2E o si no es embedded, usamos el mensaje del backend que ya gestiona el bypass de correo
+      const successMessage = (data.message && (embedded ? data.message.includes('verificada automáticamente') : true))
+        ? data.message
+        : (embedded 
+            ? "Cuenta creada correctamente. Cuando la verifiques por correo y luego inicies sesión, podrás guardar partidas en tu cuenta."
+            : data.message);
 
       message.success(successMessage);
       setSuccess(successMessage);

@@ -14,7 +14,18 @@ const nodemailer = require('nodemailer');
 
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.IS_E2E === 'true') {
+  (async function() {
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongod = await MongoMemoryServer.create();
+      await mongoose.connect(mongod.getUri());
+      console.log('Conectado a MongoDB en memoria (Modo E2E)');
+    } catch (err) {
+      console.error('Error iniciando MongoDB en memoria para E2E:', err);
+    }
+  })();
+} else if (process.env.NODE_ENV !== 'test') {
   mongoose.connect(mongoUri)
     .then(() => console.log('Conectado a MongoDB'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
@@ -208,7 +219,8 @@ app.post('/createuser', async (req, res) => {
       password: hashedPassword,
       email,
       profilePicture: profilePicture || 'seniora.png',
-      verificationToken
+      verificationToken,
+      isVerified: process.env.IS_E2E === 'true'
     });
     
     // Lo guardamos temporalmente en la base de datos
@@ -236,8 +248,8 @@ app.post('/createuser', async (req, res) => {
 
 // 4. Intentamos enviar el correo
     try {
-      // Solo nos conectamos a Google si NO estamos en los tests
-      if (process.env.NODE_ENV !== 'test') {
+      // Solo nos conectamos a Google si NO estamos en los tests unitarios ni E2E
+      if (process.env.NODE_ENV !== 'test' && process.env.IS_E2E !== 'true') {
         const transporter = createMailTransporter();
         if (!transporter) {
            throw new Error("Las credenciales de correo no están configuradas en el servidor.");
@@ -246,8 +258,12 @@ app.post('/createuser', async (req, res) => {
         console.log(`[CORREO ENVIADO]`);
       }
       
-      // El mensaje de éxito se envía siempre, tanto en real como en tests
-      res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
+      // El mensaje de éxito cambia según si estamos en E2E o no
+      const successMessage = (process.env.IS_E2E === 'true')
+        ? `¡Bienvenido ${username}! Tu cuenta ha sido creada y verificada automáticamente para las pruebas.`
+        : `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.`;
+
+      res.status(201).json({ message: successMessage });
       
     } catch (mailError) {
       // 5. SI FALLA EL CORREO: Borramos al usuario para que pueda volver a intentarlo
@@ -299,7 +315,8 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
-    if (!user.isVerified) {
+    // En modo E2E saltamos la verificación para facilitar los tests
+    if (!user.isVerified && process.env.IS_E2E !== 'true') {
       return res.status(403).json({ error: 'Por favor, verifica tu correo electrónico en tu bandeja de entrada antes de iniciar sesión.' });
     }
 
