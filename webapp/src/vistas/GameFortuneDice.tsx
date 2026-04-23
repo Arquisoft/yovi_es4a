@@ -21,6 +21,7 @@ import {
   parseBoardSize,
   parseHvHStarter,
 } from "../game/variants";
+import AuthModal from "./registroLogin/AuthModal";
 import "../estilos/VariantVisuals.css";
 
 type TurnPlayer = "player0" | "player1";
@@ -54,14 +55,22 @@ export default function GameFortuneDice() {
     return () => clearTimeout(timer);
   }, [diceValue]);
 
-  const { registerFinishedGame, registerAbandonedGame } =
-    useLocalVariantGameSave({
-      boardSize: size,
-      mode: "fortune_dice_hvh",
-      opponent: "Jugador local (Fortune Dado)",
-      startedBy: hvhStarter,
-      deleteGame: deleteHvhGame,
-    });
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame,
+    registerAbandonedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useLocalVariantGameSave({
+    boardSize: size,
+    mode: "fortune_dice_hvh",
+    opponent: "Jugador local (Fortune Dado)",
+    startedBy: hvhStarter,
+    deleteGame: deleteHvhGame,
+  });
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
     await putConfig({
@@ -128,45 +137,56 @@ export default function GameFortuneDice() {
   }, []);
 
   return (
-    <SessionGamePage<YEN>
-      deps={[size, hvhStarter]}
-      start={start}
-      move={move}
-      shouldCountMove={(turn) => turn === "player0"}
-      onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves);
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={createLocalHvHResultConfig(
-        "Juego Y - Fortune Dado",
-        size,
-        hvhStarter,
-        "Las piezas por turno dependen del dado",
-      )}
-      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
-      turnConfig={{
-        ...LOCAL_HVH_TURN_CONFIG,
-        textPrefix: "Dado:",
-      }}
-      turnIndicatorExtra={
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            marginLeft: 8,
-          }}
-        >
-          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
-            {diceValue}
+    <>
+      <SessionGamePage<YEN>
+        deps={[size, hvhStarter]}
+        start={start}
+        move={move}
+        shouldCountMove={(turn) => turn === "player0"}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          await registerFinishedGame(gameId, winner, totalMoves);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={createLocalHvHResultConfig(
+          "Juego Y - Fortune Dado",
+          size,
+          hvhStarter,
+          "Las piezas por turno dependen del dado",
+        )}
+        winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+        turnConfig={{
+          ...LOCAL_HVH_TURN_CONFIG,
+          textPrefix: "Dado:",
+        }}
+        turnIndicatorExtra={
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 12,
+              marginLeft: 8,
+            }}
+          >
+            <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
+              {diceValue}
+            </div>
+            <div className="moves-indicator move-active">
+              {piecesLeft} piezas
+            </div>
           </div>
-          <div className="moves-indicator move-active">
-            {piecesLeft} piezas
-          </div>
-        </div>
-      }
-    />
+        }
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

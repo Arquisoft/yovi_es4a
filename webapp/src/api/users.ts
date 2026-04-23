@@ -13,6 +13,7 @@ export type GameMode =
   | "hex_hvh";
 
 type PersistedGameMode = GameMode | "whynot_hvh";
+export type GameResult = "won" | "lost" | "abandoned" | "draw";
 
 type GameModeMeta = {
   shortLabel: string;
@@ -138,11 +139,11 @@ export const HISTORY_MODE_FILTER_OPTIONS: Array<{
 export type HistoryGame = {
   gameId: string;
   mode: GameMode;
-  result: "won" | "lost" | "abandoned" | "draw";
+  result: GameResult;
   boardSize: number;
   totalMoves: number;
-  opponent: string;
-  startedBy: string;
+  opponent?: string;
+  startedBy?: string;
   finishedAt: string;
 };
 
@@ -173,7 +174,7 @@ export type UserHistoryResponse = {
 export type RecordUserGameRequest = {
   gameId: string;
   mode: GameMode;
-  result: "won" | "lost" | "abandoned" | "draw";
+  result: GameResult;
   boardSize: number;
   totalMoves: number;
   opponent?: string;
@@ -182,7 +183,7 @@ export type RecordUserGameRequest = {
 
 export type UserHistoryQuery = {
   mode?: "all" | GameMode;
-  result?: "all" | "won" | "lost" | "abandoned" | "draw";
+  result?: "all" | GameResult;
   sortBy?: "newest" | "oldest" | "movesDesc" | "movesAsc";
 };
 
@@ -218,11 +219,45 @@ async function parseJson<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-function normalizeHistoryGame(game: HistoryGame | (Omit<HistoryGame, "mode"> & { mode: PersistedGameMode })): HistoryGame {
+type RawHistoryGame = Omit<HistoryGame, "mode" | "finishedAt"> & {
+  mode: PersistedGameMode;
+  finishedAt: string | Date;
+};
+
+function normalizeHistoryGame(game: RawHistoryGame): HistoryGame {
   return {
-    ...game,
+    gameId: game.gameId,
     mode: normalizeGameMode(game.mode),
+    result: game.result,
+    boardSize: game.boardSize,
+    totalMoves: game.totalMoves,
+    opponent: typeof game.opponent === "string" ? game.opponent.trim() : "",
+    startedBy: typeof game.startedBy === "string" ? game.startedBy.trim() : "",
+    finishedAt:
+      game.finishedAt instanceof Date
+        ? game.finishedAt.toISOString()
+        : String(game.finishedAt),
   };
+}
+
+export function getHistoryOpponentLabel(game: Pick<HistoryGame, "mode" | "opponent">): string {
+  const opponent = game.opponent?.trim();
+  return opponent || getDefaultOpponentLabel(game.mode);
+}
+
+export function getHistoryStartedByLabel(
+  game: Pick<HistoryGame, "startedBy" | "opponent">,
+): string | null {
+  const startedBy = game.startedBy?.trim();
+
+  if (!startedBy) return null;
+  if (startedBy === "player0") return "Player 0";
+  if (startedBy === "player1") return "Player 1";
+  if (startedBy === "human") return "Humano";
+  if (startedBy === "bot") return game.opponent?.trim() || "Bot";
+  if (startedBy === "random") return "Aleatorio";
+
+  return startedBy;
 }
 
 export async function loginUser(username: string, password: string) {
@@ -334,7 +369,7 @@ export async function getUserHistory(
   );
 
   const data = await parseJson<Omit<UserHistoryResponse, "games"> & {
-    games: Array<Omit<HistoryGame, "mode"> & { mode: PersistedGameMode }>;
+    games: RawHistoryGame[];
   }>(response);
 
   return {
@@ -358,7 +393,7 @@ export async function recordUserGame(username: string, body: RecordUserGameReque
   const data = await parseJson<{
     username: string;
     stats: UserStats;
-    savedGame: Omit<HistoryGame, "mode"> & { mode: PersistedGameMode };
+    savedGame: RawHistoryGame;
   }>(response);
 
   return {

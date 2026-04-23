@@ -21,6 +21,7 @@ import {
   parseBoardSize,
   parseHvHStarter,
 } from "../game/variants";
+import AuthModal from "./registroLogin/AuthModal";
 import "../estilos/VariantVisuals.css";
 
 type TurnPlayer = "player0" | "player1";
@@ -38,14 +39,22 @@ export default function GameMaster() {
   const [piecesLeft, setPiecesLeft] = useState(2);
   const currentPlayerRef = useRef<TurnPlayer>("player0");
 
-  const { registerFinishedGame, registerAbandonedGame } =
-    useLocalVariantGameSave({
-      boardSize: size,
-      mode: "master_hvh",
-      opponent: "Jugador local (Master Y)",
-      startedBy: hvhStarter,
-      deleteGame: deleteHvhGame,
-    });
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame,
+    registerAbandonedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useLocalVariantGameSave({
+    boardSize: size,
+    mode: "master_hvh",
+    opponent: "Jugador local (Master Y)",
+    startedBy: hvhStarter,
+    deleteGame: deleteHvhGame,
+  });
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
     setPiecesLeft(2);
@@ -103,36 +112,47 @@ export default function GameMaster() {
   }, [piecesLeft]);
 
   return (
-    <SessionGamePage<YEN>
-      deps={[size, hvhStarter]}
-      start={start}
-      move={move}
-      shouldCountMove={(turn) => turn === "player0"}
-      onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves);
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={createLocalHvHResultConfig(
-        "Juego Y - Master Y",
-        size,
-        hvhStarter,
-        "Cada turno obliga a colocar 2 piezas",
-      )}
-      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
-      turnConfig={{
-        ...LOCAL_HVH_TURN_CONFIG,
-        textPrefix: "Master:",
-      }}
-      turnIndicatorExtra={
-        <div
-          className="moves-indicator move-active"
-          style={{ marginLeft: 8, display: "inline-flex" }}
-        >
-          <span>⚡</span> {piecesLeft} mov.
-        </div>
-      }
-    />
+    <>
+      <SessionGamePage<YEN>
+        deps={[size, hvhStarter]}
+        start={start}
+        move={move}
+        shouldCountMove={(turn) => turn === "player0"}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          await registerFinishedGame(gameId, winner, totalMoves);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={createLocalHvHResultConfig(
+          "Juego Y - Master Y",
+          size,
+          hvhStarter,
+          "Cada turno obliga a colocar 2 piezas",
+        )}
+        winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+        turnConfig={{
+          ...LOCAL_HVH_TURN_CONFIG,
+          textPrefix: "Master:",
+        }}
+        turnIndicatorExtra={
+          <div
+            className="moves-indicator move-active"
+            style={{ marginLeft: 8, display: "inline-flex" }}
+          >
+            <span>⚡</span> {piecesLeft} mov.
+          </div>
+        }
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

@@ -26,7 +26,8 @@ import {
 import AppHeader from "./AppHeader";
 import UserStatsSummary from "./UserStats";
 import {
-  getDefaultOpponentLabel,
+  getHistoryOpponentLabel,
+  getHistoryStartedByLabel,
   getGameModeLongLabel,
   getGameModeShortLabel,
   getGameModeTagColor,
@@ -100,7 +101,19 @@ function modeTag(mode: GameMode) {
   return <Tag color={getGameModeTagColor(mode)}>{getGameModeShortLabel(mode)}</Tag>;
 }
 
+function formatFinishedAt(finishedAt: string) {
+  const parsedDate = new Date(finishedAt);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return finishedAt;
+  }
+
+  return parsedDate.toLocaleString();
+}
+
 function gameDetails(game: HistoryGame) {
+  const startedByLabel = getHistoryStartedByLabel(game);
+
   return (
     <Descriptions
       column={1}
@@ -109,12 +122,20 @@ function gameDetails(game: HistoryGame) {
         label: { width: 140, fontWeight: 600 },
       }}
     >
+      <Descriptions.Item label="ID de partida">
+        {game.gameId}
+      </Descriptions.Item>
+
       <Descriptions.Item label="Modo">
         {getGameModeLongLabel(game.mode)}
       </Descriptions.Item>
 
+      <Descriptions.Item label="Resultado">
+        {resultTag(game.result)}
+      </Descriptions.Item>
+
       <Descriptions.Item label="Fecha">
-        {new Date(game.finishedAt).toLocaleString()}
+        {formatFinishedAt(game.finishedAt)}
       </Descriptions.Item>
 
       <Descriptions.Item label="Tamano">
@@ -126,12 +147,12 @@ function gameDetails(game: HistoryGame) {
       </Descriptions.Item>
 
       <Descriptions.Item label="Rival">
-        {game.opponent || getDefaultOpponentLabel(game.mode)}
+        {getHistoryOpponentLabel(game)}
       </Descriptions.Item>
 
-      {game.startedBy ? (
+      {startedByLabel ? (
         <Descriptions.Item label="Empieza">
-          {game.startedBy}
+          {startedByLabel}
         </Descriptions.Item>
       ) : null}
     </Descriptions>

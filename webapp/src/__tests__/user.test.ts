@@ -146,6 +146,55 @@ describe("api/users", () => {
     );
   });
 
+  it("getUserHistory normaliza modos legacy y campos opcionales del historial", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "marcelo",
+        profilePicture: "",
+        stats: {
+          gamesPlayed: 1,
+          gamesWon: 0,
+          gamesLost: 0,
+          gamesDrawn: 1,
+          gamesAbandoned: 0,
+          totalMoves: 12,
+          currentWinStreak: 0,
+          winRate: 0,
+        },
+        pagination: {
+          page: 1,
+          pageSize: 5,
+          totalGames: 1,
+          totalPages: 1,
+        },
+        games: [{
+          gameId: "g-legacy",
+          mode: "whynot_hvh",
+          result: "draw",
+          boardSize: 7,
+          totalMoves: 12,
+          opponent: "  ",
+          startedBy: " random ",
+          finishedAt: new Date("2026-03-21T12:00:00.000Z"),
+        }],
+      }),
+    });
+
+    const result = await getUserHistory("marcelo", 1, 5);
+
+    expect(result.games[0]).toEqual({
+      gameId: "g-legacy",
+      mode: "why_not_hvh",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 12,
+      opponent: "",
+      startedBy: "random",
+      finishedAt: "2026-03-21T12:00:00.000Z",
+    });
+  });
+
   it("recordUserGame hace POST correcto", async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,

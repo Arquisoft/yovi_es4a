@@ -21,6 +21,7 @@ import {
   LOCAL_HVH_WINNER_PALETTE,
   parseBoardSize,
 } from "../game/variants";
+import AuthModal from "./registroLogin/AuthModal";
 import "../estilos/VariantVisuals.css";
 
 const { Text } = Typography;
@@ -40,14 +41,22 @@ export default function GameFortuneCoin() {
   const size = parseBoardSize(searchParams.get("size"));
   const [isFlipping, setIsFlipping] = useState(false);
 
-  const { registerFinishedGame, registerAbandonedGame } =
-    useLocalVariantGameSave({
-      boardSize: size,
-      mode: "fortune_coin_hvh",
-      opponent: "Jugador local (Fortune Moneda)",
-      startedBy: "random",
-      deleteGame: deleteHvhGame,
-    });
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame,
+    registerAbandonedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useLocalVariantGameSave({
+    boardSize: size,
+    mode: "fortune_coin_hvh",
+    opponent: "Jugador local (Fortune Moneda)",
+    startedBy: "random",
+    deleteGame: deleteHvhGame,
+  });
 
   const animateCoin = useCallback(() => {
     setIsFlipping(true);
@@ -100,45 +109,56 @@ export default function GameFortuneCoin() {
   }, [animateCoin]);
 
   return (
-    <SessionGamePage<YEN>
-      deps={[size]}
-      start={start}
-      move={move}
-      shouldCountMove={(turn) => turn === "player0"}
-      onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves);
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={createLocalHvHResultConfig(
-        "Juego Y - Fortune Moneda",
-        size,
-        "random",
-        "Cada turno depende de una moneda",
-      )}
-      winnerPalette={LOCAL_HVH_WINNER_PALETTE}
-      turnConfig={{
-        ...LOCAL_HVH_TURN_CONFIG,
-        textPrefix: "Moneda:",
-      }}
-      turnIndicatorExtra={
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            marginLeft: 8,
-          }}
-        >
-          <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
-            🪙
+    <>
+      <SessionGamePage<YEN>
+        deps={[size]}
+        start={start}
+        move={move}
+        shouldCountMove={(turn) => turn === "player0"}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          await registerFinishedGame(gameId, winner, totalMoves);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={createLocalHvHResultConfig(
+          "Juego Y - Fortune Moneda",
+          size,
+          "random",
+          "Cada turno depende de una moneda",
+        )}
+        winnerPalette={LOCAL_HVH_WINNER_PALETTE}
+        turnConfig={{
+          ...LOCAL_HVH_TURN_CONFIG,
+          textPrefix: "Moneda:",
+        }}
+        turnIndicatorExtra={
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 12,
+              marginLeft: 8,
+            }}
+          >
+            <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
+              🪙
+            </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Lanzando...
+            </Text>
           </div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Lanzando...
-          </Text>
-        </div>
-      }
-    />
+        }
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

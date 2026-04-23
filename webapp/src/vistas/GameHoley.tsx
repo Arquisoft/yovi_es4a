@@ -29,6 +29,7 @@ import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/
 import SessionGamePage from "../game/SessionGamePage";
 import { hasPlayableCells } from "../game/variants";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+import AuthModal from "./registroLogin/AuthModal";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -68,21 +69,29 @@ export default function GameHoley() {
   const [searchParams] = useSearchParams();
 
   const size = parseBoardSize(searchParams.get("size"));
-  const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
+  const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
 
   const totalCells = (size * (size + 1)) / 2;
 
   // Los agujeros se generan una vez al montar el componente
   const holesRef = useRef<Set<number>>(generateHoles(totalCells));
   const [holes, setHoles] = useState<Set<number>>(holesRef.current);
-  const { registerFinishedGame, registerAbandonedGame } =
-    useLocalVariantGameSave({
-      boardSize: size,
-      mode: "holey_hvh",
-      opponent: "Jugador local (Holey)",
-      startedBy: hvh_starter,
-      deleteGame: deleteHvhGame,
-    });
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame,
+    registerAbandonedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useLocalVariantGameSave({
+    boardSize: size,
+    mode: "holey_hvh",
+    opponent: "Jugador local (Holey)",
+    startedBy: hvhStarter,
+    deleteGame: deleteHvhGame,
+  });
 
   const move = useCallback(async (
     gameId: string,
@@ -110,9 +119,9 @@ export default function GameHoley() {
     holesRef.current = newHoles;
     setHoles(newHoles); // <-- ESTO FORZARÁ A RENDERIZAR LOS NUEVOS AGUJEROS
 
-    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvh_starter });
-    return createHvhGame({ size, hvh_starter: hvh_starter });
-  }, [size, hvh_starter, totalCells]);
+    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvhStarter });
+    return createHvhGame({ size, hvh_starter: hvhStarter });
+  }, [size, hvhStarter, totalCells]);
 
   return (
     <>
@@ -124,7 +133,7 @@ export default function GameHoley() {
       />
       <SessionGamePage<YEN>
         disabledCells={holes}  
-        deps={[size, hvh_starter]}
+        deps={[size, hvhStarter]}
         start={start}
         move={move}
         shouldCountMove={(turn) => turn === "player0"}
@@ -134,18 +143,21 @@ export default function GameHoley() {
         onGameAbandoned={async ({ gameId, totalMoves }) => {
           await registerAbandonedGame(gameId, totalMoves);
         }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
         resultConfig={{
           title: "Juego Y — Holey Y",
           subtitle: `Tamaño: ${size} · ${holes.size} agujero(s) en el tablero`,
-        abandonOkText: "Abandonar",
-        getResultTitle: () => "Partida finalizada",
-        getResultText: (winner) =>
-          winner === "player0"
-            ? "Player 0 ha ganado."
-            : winner === "player1"
-              ? "Player 1 ha ganado."
-              : "No quedan casillas jugables fuera de los agujeros. La partida terminó en empate.",
-      }}
+          abandonOkText: "Abandonar",
+          getResultTitle: () => "Partida finalizada",
+          getResultText: (winner) =>
+            winner === "player0"
+              ? "Player 0 ha ganado."
+              : winner === "player1"
+                ? "Player 1 ha ganado."
+                : "No quedan casillas jugables fuera de los agujeros. La partida terminó en empate.",
+        }}
         winnerPalette={{
           highlightedWinner: "player0",
           highlightedBackground: "#28bbf532",
@@ -158,6 +170,12 @@ export default function GameHoley() {
             player1: { label: "Player 1", color: "#FF7B00" },
           },
         }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
       />
     </>
   );

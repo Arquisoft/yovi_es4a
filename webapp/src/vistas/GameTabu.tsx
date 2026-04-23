@@ -29,6 +29,7 @@ import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/
 import SessionGamePage from "../game/SessionGamePage";
 import { hasPlayableCells } from "../game/variants";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+import AuthModal from "./registroLogin/AuthModal";
 
 type StarterHvH = "player0" | "player1" | "random";
 
@@ -91,7 +92,7 @@ export default function GameTabu() {
   const [searchParams] = useSearchParams();
 
   const size = parseBoardSize(searchParams.get("size"));
-  const hvh_starter = parseHvHStarter(searchParams.get("hvhstarter"));
+  const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
 
   // Última celda jugada por cada jugador
   const lastMoveByPlayerRef = useRef<{ player0: number | null; player1: number | null }>({
@@ -101,14 +102,22 @@ export default function GameTabu() {
   const currentPlayerRef = useRef<"player0" | "player1">("player0");
 
   const [tabuCells, setTabuCells] = useState<Set<number>>(new Set());
-  const { registerFinishedGame, registerAbandonedGame } =
-    useLocalVariantGameSave({
-      boardSize: size,
-      mode: "tabu_hvh",
-      opponent: "Jugador local (Tabú)",
-      startedBy: hvh_starter,
-      deleteGame: deleteHvhGame,
-    });
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame,
+    registerAbandonedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+  } = useLocalVariantGameSave({
+    boardSize: size,
+    mode: "tabu_hvh",
+    opponent: "Jugador local (Tabú)",
+    startedBy: hvhStarter,
+    deleteGame: deleteHvhGame,
+  });
 
   function computeTabu(lastOpponentCell: number | null): Set<number> {
     if (lastOpponentCell === null) return new Set();
@@ -151,47 +160,58 @@ export default function GameTabu() {
     currentPlayerRef.current = "player0";
     setTabuCells(new Set());
 
-    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvh_starter });
-    return createHvhGame({ size, hvh_starter: hvh_starter });
-  }, [size, hvh_starter]);
+    await putConfig({ size, hvb_starter: "human", bot_id: null, hvh_starter: hvhStarter });
+    return createHvhGame({ size, hvh_starter: hvhStarter });
+  }, [size, hvhStarter]);
 
   return (
-    <SessionGamePage<YEN>
-      disabledCells={tabuCells}
-      deps={[size, hvh_starter]}
-      start={start}
-      move={move}
-      shouldCountMove={(turn) => turn === "player0"}
-      onGameFinished={async ({ gameId, winner, totalMoves }) => {
-        await registerFinishedGame(gameId, winner, totalMoves);
-      }}
-      onGameAbandoned={async ({ gameId, totalMoves }) => {
-        await registerAbandonedGame(gameId, totalMoves);
-      }}
-      resultConfig={{
-        title: "Juego Y — Tabu Y",
-        subtitle: `Tamaño: ${size} · No puedes jugar adyacente al rival`,
-        abandonOkText: "Abandonar",
-        getResultTitle: () => "Partida finalizada",
-        getResultText: (winner) =>
-          winner === "player0"
-            ? "Player 0 ha ganado."
-            : winner === "player1"
-              ? "Player 1 ha ganado."
-              : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
-      }}
-      winnerPalette={{
-        highlightedWinner: "player0",
-        highlightedBackground: "#28bbf532",
-        otherWinnerBackground: "#ff7b0033",
-      }}
-      turnConfig={{
-        textPrefix: `🚫 ${tabuCells.size} casilla(s) prohibida(s) — turno:`,
-        turns: {
-          player0: { label: "Player 0", color: "#28BBF5" },
-          player1: { label: "Player 1", color: "#FF7B00" },
-        },
-      }}
-    />
+    <>
+      <SessionGamePage<YEN>
+        disabledCells={tabuCells}
+        deps={[size, hvhStarter]}
+        start={start}
+        move={move}
+        shouldCountMove={(turn) => turn === "player0"}
+        onGameFinished={async ({ gameId, winner, totalMoves }) => {
+          await registerFinishedGame(gameId, winner, totalMoves);
+        }}
+        onGameAbandoned={async ({ gameId, totalMoves }) => {
+          await registerAbandonedGame(gameId, totalMoves);
+        }}
+        canOfferGuestSave={canOfferGuestSave}
+        onGuestSaveRequested={handleGuestSaveRequested}
+        guestSaveLoading={savingPendingGame}
+        resultConfig={{
+          title: "Juego Y — Tabu Y",
+          subtitle: `Tamaño: ${size} · No puedes jugar adyacente al rival`,
+          abandonOkText: "Abandonar",
+          getResultTitle: () => "Partida finalizada",
+          getResultText: (winner) =>
+            winner === "player0"
+              ? "Player 0 ha ganado."
+              : winner === "player1"
+                ? "Player 1 ha ganado."
+                : "Ningún jugador tiene movimientos válidos. La partida terminó en empate.",
+        }}
+        winnerPalette={{
+          highlightedWinner: "player0",
+          highlightedBackground: "#28bbf532",
+          otherWinnerBackground: "#ff7b0033",
+        }}
+        turnConfig={{
+          textPrefix: `🚫 ${tabuCells.size} casilla(s) prohibida(s) — turno:`,
+          turns: {
+            player0: { label: "Player 0", color: "#28BBF5" },
+            player1: { label: "Player 1", color: "#FF7B00" },
+          },
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={closeAuthModal}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    </>
   );
 }

@@ -9,6 +9,32 @@ const getUserSessionMock = vi.fn();
 
 vi.mock("../api/users", () => ({
     getUserHistory: (...args: any[]) => getUserHistoryMock(...args),
+    getHistoryOpponentLabel: (game: any) => game.opponent || "Jugador local",
+    getHistoryStartedByLabel: (game: any) => {
+        if (!game.startedBy) return null;
+        if (game.startedBy === "human") return "Humano";
+        if (game.startedBy === "player0") return "Player 0";
+        if (game.startedBy === "player1") return "Player 1";
+        if (game.startedBy === "random") return "Aleatorio";
+        return game.startedBy;
+    },
+    getGameModeShortLabel: (mode: string) => ({
+        classic_hvb: "ClÃ¡sico HvB",
+        classic_hvh: "ClÃ¡sico HvH",
+        tabu_hvh: "TabÃº HvH",
+    }[mode] ?? mode),
+    getGameModeLongLabel: (mode: string) => ({
+        classic_hvb: "ClÃ¡sico â€” Humano vs Bot",
+        classic_hvh: "ClÃ¡sico â€” Humano vs Humano",
+        tabu_hvh: "TabÃº â€” Humano vs Humano",
+    }[mode] ?? mode),
+    getGameModeTagColor: () => "blue",
+    HISTORY_MODE_FILTER_OPTIONS: [
+        { value: "all", label: "Todos los modos" },
+        { value: "classic_hvb", label: "ClÃ¡sico HvB" },
+        { value: "classic_hvh", label: "ClÃ¡sico HvH" },
+        { value: "tabu_hvh", label: "TabÃº HvH" },
+    ],
 }));
 
 vi.mock("../utils/session", () => ({
@@ -202,8 +228,10 @@ describe("UserHistory", () => {
         expect(screen.getByText("Clásico — Humano vs Humano")).toBeInTheDocument();
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
+        expect(screen.getByText("ID de partida: g1")).toBeInTheDocument();
+        expect(screen.getByText("Resultado: Ganada")).toBeInTheDocument();
         expect(screen.getByText("Rival: random_bot")).toBeInTheDocument();
-        expect(screen.getByText("Empieza: human")).toBeInTheDocument();
+        expect(screen.getByText("Empieza: Humano")).toBeInTheDocument();
         expect(screen.getByText("Tamaño: 7")).toBeInTheDocument();
         expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
     });

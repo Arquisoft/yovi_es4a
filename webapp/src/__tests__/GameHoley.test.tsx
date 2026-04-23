@@ -48,6 +48,10 @@ vi.mock("../game/SessionGamePage", () => ({
   },
 }));
 
+vi.mock("../vistas/registroLogin/AuthModal", () => ({
+  default: () => <div>AuthModal</div>,
+}));
+
 describe("GameHoley", () => {
   beforeEach(() => {
     vi.clearAllMocks();
