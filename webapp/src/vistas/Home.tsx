@@ -540,7 +540,7 @@ function StatsSection({
       {statsError && (
         <Alert
           type="error"
-          message="No se pudieron cargar las estadisticas"
+          message="No se pudieron cargar las estadísticas"
           description={statsError}
           showIcon
         />
@@ -552,7 +552,7 @@ function StatsSection({
           </Flex>
         </Card>
       ) : stats ? (
-        <UserStatsSummary stats={stats} title="Tus estadisticas" />
+        <UserStatsSummary stats={stats} title="Tus estadísticas" />
       ) : null}
     </>
   );

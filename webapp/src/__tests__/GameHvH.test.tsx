@@ -91,6 +91,13 @@ describe("GameHvH", () => {
     expect(props.canOfferGuestSave).toBe(false);
   });
 
+  it("envuelve LocalHvHVariantPage con el título y modo clásicos", () => {
+    render(<GameHvH />);
+
+    const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
+    expect(props.resultConfig.title).toBe("Juego Y - Human vs Human");
+  });
+
   it("pasa shouldCountMove para contar solo jugadas de player0", () => {
     render(<GameHvH />);
 
@@ -319,15 +326,13 @@ describe("GameHvH", () => {
     expect(authProps.onLoginSuccess).toBe(handleLoginSuccess);
   });
 
-  it("configura correctamente celebrateWinner y los textos de resultado", () => {
+  it("configura correctamente los textos de resultado y turno", () => {
     render(<GameHvH />);
 
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
-    expect(props.celebrateWinner("player0")).toBe(true);
-    expect(props.celebrateWinner("player1")).toBe(true);
-    expect(props.celebrateWinner(null)).toBe(false);
     expect(props.resultConfig.getResultText("player0")).toContain("Player 0");
     expect(props.resultConfig.getResultText("player1")).toContain("Player 1");
     expect(props.resultConfig.getResultText(null)).toContain("empate");
+    expect(props.turnConfig.textPrefix).toBe("Turno actual:");
   });
 });

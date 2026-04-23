@@ -10,6 +10,12 @@ import {
   changeAvatar,
   changeUsername,
   getUserProfile,
+  getGameModeLongLabel,
+  getGameModeShortLabel,
+  getGameModeTagColor,
+  getHistoryOpponentLabel,
+  getHistoryStartedByLabel,
+  normalizeGameMode,
 } from "../api/users";
 
 describe("api/users", () => {
@@ -280,6 +286,144 @@ describe("api/users", () => {
     });
 
     await expect(getRanking("winRate", 1, 20)).rejects.toThrow("Error 500");
+  });
+
+  it("normaliza el alias legacy whynot_hvh en las utilidades de modo", () => {
+    expect(normalizeGameMode("whynot_hvh")).toBe("why_not_hvh");
+    expect(getGameModeShortLabel("whynot_hvh")).toBe("WhY Not HvH");
+    expect(getGameModeLongLabel("whynot_hvh")).toBe("WhY Not - Humano vs Humano");
+    expect(getGameModeTagColor("whynot_hvh")).toBe("#5cf6b6");
+  });
+
+  it("usa etiquetas por defecto para rival y jugador inicial", () => {
+    expect(
+      getHistoryOpponentLabel({ mode: "classic_hvb", opponent: "   " }),
+    ).toBe("Bot");
+    expect(getHistoryStartedByLabel({ startedBy: "  player0  " })).toBe("player0");
+    expect(getHistoryStartedByLabel({ startedBy: "   " })).toBeNull();
+  });
+
+  it("getUserHistory valida username, añade filtros y normaliza juegos", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "Marcelo",
+        stats: {
+          gamesPlayed: 1,
+          gamesWon: 1,
+          gamesLost: 0,
+          gamesDrawn: 0,
+          gamesAbandoned: 0,
+          totalMoves: 8,
+          currentWinStreak: 1,
+          winRate: 100,
+        },
+        pagination: { page: 3, pageSize: 2, totalGames: 1, totalPages: 1 },
+        games: [
+          {
+            gameId: "g1",
+            mode: "whynot_hvh",
+            result: "won",
+            boardSize: 7,
+            totalMoves: 8,
+            opponent: "  Rival  ",
+            startedBy: "  player1  ",
+            finishedAt: new Date("2026-04-22T10:00:00.000Z"),
+          },
+        ],
+      }),
+    });
+
+    const res = await getUserHistory("  Marcelo  ", 3, 2, {
+      mode: "classic_hvh",
+      result: "won",
+      sortBy: "movesAsc",
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/Marcelo/history?page=3&pageSize=2&mode=classic_hvh&result=won&sortBy=movesAsc",
+    );
+    expect(res.games[0].mode).toBe("why_not_hvh");
+    expect(res.games[0].opponent).toBe("Rival");
+    expect(res.games[0].startedBy).toBe("player1");
+    expect(res.games[0].finishedAt).toBe("2026-04-22T10:00:00.000Z");
+  });
+
+  it("recordUserGame normaliza el juego devuelto y codifica el username", async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        username: "User.Name",
+        stats: {
+          gamesPlayed: 1,
+          gamesWon: 0,
+          gamesLost: 0,
+          gamesDrawn: 1,
+          gamesAbandoned: 0,
+          totalMoves: 9,
+          currentWinStreak: 0,
+          winRate: 0,
+        },
+        savedGame: {
+          gameId: "g draw",
+          mode: "whynot_hvh",
+          result: "draw",
+          boardSize: 7,
+          totalMoves: 9,
+          opponent: "  Invitado  ",
+          startedBy: "  random  ",
+          finishedAt: "2026-04-23T09:00:00.000Z",
+        },
+      }),
+    });
+
+    const res = await recordUserGame(" User.Name ", {
+      gameId: "g draw",
+      mode: "classic_hvh",
+      result: "draw",
+      boardSize: 7,
+      totalMoves: 9,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/users/users/User.Name/games",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    expect(res.savedGame.mode).toBe("why_not_hvh");
+    expect(res.savedGame.opponent).toBe("Invitado");
+    expect(res.savedGame.startedBy).toBe("random");
+  });
+
+  it("usa el username validado también en stats, profile, password, username y avatar", async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: "marcelo", stats: {} }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: "marcelo", email: "m@test.com" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: "ok" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: "ok", username: "nuevo" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: "ok", profilePicture: "elvis.png" }) });
+
+    await getUserStats("  marcelo ");
+    await getUserProfile("  marcelo ");
+    await changePassword("  marcelo ", "old", "newpass");
+    await changeUsername("  marcelo ", "nuevo");
+    await changeAvatar("  marcelo ", "elvis.png");
+
+    expect((global.fetch as any).mock.calls[0]?.[0]).toBe("/api/users/users/marcelo/stats");
+    expect((global.fetch as any).mock.calls[1]?.[0]).toBe("/api/users/users/marcelo/profile");
+    expect((global.fetch as any).mock.calls[2]?.[0]).toBe("/api/users/users/marcelo/password");
+    expect((global.fetch as any).mock.calls[3]?.[0]).toBe("/api/users/users/marcelo/username");
+    expect((global.fetch as any).mock.calls[4]?.[0]).toBe("/api/users/users/marcelo/avatar");
+  });
+
+  it("valida el username antes de llamar a fetch", async () => {
+    await expect(getUserHistory("   ", 1, 5)).rejects.toThrow(
+      "El nombre de usuario es obligatorio.",
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("changePassword hace PUT correcto y devuelve el mensaje", async () => {

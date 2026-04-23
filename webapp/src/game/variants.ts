@@ -325,7 +325,7 @@ export function createLocalHvHResultConfig(
   subtitleSuffix?: string,
 ) {
   const subtitleParts = [
-    `Tamano: ${size}`,
+    `Tamaño: ${size}`,
     `Empieza: ${getHvHStarterLabel(hvhStarter)}`,
   ];
 
