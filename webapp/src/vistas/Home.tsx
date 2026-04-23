@@ -414,10 +414,10 @@ function MultiplayerCard({ onClick }: { onClick: () => void }) {
       onClick={onClick}
     >
       <Title level={3} style={{ color: "white", margin: 0 }}>
-        Multijugador Online (BETA)
+        🌍 Multijugador Online (BETA)
       </Title>
       <Text style={{ color: "rgba(255,255,255,0.8)" }}>
-        Crea o unete a salas privadas mediante codigos y juega en tiempo real.
+        Crea o únete a salas privadas mediante códigos y juega en tiempo real.
       </Text>
     </Card>
   );

@@ -570,10 +570,21 @@ app.get("/users/:username/history", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
 
     let history = Array.isArray(user.gameHistory)
-      ? user.gameHistory.map((game) => ({
-          ...game,
-          mode: normalizeGameMode(game.mode),
-        }))
+      ? user.gameHistory.map((game) => {
+          const plainGame =
+            typeof game?.toObject === "function" ? game.toObject() : game;
+
+          return {
+            gameId: plainGame.gameId,
+            mode: normalizeGameMode(plainGame.mode),
+            result: plainGame.result,
+            boardSize: plainGame.boardSize,
+            totalMoves: plainGame.totalMoves,
+            opponent: typeof plainGame.opponent === "string" ? plainGame.opponent : "",
+            startedBy: typeof plainGame.startedBy === "string" ? plainGame.startedBy : "",
+            finishedAt: plainGame.finishedAt,
+          };
+        })
       : [];
 
     if (mode)

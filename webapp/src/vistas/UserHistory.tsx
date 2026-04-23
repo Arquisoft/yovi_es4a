@@ -101,16 +101,6 @@ function modeTag(mode: GameMode) {
   return <Tag color={getGameModeTagColor(mode)}>{getGameModeShortLabel(mode)}</Tag>;
 }
 
-function formatFinishedAt(finishedAt: string) {
-  const parsedDate = new Date(finishedAt);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return finishedAt;
-  }
-
-  return parsedDate.toLocaleString();
-}
-
 function gameDetails(game: HistoryGame) {
   const startedByLabel = getHistoryStartedByLabel(game);
 
@@ -122,23 +112,15 @@ function gameDetails(game: HistoryGame) {
         label: { width: 140, fontWeight: 600 },
       }}
     >
-      <Descriptions.Item label="ID de partida">
-        {game.gameId}
-      </Descriptions.Item>
-
       <Descriptions.Item label="Modo">
         {getGameModeLongLabel(game.mode)}
       </Descriptions.Item>
 
-      <Descriptions.Item label="Resultado">
-        {resultTag(game.result)}
-      </Descriptions.Item>
-
       <Descriptions.Item label="Fecha">
-        {formatFinishedAt(game.finishedAt)}
+        {new Date(game.finishedAt).toLocaleString()}
       </Descriptions.Item>
 
-      <Descriptions.Item label="Tamano">
+      <Descriptions.Item label="Tamaño">
         {game.boardSize}
       </Descriptions.Item>
 
@@ -167,6 +149,7 @@ export default function UserHistory() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+
   const [modeFilter, setModeFilter] = useState<"all" | GameMode>("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned" | "draw">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
@@ -187,9 +170,9 @@ export default function UserHistory() {
       sortBy,
     })
       .then(setData)
-      .catch((requestError) => setError(requestError.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [modeFilter, page, resultFilter, sortBy, username]);
+  }, [username, page, modeFilter, resultFilter, sortBy]);
 
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
@@ -234,7 +217,7 @@ export default function UserHistory() {
                 </Flex>
               </Card>
 
-              <UserStatsSummary stats={data.stats} title="Estadisticas" />
+              <UserStatsSummary stats={data.stats} title="Estadísticas" />
 
               <Card>
                 <Space direction="vertical" size={20} style={{ width: "100%" }}>
@@ -247,7 +230,7 @@ export default function UserHistory() {
                       <Select
                         value={modeFilter}
                         onChange={setModeFilter}
-                        style={{ width: 240 }}
+                        style={{ width: 220 }}
                         options={HISTORY_MODE_FILTER_OPTIONS}
                       />
 
@@ -269,9 +252,9 @@ export default function UserHistory() {
                         onChange={setSortBy}
                         style={{ width: 180 }}
                         options={[
-                          { value: "newest", label: "Mas recientes" },
-                          { value: "oldest", label: "Mas antiguas" },
-                          { value: "movesDesc", label: "Mas movimientos" },
+                          { value: "newest", label: "Más recientes" },
+                          { value: "oldest", label: "Más antiguas" },
+                          { value: "movesDesc", label: "Más movimientos" },
                           { value: "movesAsc", label: "Menos movimientos" },
                         ]}
                       />

@@ -50,7 +50,7 @@ const GAME_MODE_META: Record<GameMode, GameModeMeta> = {
   fortune_dice_hvh: {
     shortLabel: "Fortune Dado HvH",
     longLabel: "Fortune Dado - Humano vs Humano",
-    tagColor: "#FACC15",
+    tagColor: "#c4bda3",
     defaultOpponent: "Jugador local",
   },
   poly_hvh: {
@@ -62,37 +62,37 @@ const GAME_MODE_META: Record<GameMode, GameModeMeta> = {
   pastel_hvh: {
     shortLabel: "Pastel HvH",
     longLabel: "Pastel - Humano vs Humano",
-    tagColor: "#FA8C16",
+    tagColor: "#b7419d",
     defaultOpponent: "Jugador local",
   },
   master_hvh: {
     shortLabel: "Master HvH",
     longLabel: "Master Y - Humano vs Humano",
-    tagColor: "#722ED1",
+    tagColor: "#45c170",
     defaultOpponent: "Jugador local",
   },
   fortune_coin_hvh: {
     shortLabel: "Fortune Moneda HvH",
     longLabel: "Fortune Moneda - Humano vs Humano",
-    tagColor: "#D4B106",
+    tagColor: "#d8b114",
     defaultOpponent: "Jugador local",
   },
   why_not_hvh: {
     shortLabel: "WhY Not HvH",
     longLabel: "WhY Not - Humano vs Humano",
-    tagColor: "#13C2C2",
+    tagColor: "#5cf6b6",
     defaultOpponent: "Jugador local",
   },
   "3dy_hvh": {
     shortLabel: "3D Y HvH",
     longLabel: "3D Y - Humano vs Humano",
-    tagColor: "#36CFC9",
+    tagColor: "#cf365a",
     defaultOpponent: "Jugador local",
   },
   hex_hvh: {
     shortLabel: "Hex HvH",
     longLabel: "Hex - Humano vs Humano",
-    tagColor: "#EB2F96",
+    tagColor: "#4889b5",
     defaultOpponent: "Jugador local",
   },
 };
@@ -246,18 +246,10 @@ export function getHistoryOpponentLabel(game: Pick<HistoryGame, "mode" | "oppone
 }
 
 export function getHistoryStartedByLabel(
-  game: Pick<HistoryGame, "startedBy" | "opponent">,
+  game: Pick<HistoryGame, "startedBy">,
 ): string | null {
   const startedBy = game.startedBy?.trim();
-
-  if (!startedBy) return null;
-  if (startedBy === "player0") return "Player 0";
-  if (startedBy === "player1") return "Player 1";
-  if (startedBy === "human") return "Humano";
-  if (startedBy === "bot") return game.opponent?.trim() || "Bot";
-  if (startedBy === "random") return "Aleatorio";
-
-  return startedBy;
+  return startedBy || null;
 }
 
 export async function loginUser(username: string, password: string) {
