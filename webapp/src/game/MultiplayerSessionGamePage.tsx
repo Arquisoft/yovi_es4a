@@ -24,6 +24,8 @@ type Props = {
   boardSize: number;
   cells: Cell[];
   disabledCells: Set<number>;
+  neutralCells?: Set<number>;
+  boardBanner?: React.ReactNode;
   boardDisabled: boolean;
   onCellClick: (cellId: number) => void;
 
@@ -52,6 +54,8 @@ export default function MultiplayerSessionGamePage({
   boardSize,
   cells,
   disabledCells,
+  neutralCells,
+  boardBanner,
   boardDisabled,
   onCellClick,
   myPlayer,
@@ -200,24 +204,29 @@ export default function MultiplayerSessionGamePage({
       abandonDisabled={loading || abandoning || gameOver}
       turnIndicator={turnIndicator}
       board={
-        <Card
-          style={{
-            ...boardCardStyle,
-            width: "100%",
-            overflow: "hidden",
-          }}
-          bodyStyle={{
-            padding: "clamp(8px, 2vw, 16px)",
-          }}
-        >
-          <Board
-            size={boardSize}
-            cells={cells}
-            disabled={boardDisabled}
-            disabledCells={disabledCells}
-            onCellClick={onCellClick}
-          />
-        </Card>
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {boardBanner}
+
+          <Card
+            style={{
+              ...boardCardStyle,
+              width: "100%",
+              overflow: "hidden",
+            }}
+            bodyStyle={{
+              padding: "clamp(8px, 2vw, 16px)",
+            }}
+          >
+            <Board
+              size={boardSize}
+              cells={cells}
+              disabled={boardDisabled}
+              disabledCells={disabledCells}
+              neutralCells={neutralCells}
+              onCellClick={onCellClick}
+            />
+          </Card>
+        </Space>
       }
       result={
         gameOver ? (

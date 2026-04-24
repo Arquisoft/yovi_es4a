@@ -271,6 +271,7 @@ export const STANDALONE_VARIANTS: VariantId[] = ["hex"];
 
 export const MULTIPLAYER_VARIANTS: VariantId[] = [
   "classic",
+  "pastel",
   "tabu",
   "holey",
   "master",

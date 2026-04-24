@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import type { ReactNode } from "react";
 
 import GameMultiplayer from "../vistas/GameMultiplayer";
 import { useMultiplayerGameSession } from "../game/useMultiplayerGameSession";
 import { parseYenToCells } from "../game/yen";
+import type { UseMultiplayerGameSessionResult } from "../game/useMultiplayerGameSession";
 
 const navigateMock = vi.fn();
 
@@ -50,16 +52,18 @@ vi.mock("../game/MultiplayerSessionGamePage", () => ({
     onOpenChat,
     onBack,
     onCellClick,
+    boardBanner,
   }: {
     title: string;
     subtitle: string;
     hasNewMessages: boolean;
     hasBoard: boolean;
     boardSize: number;
-    cells: unknown[];
+    cells: Array<{ cellId?: number; value?: string }>;
     onOpenChat: () => void;
     onBack: () => void;
     onCellClick: (cellId: number) => void;
+    boardBanner?: ReactNode;
   }) => (
     <div>
       <div>{title}</div>
@@ -68,6 +72,8 @@ vi.mock("../game/MultiplayerSessionGamePage", () => ({
       <div>{`has-board:${String(hasBoard)}`}</div>
       <div>{`board-size:${boardSize}`}</div>
       <div>{`cells:${cells.length}`}</div>
+      <div data-testid="cells-json">{JSON.stringify(cells)}</div>
+      <div>{`has-banner:${String(Boolean(boardBanner))}`}</div>
       <button onClick={onOpenChat}>abrir-chat</button>
       <button onClick={onBack}>volver</button>
       <button onClick={() => onCellClick(7)}>click-cell</button>
@@ -107,6 +113,41 @@ describe("GameMultiplayer", () => {
   const mockedUseMultiplayerGameSession = vi.mocked(useMultiplayerGameSession);
   const mockedParseYenToCells = vi.mocked(parseYenToCells);
 
+  function buildSessionResult(
+    overrides: Partial<UseMultiplayerGameSessionResult> = {},
+  ): UseMultiplayerGameSessionResult {
+    return {
+      gameId: "game-1",
+      yen: { size: 11, layout: "B/.R/..." },
+      loading: false,
+      gameOver: false,
+      winner: null,
+      nextTurn: "player0",
+      error: "",
+      disabledCells: new Set<number>(),
+      myPlayer: "player0",
+      displayMyPlayer: "player0",
+      myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
+      handleCellClick: vi.fn(),
+      handleAbandon: vi.fn(),
+      handlePastelSwap: vi.fn(),
+      handlePastelPass: vi.fn(),
+      neutralCells: new Set<number>(),
+      pastelState: null,
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
+      ...overrides,
+    };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -115,30 +156,7 @@ describe("GameMultiplayer", () => {
       config: { size: 11, mode: "classic_hvh" },
     };
 
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
-      yen: { size: 11, layout: "B/.R/..." },
-      loading: false,
-      winner: null,
-      nextTurn: "player0",
-      error: "",
-      disabledCells: new Set<number>(),
-      myPlayer: "player0",
-      myColor: "#1677ff",
-      playerProfiles: {
-        player0: { username: "hostUser", profilePicture: "host.png" },
-        player1: { username: "guestUser", profilePicture: "guest.png" },
-      },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      // New properties:
-      messages: [],
-      hasNewMessages: false,
-      setHasNewMessages: vi.fn(),
-      handleSendChat: vi.fn(),
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult());
 
     mockedParseYenToCells.mockReturnValue([
       {
@@ -178,29 +196,12 @@ describe("GameMultiplayer", () => {
   });
 
   it("muestra Naranja para player1", () => {
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
-      yen: { size: 11, layout: "B/.R/..." },
-      loading: false,
-      winner: null,
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
       nextTurn: "player1",
-      error: "",
-      disabledCells: new Set<number>(),
       myPlayer: "player1",
+      displayMyPlayer: "player1",
       myColor: "#ff7b00",
-      playerProfiles: {
-        player0: { username: "hostUser", profilePicture: "host.png" },
-        player1: { username: "guestUser", profilePicture: "guest.png" },
-      },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      messages: [],
-      hasNewMessages: false,
-      setHasNewMessages: vi.fn(),
-      handleSendChat: vi.fn(),
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    }));
 
     render(<GameMultiplayer />);
 
@@ -209,29 +210,12 @@ describe("GameMultiplayer", () => {
   });
 
   it("usa 'Jugador online' si el rival no tiene username", () => {
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
-      yen: { size: 11, layout: "B/.R/..." },
-      loading: false,
-      winner: null,
-      nextTurn: "player0",
-      error: "",
-      disabledCells: new Set<number>(),
-      myPlayer: "player0",
-      myColor: "#1677ff",
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
       playerProfiles: {
         player0: { username: "hostUser", profilePicture: "host.png" },
         player1: { username: null, profilePicture: "guest.png" },
       },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      messages: [],
-      hasNewMessages: false,
-      setHasNewMessages: vi.fn(),
-      handleSendChat: vi.fn(),
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    }));
 
     render(<GameMultiplayer />);
 
@@ -247,29 +231,10 @@ describe("GameMultiplayer", () => {
 
   it("abre el chat y limpia la marca de mensajes nuevos", () => {
     const setHasNewMessagesMock = vi.fn();
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
-      yen: { size: 11, layout: "B/.R/..." },
-      loading: false,
-      winner: null,
-      nextTurn: "player0",
-      error: "",
-      disabledCells: new Set<number>(),
-      myPlayer: "player0",
-      myColor: "#1677ff",
-      playerProfiles: {
-        player0: { username: "hostUser", profilePicture: "host.png" },
-        player1: { username: "guestUser", profilePicture: "guest.png" },
-      },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      messages: [],
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
       hasNewMessages: true,
       setHasNewMessages: setHasNewMessagesMock,
-      handleSendChat: vi.fn(),
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    }));
 
     render(<GameMultiplayer />);
 
@@ -293,29 +258,9 @@ describe("GameMultiplayer", () => {
 
   it("envía mensajes llamando a handleSendChat del hook", () => {
     const handleSendChatMock = vi.fn();
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
-      yen: { size: 11, layout: "B/.R/..." },
-      loading: false,
-      winner: null,
-      nextTurn: "player0",
-      error: "",
-      disabledCells: new Set<number>(),
-      myPlayer: "player0",
-      myColor: "#1677ff",
-      playerProfiles: {
-        player0: { username: "hostUser", profilePicture: "host.png" },
-        player1: { username: "guestUser", profilePicture: "guest.png" },
-      },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      messages: [],
-      hasNewMessages: false,
-      setHasNewMessages: vi.fn(),
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
       handleSendChat: handleSendChatMock,
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    }));
 
     render(<GameMultiplayer />);
 
@@ -333,29 +278,9 @@ describe("GameMultiplayer", () => {
   });
 
   it("usa cells vacías cuando yen es null", () => {
-    mockedUseMultiplayerGameSession.mockReturnValue({
-      gameId: "game-1",
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
       yen: null,
-      loading: false,
-      winner: null,
-      nextTurn: "player0",
-      error: "",
-      disabledCells: new Set<number>(),
-      myPlayer: "player0",
-      myColor: "#1677ff",
-      playerProfiles: {
-        player0: { username: "hostUser", profilePicture: "host.png" },
-        player1: { username: "guestUser", profilePicture: "guest.png" },
-      },
-      handleCellClick: vi.fn(),
-      handleAbandon: vi.fn(),
-      messages: [],
-      hasNewMessages: false,
-      setHasNewMessages: vi.fn(),
-      handleSendChat: vi.fn(),
-      piecesLeft: 1,
-      diceValue: 1,
-    });
+    }));
 
     render(<GameMultiplayer />);
 
@@ -363,5 +288,67 @@ describe("GameMultiplayer", () => {
     expect(screen.getByText("has-board:false")).toBeTruthy();
     expect(screen.getByText("cells:0")).toBeTruthy();
     expect(screen.getByText("board-size:11")).toBeTruthy();
+  });
+  it("redirige al lobby si el hook invoca onInvalidState u onLeaveLobby", () => {
+    mockedUseMultiplayerGameSession.mockImplementation((args) => {
+      args.onInvalidState();
+      args.onLeaveLobby();
+      return buildSessionResult();
+    });
+
+    render(<GameMultiplayer />);
+
+    expect(navigateMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(navigateMock.mock.calls.every(([path]) => path === "/multiplayer")).toBe(true);
+  });
+
+  it("transforma la celda neutral y los colores intercambiados en pastel", () => {
+    locationState.config = { size: 11, mode: "pastel_hvh" };
+    mockedUseMultiplayerGameSession.mockReturnValue(buildSessionResult({
+      pastelState: {
+        phase: "pie_choice",
+        neutralCellId: 0,
+        swapped: true,
+        firstPlayer: "player0",
+      },
+      neutralCells: new Set<number>([0]),
+    }));
+
+    mockedParseYenToCells.mockReturnValue([
+      {
+        cellId: 0,
+        row: 0,
+        col: 0,
+        value: "B",
+        coords: { x: 0, y: 0, z: 0 },
+        touches: { a: false, b: false, c: false },
+      },
+      {
+        cellId: 1,
+        row: 1,
+        col: 0,
+        value: "B",
+        coords: { x: 0, y: 0, z: 0 },
+        touches: { a: false, b: false, c: false },
+      },
+      {
+        cellId: 2,
+        row: 1,
+        col: 1,
+        value: "R",
+        coords: { x: 0, y: 0, z: 0 },
+        touches: { a: false, b: false, c: false },
+      },
+    ]);
+
+    render(<GameMultiplayer />);
+
+    expect(screen.getByText("has-banner:true")).toBeTruthy();
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"cellId\":0");
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"value\":\"N\"");
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"cellId\":1");
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"value\":\"R\"");
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"cellId\":2");
+    expect(screen.getByTestId("cells-json").textContent).toContain("\"value\":\"B\"");
   });
 });
