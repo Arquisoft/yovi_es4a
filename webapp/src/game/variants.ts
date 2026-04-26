@@ -121,7 +121,7 @@ function createVariant(
 export const VARIANTS: Variant[] = [
   createVariant(
     "classic",
-    "Clasico",
+    "Clásico",
     "⬡",
     "Estandar",
     "blue",

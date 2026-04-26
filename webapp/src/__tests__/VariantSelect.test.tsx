@@ -76,7 +76,7 @@ describe("VariantSelect", () => {
     it("muestra todas las variantes definidas en VARIANTS", () => {
         renderVariantSelect();
         // Verificamos al menos las principales que sabemos que existen
-        expect(screen.getByText("Clasico")).toBeInTheDocument();
+        expect(screen.getByText("Clásico")).toBeInTheDocument();
         expect(screen.getByText("Regla del Pastel")).toBeInTheDocument();
     });
 
@@ -88,7 +88,7 @@ describe("VariantSelect", () => {
 
     it("no muestra 'Próximamente' para variantes implementadas", () => {
         renderVariantSelect();
-        const classicContainer = screen.getByText("Clasico").closest("div");
+        const classicContainer = screen.getByText("Clásico").closest("div");
         expect(classicContainer).not.toHaveTextContent("Proximamente");
     });
 

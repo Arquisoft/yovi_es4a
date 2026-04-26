@@ -178,7 +178,7 @@ export default function VariantSelect({ onSelect, onBack }: Props) {
                   onClick={handleConfirm}
                   data-testid="variant-confirm-btn"
                 >
-                  Continuar con "{selectedVariant.label}"
+                  Continuar con «{selectedVariant.label}»
                 </Button>
               </Flex>
             </Space>
