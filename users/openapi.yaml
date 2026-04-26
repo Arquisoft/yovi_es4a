@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: YOVI API
-  version: 1.2.0
+  version: 1.0.12
   description: >
     API del sistema YOVI para gestión de usuarios, partidas y acceso externo de bots.
     Incluye el endpoint `/play` que permite a bots externos jugar contra el sistema
@@ -147,6 +147,200 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   # ──────────────────────────────────────────────────────────────
+  # GESTIÓN DE PERFIL
+  # ──────────────────────────────────────────────────────────────
+
+  /users/{username}/profile:
+    get:
+      summary: Obtener perfil de usuario
+      description: Devuelve la información básica y el avatar de un usuario (sin contraseñas).
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Perfil devuelto correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    example: "testuser"
+                  email:
+                    type: string
+                    example: "testuser@example.com"
+                  profilePicture:
+                    type: string
+                    example: "seniora.png"
+        '400':
+          description: Username inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{username}/password:
+    put:
+      summary: Cambiar contraseña
+      description: Actualiza la contraseña validando la contraseña actual.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldPassword
+                - newPassword
+              properties:
+                oldPassword:
+                  type: string
+                  example: "secret123"
+                newPassword:
+                  type: string
+                  example: "newSecret123!"
+      responses:
+        '200':
+          description: Contraseña actualizada correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Datos de la petición inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Contraseña actual incorrecta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{username}/username:
+    patch:
+      summary: Cambiar nombre de usuario
+      description: Permite a un usuario cambiar su nombre de usuario de forma única en el sistema.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - newUsername
+              properties:
+                newUsername:
+                  type: string
+                  example: "newtestuser"
+      responses:
+        '200':
+          description: Username actualizado correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  username:
+                    type: string
+        '400':
+          description: Nombre inválido o ya en uso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{username}/avatar:
+    patch:
+      summary: Cambiar avatar de perfil
+      description: Permite seleccionar un nuevo avatar de la lista predefinida.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - profilePicture
+              properties:
+                profilePicture:
+                  type: string
+                  enum: ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png']
+                  example: "disco.png"
+      responses:
+        '200':
+          description: Avatar actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  profilePicture:
+                    type: string
+        '400':
+          description: Avatar inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────
   # PARTIDAS Y ESTADÍSTICAS DE USUARIO
   # ──────────────────────────────────────────────────────────────
 
@@ -184,12 +378,12 @@ paths:
                   example: "abc-123"
                 mode:
                   type: string
-                  enum: [HvB, HvH]
-                  description: Modo de juego (Human vs Bot o Human vs Human)
-                  example: "HvB"
+                  enum: [classic_hvb, classic_hvh, tabu_hvh, holey_hvh, fortune_dice_hvh, poly_hvh, pastel_hvh, master_hvh, fortune_coin_hvh, why_not_hvh, 3dy_hvh, hex_hvh]
+                  description: Modo de juego (variantes disponibles)
+                  example: "classic_hvb"
                 result:
                   type: string
-                  enum: [won, lost, abandoned]
+                  enum: [won, lost, abandoned, draw]
                   description: Resultado de la partida para este usuario
                   example: "won"
                 opponent:
@@ -247,8 +441,8 @@ paths:
     get:
       summary: Historial de partidas paginado
       description: >
-        Devuelve el historial de partidas del usuario con paginación.
-        Las partidas se ordenan de más reciente a más antigua.
+        Devuelve el historial de partidas del usuario con paginación y la posibilidad de filtrar
+        por modo de juego o resultado, así como de ordenarlos.
       parameters:
         - name: username
           in: path
@@ -272,6 +466,27 @@ paths:
             maximum: 50
             default: 5
           description: Número de partidas por página (máximo 50)
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar por variante (ej. classic_hvb)
+        - name: result
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [won, lost, abandoned, draw]
+          description: Filtrar partidas por resultado
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest, movesDesc, movesAsc]
+            default: newest
+          description: Ordenación de resultados
       responses:
         '200':
           description: Historial devuelto correctamente
@@ -391,24 +606,29 @@ paths:
 
   /ranking:
     get:
-      summary: Obtener ranking de usuarios
+      summary: Obtener ranking de usuarios y podio semanal
       description: >
-        Devuelve la lista de usuarios ordenada por la métrica solicitada.
+        Devuelve la lista paginada de usuarios ordenada por la métrica solicitada.
         Solo se incluyen usuarios que han jugado al menos una partida.
+        Se incluye información separada del podio obtenida con estadísticas de los últimos 7 días.
       parameters:
         - name: sortBy
           in: query
           required: false
           schema:
             type: string
-            enum: [winRate, gamesWon, gamesPlayed]
+            enum: [winRate, gamesWon, gamesPlayed, gamesLost, gamesDrawn, gamesAbandoned, totalMoves]
             default: winRate
-          description: >
-            Métrica de ordenación:
-            - `winRate`: porcentaje de partidas ganadas (por defecto)
-            - `gamesWon`: número absoluto de victorias
-            - `gamesPlayed`: total de partidas jugadas
-        - name: limit
+          description: Métrica de ordenación principal
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Índice de página
+        - name: pageSize
           in: query
           required: false
           schema:
@@ -416,7 +636,7 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-          description: Número máximo de jugadores a devolver (máximo 100)
+          description: Tamaño de la página (limitado a 100)
       responses:
         '200':
           description: Ranking devuelto correctamente
@@ -428,6 +648,30 @@ paths:
                   sortBy:
                     type: string
                     example: winRate
+                  podium:
+                    type: object
+                    description: Información en base a los últimos 7 días para destacar logros.
+                    properties:
+                      mostGames:
+                        type: object
+                        description: Jugador con más partidas jugadas esta semana.
+                      mostWins:
+                        type: object
+                        description: Jugador con más partidas ganadas esta semana.
+                      bestRate:
+                        type: object
+                        description: Jugador con mayor % de victorias.
+                  pagination:
+                    type: object
+                    properties:
+                      totalItems:
+                        type: integer
+                      page:
+                        type: integer
+                      pageSize:
+                        type: integer
+                      totalPages:
+                        type: integer
                   ranking:
                     type: array
                     items:
@@ -617,6 +861,10 @@ components:
           type: integer
           description: Partidas perdidas
           example: 3
+        gamesDrawn:
+          type: integer
+          description: Partidas empatadas
+          example: 0
         gamesAbandoned:
           type: integer
           description: Partidas abandonadas
@@ -625,6 +873,10 @@ components:
           type: integer
           description: Total de movimientos acumulados
           example: 84
+        currentWinStreak:
+          type: integer
+          description: Racha de victorias actual
+          example: 2
         winRate:
           type: integer
           description: Porcentaje de partidas ganadas (0–100)
@@ -651,11 +903,11 @@ components:
           example: "abc-123"
         mode:
           type: string
-          enum: [HvB, HvH]
-          example: "HvB"
+          description: Modo de juego utilizado
+          example: "classic_hvb"
         result:
           type: string
-          enum: [won, lost, abandoned]
+          enum: [won, lost, abandoned, draw]
           example: "won"
         opponent:
           type: string
@@ -692,6 +944,9 @@ components:
         gamesLost:
           type: integer
           example: 3
+        gamesDrawn:
+          type: integer
+          example: 0
         gamesAbandoned:
           type: integer
           example: 1
