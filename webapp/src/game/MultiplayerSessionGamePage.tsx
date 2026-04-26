@@ -37,6 +37,8 @@ type Props = {
 
   onAbandon: () => Promise<void> | void;
   onBack: () => void;
+
+  turnIndicatorExtra?: React.ReactNode;
 };
 
 export default function MultiplayerSessionGamePage({
@@ -60,6 +62,7 @@ export default function MultiplayerSessionGamePage({
   onOpenChat,
   onAbandon,
   onBack,
+  turnIndicatorExtra,
 }: Props) {
   const { modal } = App.useApp();
   const [abandoning, setAbandoning] = useState(false);
@@ -70,7 +73,7 @@ export default function MultiplayerSessionGamePage({
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !nextTurn)
-        return null;
+      return null;
 
     const turnText =
       nextTurn === myPlayer ? "🟢 ¡TU TURNO!" : "⌛ Esperando rival...";
@@ -83,7 +86,10 @@ export default function MultiplayerSessionGamePage({
         }}
       >
         <Flex justify="space-between" align="center">
-          <Text strong>{turnText}</Text>
+          <Space>
+            <Text strong>{turnText}</Text>
+            {turnIndicatorExtra}
+          </Space>
 
           <Space>
             {mode === "tabu_hvh" &&
@@ -119,6 +125,7 @@ export default function MultiplayerSessionGamePage({
     nextTurn,
     onOpenChat,
     gameOver,
+    turnIndicatorExtra,
   ]);
 
   const boardCardStyle = useMemo(() => {
@@ -264,3 +271,4 @@ export default function MultiplayerSessionGamePage({
     />
   );
 }
+

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Flex, Typography } from "antd";
 
-import { socket } from "../api/socket";
+const { Text } = Typography;
+
 import MultiplayerSessionGamePage from "../game/MultiplayerSessionGamePage";
 import { parseYenToCells } from "../game/yen";
 import {
@@ -9,12 +11,17 @@ import {
   type MultiplayerConfig,
   type MultiplayerRole,
 } from "../game/useMultiplayerGameSession";
-import MultiplayerChatDrawer, {
-  type ChatMessage,
-} from "./MultiplayerChatDrawer";
+import MultiplayerChatDrawer from "./MultiplayerChatDrawer";
+import "../estilos/VariantVisuals.css";
+import { useEffect } from "react";
 
 function getModeTitle(mode: string | undefined): string {
   if (mode === "classic_hvh") return "Clásico Online";
+  if (mode === "holey_hvh") return "Holey (Agujeros)";
+  if (mode === "tabu_hvh") return "Tabú (Bloqueos)";
+  if (mode === "master_hvh") return "Master (Doble Mov)";
+  if (mode === "fortune_dice_hvh") return "Fortune (Dados)";
+  if (mode === "fortune_coin_hvh") return "Fortune (Moneda)";
   return mode?.split("_")[0].toUpperCase() ?? "YOVI";
 }
 
@@ -26,17 +33,15 @@ export default function GameMultiplayer() {
   const role = location.state?.role as MultiplayerRole | undefined;
   const config = location.state?.config as MultiplayerConfig | undefined;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
 
-  const handleInvalidState = useCallback(() => {
+  const handleInvalidState = () => {
     navigate("/multiplayer");
-  }, [navigate]);
+  };
 
-  const handleLeaveLobby = useCallback(() => {
+  const handleLeaveLobby = () => {
     navigate("/multiplayer");
-  }, [navigate]);
+  };
 
   const {
     yen,
@@ -50,6 +55,14 @@ export default function GameMultiplayer() {
     playerProfiles,
     handleCellClick,
     handleAbandon,
+    // Chat
+    messages,
+    hasNewMessages,
+    setHasNewMessages,
+    handleSendChat,
+    // Variants
+    piecesLeft,
+    diceValue,
   } = useMultiplayerGameSession({
     code,
     role,
@@ -58,33 +71,28 @@ export default function GameMultiplayer() {
     onLeaveLobby: handleLeaveLobby,
   });
 
-  useEffect(() => {
-    function onChatMessage(msg: ChatMessage) {
-      setMessages((prev) => [...prev, msg]);
-      if (!isChatOpen)
-        setHasNewMessages(true);
-    }
-
-    socket.on("chatMessage", onChatMessage);
-    return () => {
-      socket.off("chatMessage", onChatMessage);
-    };
-  }, [isChatOpen]);
-
-  useEffect(() => {
-    if (error) {
-      setIsChatOpen(false);
-      setHasNewMessages(false);
-    }
-  }, [error]);
-
-  function handleSendChat(text: string) {
-    socket.emit("sendMessage", { code, text });
-  }
-
   const cells = useMemo(() => {
     return yen ? parseYenToCells(yen) : [];
   }, [yen]);
+
+  const [isRolling, setIsRolling] = useState(false);
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  useEffect(() => {
+    if (diceValue) {
+      setIsRolling(true);
+      const timer = setTimeout(() => setIsRolling(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [diceValue]);
+
+  useEffect(() => {
+    if (nextTurn) {
+      setIsFlipping(true);
+      const timer = setTimeout(() => setIsFlipping(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [nextTurn]);
 
   const opponentName = useMemo(() => {
     const opponent =
@@ -95,13 +103,42 @@ export default function GameMultiplayer() {
     return opponent.username?.trim() || "Jugador online";
   }, [myPlayer, playerProfiles]);
 
+  const turnIndicatorExtra = (
+    <Flex gap={12} align="center">
+      {config?.mode === "master_hvh" && (
+        <div className={`moves-indicator ${nextTurn === myPlayer ? "move-active" : ""}`}>
+          <span>⚡</span> {piecesLeft} mov.
+        </div>
+      )}
+      {config?.mode === "fortune_dice_hvh" && (
+        <>
+          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
+            {diceValue}
+          </div>
+          <div className={`moves-indicator ${nextTurn === myPlayer && piecesLeft > 0 ? "move-active" : ""}`}>
+            {piecesLeft} piezas
+          </div>
+        </>
+      )}
+      {config?.mode === "fortune_coin_hvh" && (
+        <>
+          <div className={`coin-container ${isFlipping ? "coin-flipping" : ""}`}>
+            {nextTurn === "player0" ? "A" : "N"}
+          </div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Lanzando moneda...
+          </Text>
+        </>
+      )}
+    </Flex>
+  );
+
   return (
     <>
       <MultiplayerSessionGamePage
         title={`${getModeTitle(config?.mode)} vs. ${opponentName}`}
-        subtitle={`Sala: ${code ?? ""} · Eres: ${
-          myPlayer === "player0" ? "Azul" : "Naranja"
-        }`}
+        subtitle={`Sala: ${code ?? ""} · Eres: ${myPlayer === "player0" ? "Azul" : "Naranja"
+          }`}
         mode={config?.mode}
         loading={loading}
         error={error}
@@ -123,6 +160,7 @@ export default function GameMultiplayer() {
         }}
         onAbandon={handleAbandon}
         onBack={() => navigate("/multiplayer")}
+        turnIndicatorExtra={turnIndicatorExtra}
       />
 
       <MultiplayerChatDrawer

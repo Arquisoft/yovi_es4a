@@ -22,7 +22,9 @@ import GameFortuneDice from "./vistas/GameFortuneDice";
 import GameTabu from "./vistas/GameTabu";
 import GameHoley from "./vistas/GameHoley";
 import GamePolyY from "./vistas/GamePolyY";
-import GameHex from "./vistas/GameHex";
+import GameMaster from "./vistas/GameMaster";
+import GameFortuneCoin from "./vistas/GameFortuneCoin";
+import Game3DY from "./vistas/Game3DY";
 
 // ─── Flujo /home: configuración → selección de variante ─────────────────────
 
@@ -74,12 +76,12 @@ function App() {
 
         {/* Variantes */}
         <Route path="/game-fortune-dice" element={<GameFortuneDice />} />
+        <Route path="/game-fortune-coin" element={<GameFortuneCoin />} />
         <Route path="/game-tabu" element={<GameTabu />} />
         <Route path="/game-holey" element={<GameHoley />} />
         <Route path="/game-poly-y" element={<GamePolyY />} />
-        <Route path="/game-hex" element={<GameHex />} />
-        <Route path="/game-why-not" element={<GameHex />} />
-        <Route path="/game-pastel" element={<GameHex />} />
+        <Route path="/game-master" element={<GameMaster />} />
+        <Route path="/game-3dy" element={<Game3DY />} />
 
         {/* Multijugador por Sockets */}
         <Route path="/multiplayer" element={<MultiplayerLobby />} />

@@ -100,6 +100,7 @@ pub enum Winner {
 #[derive(Debug, Deserialize)]
 pub struct CellMoveRequest {
     pub cell_id: u32,
+    pub next_player: Option<u8>,
 }
 
 #[derive(Debug, Serialize)]

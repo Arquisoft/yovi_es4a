@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import GameMultiplayer from "../vistas/GameMultiplayer";
-import { socket } from "../api/socket";
 import { useMultiplayerGameSession } from "../game/useMultiplayerGameSession";
 import { parseYenToCells } from "../game/yen";
 
@@ -105,7 +104,7 @@ vi.mock("../vistas/MultiplayerChatDrawer", () => ({
 }));
 
 describe("GameMultiplayer", () => {
-  const mockedSocket = vi.mocked(socket);
+  // const mockedSocket = vi.mocked(socket);
   const mockedUseMultiplayerGameSession = vi.mocked(useMultiplayerGameSession);
   const mockedParseYenToCells = vi.mocked(parseYenToCells);
 
@@ -133,6 +132,13 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      // New properties:
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
     });
 
     mockedParseYenToCells.mockReturnValue([
@@ -155,14 +161,10 @@ describe("GameMultiplayer", () => {
   });
 
   it("muestra el título TABU para el modo tabu_hvh", () => {
-    locationState = {
-      role: "host",
-      config: { size: 11, mode: "tabu_hvh" },
-    };
-
+    locationState.config = { size: 11, mode: "tabu_hvh" };
     render(<GameMultiplayer />);
 
-    expect(screen.getByText("TABU vs. guestUser")).toBeTruthy();
+    expect(screen.getByText("Tabú (Bloqueos) vs. guestUser")).toBeTruthy();
   });
 
   it("usa YOVI como fallback si no hay modo", () => {
@@ -193,6 +195,12 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
     });
 
     render(<GameMultiplayer />);
@@ -218,6 +226,12 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
     });
 
     render(<GameMultiplayer />);
@@ -232,66 +246,40 @@ describe("GameMultiplayer", () => {
     expect(screen.getByText("player1-avatar:guest.png")).toBeTruthy();
   });
 
-  it("abre el chat y limpia la marca de mensajes nuevos", async () => {
-    const handlers: Record<string, (payload: any) => void> = {};
-
-    mockedSocket.on.mockImplementation((event: string, handler: (payload: any) => void) => {
-      handlers[event] = handler;
-      return mockedSocket as any;
+  it("abre el chat y limpia la marca de mensajes nuevos", () => {
+    const setHasNewMessagesMock = vi.fn();
+    mockedUseMultiplayerGameSession.mockReturnValue({
+      gameId: "game-1",
+      yen: { size: 11, layout: "B/.R/..." },
+      loading: false,
+      winner: null,
+      nextTurn: "player0",
+      error: "",
+      disabledCells: new Set<number>(),
+      myPlayer: "player0",
+      myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
+      handleCellClick: vi.fn(),
+      handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: true,
+      setHasNewMessages: setHasNewMessagesMock,
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
     });
 
     render(<GameMultiplayer />);
 
-    await waitFor(() => {
-      expect(handlers.chatMessage).toBeTypeOf("function");
-    });
-
-    await act(async () => {
-      handlers.chatMessage?.({
-        text: "hola",
-        sender: "player1",
-        timestamp: Date.now(),
-      });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("badge:true")).toBeTruthy();
-      expect(screen.getByText("chat-messages:1")).toBeTruthy();
-    });
+    expect(screen.getByText("badge:true")).toBeTruthy();
 
     fireEvent.click(screen.getByText("abrir-chat"));
 
-    await waitFor(() => {
-      expect(screen.getByText("chat-open:true")).toBeTruthy();
-      expect(screen.getByText("badge:false")).toBeTruthy();
-    });
-  });
-
-  it("si llega un mensaje con el chat abierto no activa la marca de nuevos", async () => {
-    const handlers: Record<string, (payload: any) => void> = {};
-
-    mockedSocket.on.mockImplementation((event: string, handler: (payload: any) => void) => {
-      handlers[event] = handler;
-      return mockedSocket as any;
-    });
-
-    render(<GameMultiplayer />);
-
-    fireEvent.click(screen.getByText("abrir-chat"));
-
-    await act(async () => {
-      handlers.chatMessage?.({
-        text: "ya abierto",
-        sender: "player1",
-        timestamp: Date.now(),
-      });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("chat-open:true")).toBeTruthy();
-      expect(screen.getByText("chat-messages:1")).toBeTruthy();
-      expect(screen.getByText("badge:false")).toBeTruthy();
-    });
+    expect(screen.getByText("chat-open:true")).toBeTruthy();
+    expect(setHasNewMessagesMock).toHaveBeenCalledWith(false);
   });
 
   it("cierra el chat", () => {
@@ -304,15 +292,37 @@ describe("GameMultiplayer", () => {
     expect(screen.getByText("chat-open:false")).toBeTruthy();
   });
 
-  it("envía mensajes por socket", () => {
+  it("envía mensajes llamando a handleSendChat del hook", () => {
+    const handleSendChatMock = vi.fn();
+    mockedUseMultiplayerGameSession.mockReturnValue({
+      gameId: "game-1",
+      yen: { size: 11, layout: "B/.R/..." },
+      loading: false,
+      winner: null,
+      nextTurn: "player0",
+      error: "",
+      disabledCells: new Set<number>(),
+      myPlayer: "player0",
+      myColor: "#1677ff",
+      playerProfiles: {
+        player0: { username: "hostUser", profilePicture: "host.png" },
+        player1: { username: "guestUser", profilePicture: "guest.png" },
+      },
+      handleCellClick: vi.fn(),
+      handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: handleSendChatMock,
+      piecesLeft: 1,
+      diceValue: 1,
+    });
+
     render(<GameMultiplayer />);
 
     fireEvent.click(screen.getByText("send-chat"));
 
-    expect(mockedSocket.emit).toHaveBeenCalledWith("sendMessage", {
-      code: "ROOM1",
-      text: "hola chat",
-    });
+    expect(handleSendChatMock).toHaveBeenCalledWith("hola chat");
   });
 
   it("navega al lobby al pulsar volver", () => {
@@ -321,26 +331,6 @@ describe("GameMultiplayer", () => {
     fireEvent.click(screen.getByText("volver"));
 
     expect(navigateMock).toHaveBeenCalledWith("/multiplayer");
-  });
-
-  it("registra el listener del chat", () => {
-    render(<GameMultiplayer />);
-
-    expect(mockedSocket.on).toHaveBeenCalledWith(
-      "chatMessage",
-      expect.any(Function),
-    );
-  });
-
-  it("limpia el listener del chat al desmontar", () => {
-    const { unmount } = render(<GameMultiplayer />);
-
-    unmount();
-
-    expect(mockedSocket.off).toHaveBeenCalledWith(
-      "chatMessage",
-      expect.any(Function),
-    );
   });
 
   it("usa cells vacías cuando yen es null", () => {
@@ -360,6 +350,12 @@ describe("GameMultiplayer", () => {
       },
       handleCellClick: vi.fn(),
       handleAbandon: vi.fn(),
+      messages: [],
+      hasNewMessages: false,
+      setHasNewMessages: vi.fn(),
+      handleSendChat: vi.fn(),
+      piecesLeft: 1,
+      diceValue: 1,
     });
 
     render(<GameMultiplayer />);

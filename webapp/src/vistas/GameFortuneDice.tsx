@@ -13,8 +13,9 @@
  *     colocado todas las piezas del turno.
  */
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import "../estilos/VariantVisuals.css";
 
 import {
   createHvhGame,
@@ -53,7 +54,16 @@ export default function GameFortuneDice() {
   const [diceValue, setDiceValue] = useState(piecesLeftRef.current);
   const [piecesLeft, setPiecesLeft] = useState(piecesLeftRef.current);
 
-  const DICE_FACES = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+  const [isRolling, setIsRolling] = useState(false);
+
+  useEffect(() => {
+    if (diceValue) {
+      setIsRolling(true);
+      const timer = setTimeout(() => setIsRolling(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [diceValue]);
+
   const { registerFinishedGame, registerAbandonedGame } =
     useLocalVariantGameSave({
       boardSize: size,
@@ -67,18 +77,23 @@ export default function GameFortuneDice() {
     gameId: string,
     cellId: number,
   ): Promise<SessionGameMoveResponse<YEN>> => {
-    const result = await hvhMove(gameId, cellId);
+    const curPlayer = currentPlayerRef.current;
+    const curNextInt = curPlayer === "player0" ? 0 : 1;
+    
+    // Si quedan piezas, forzamos que el siguiente siga siendo el actual
+    const nextPlayerOverride = piecesLeftRef.current > 1 ? curNextInt : undefined;
+
+    const result = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
 
     if (result.status.state === "finished") return result;
 
     piecesLeftRef.current -= 1;
 
     if (piecesLeftRef.current > 0) {
-      // Aún quedan piezas en este turno: mantener el mismo jugador
       setPiecesLeft(piecesLeftRef.current);
       return {
         ...result,
-        status: { state: "ongoing", next: currentPlayerRef.current },
+        status: { state: "ongoing", next: curPlayer },
       };
     }
 
@@ -112,7 +127,6 @@ export default function GameFortuneDice() {
     };
   }, [size]);
 
-  const diceEmoji = DICE_FACES[diceValue - 1];
 
   return (
     <SessionGamePage<YEN>
@@ -143,12 +157,22 @@ export default function GameFortuneDice() {
         otherWinnerBackground: "#ff7b0033",
       }}
       turnConfig={{
-        textPrefix: `${diceEmoji} Dado: ${diceValue} piezas (quedan ${piecesLeft}) — turno:`,
+        textPrefix: `Dado`,
         turns: {
           player0: { label: "Player 0", color: "#28BBF5" },
           player1: { label: "Player 1", color: "#FF7B00" },
         },
       }}
+      turnIndicatorExtra={
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginLeft: 8 }}>
+          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
+            {diceValue}
+          </div>
+          <div className={`moves-indicator move-active`}>
+            {piecesLeft} piezas
+          </div>
+        </div>
+      }
     />
   );
 }

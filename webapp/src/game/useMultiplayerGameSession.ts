@@ -12,6 +12,7 @@ import {
   type YEN,
 } from "../api/gamey";
 import { generateHoles, getAdjacentCells, hasPlayableCells } from "./variants";
+import type { ChatMessage } from "../vistas/MultiplayerChatDrawer";
 
 export type MultiplayerRole = "host" | "guest";
 export type MultiplayerConfig = {
@@ -51,6 +52,15 @@ export type UseMultiplayerGameSessionResult = {
   playerProfiles: MultiplayerPlayerProfiles;
   handleCellClick: (cellId: number) => Promise<void>;
   handleAbandon: () => Promise<void>;
+
+  // Chat
+  messages: ChatMessage[];
+  hasNewMessages: boolean;
+  setHasNewMessages: (val: boolean) => void;
+  handleSendChat: (text: string) => void;
+
+  piecesLeft: number;
+  diceValue: number;
 };
 
 export function useMultiplayerGameSession({
@@ -76,10 +86,17 @@ export function useMultiplayerGameSession({
       player1: { username: null, profilePicture: null },
     });
 
-  const myPlayer = useMemo(
-    () => (role === "guest" ? "player1" : "player0"),
-    [role],
-  );
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+
+  // Variants state
+  const [piecesLeft, setPiecesLeft] = useState(1);
+  const [diceValue, setDiceValue] = useState(1);
+
+  const myPlayer = useMemo(() => {
+    return role === "guest" ? "player1" : "player0";
+  }, [role]);
 
   const myColor = myPlayer === "player0" ? "#1677ff" : "#ff7b00";
 
@@ -102,7 +119,7 @@ export function useMultiplayerGameSession({
           config?.mode === "tabu_hvh" && lastMoveCellId !== undefined
             ? getAdjacentCells(lastMoveCellId, r.yen.size)
             : config?.mode === "holey_hvh"
-              ? (forcedHoles || holes)
+              ? forcedHoles || holes
               : new Set<number>();
 
         setDisabledCells(nextBlockedCells);
@@ -123,7 +140,7 @@ export function useMultiplayerGameSession({
 
           setGameOver(false);
           setWinner(null);
-          setNextTurn(r.status.next ?? null);
+          setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
         }
       }
       catch (e: any) {
@@ -144,16 +161,20 @@ export function useMultiplayerGameSession({
 
     async function initHost() {
       try {
+        const initialTurn: "player0" | "player1" = config?.mode === "fortune_coin_hvh"
+          ? (Math.random() < 0.5 ? "player0" : "player1")
+          : "player0";
+
         await putConfig({
           size: config!.size,
           hvb_starter: "human",
-          hvh_starter: "player0",
+          hvh_starter: initialTurn,
           bot_id: null,
         });
 
         const r = await createHvhGame({
           size: config!.size,
-          hvh_starter: "player0",
+          hvh_starter: initialTurn,
         });
 
         if (cancelled)
@@ -172,11 +193,25 @@ export function useMultiplayerGameSession({
           setDisabledCells(new Set());
         }
 
+        if (config?.mode === "master_hvh") {
+          setPiecesLeft(1);
+          extra.piecesLeft = 1;
+        } else if (config?.mode === "fortune_dice_hvh") {
+          const firstDice = Math.floor(Math.random() * 6) + 1;
+          setDiceValue(firstDice);
+          setPiecesLeft(firstDice);
+          extra.diceValue = firstDice;
+          extra.piecesLeft = firstDice;
+        } else if (config?.mode === "fortune_coin_hvh") {
+          extra.nextTurnOverride = initialTurn;
+          message.info(`🪙 Moneda lanzada: Empieza ${initialTurn === "player0" ? "Azul" : "Naranja"}`);
+        }
+
         setGameId(r.game_id);
         setYen(r.yen);
         setGameOver(r.status.state === "finished");
         setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
-        setNextTurn(r.status.state === "ongoing" ? r.status.next ?? null : null);
+        setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
 
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", {
@@ -259,12 +294,33 @@ export function useMultiplayerGameSession({
         setHoles(new Set());
         void refreshGameState(startedGameId, startedHostClientId);
       }
+
+      if (extra?.piecesLeft !== undefined) setPiecesLeft(extra.piecesLeft);
+      if (extra?.diceValue !== undefined) setDiceValue(extra.diceValue);
+      if (extra?.nextTurnOverride !== undefined) {
+        setNextTurn(extra.nextTurnOverride);
+        message.info(`🪙 ¡Moneda! Empieza ${extra.nextTurnOverride === "player0" ? "Azul" : "Naranja"}`);
+      }
     }
 
     function onEnemyMove({ cellId }: { cellId: number }) {
       if (!gameId)
         return;
       void refreshGameState(gameId, hostClientId ?? undefined, cellId);
+
+      // Multi-turn variants
+      if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
+        setPiecesLeft(prev => (prev > 1 ? prev - 1 : (config.mode === "master_hvh" ? 2 : prev)));
+      }
+    }
+
+    function onVariantUpdate(update: any) {
+      if (update.piecesLeft !== undefined) setPiecesLeft(update.piecesLeft);
+      if (update.diceValue !== undefined) setDiceValue(update.diceValue);
+      if (update.nextTurnOverride !== undefined) {
+        setNextTurn(update.nextTurnOverride);
+        message.info(`🪙 ¡Moneda! Turno para ${update.nextTurnOverride === "player0" ? "Azul" : "Naranja"}`);
+      }
     }
 
     function onPlayerDisconnected(msg: string) {
@@ -272,16 +328,27 @@ export function useMultiplayerGameSession({
       setError("La partida ha terminado por desconexión del oponente.");
     }
 
+    function onChatMessage(msg: ChatMessage) {
+      setMessages((prev) => [...prev, msg]);
+      // We don't know if chat is open here, so we'll just set hasNewMessages to true
+      // The component can reset it when opening
+      setHasNewMessages(true);
+    }
+
     socket.on("gameStarted", onGameStarted);
     socket.on("enemyMove", onEnemyMove);
+    socket.on("variantUpdate", onVariantUpdate);
+    socket.on("chatMessage", onChatMessage);
     socket.on("playerDisconnected", onPlayerDisconnected);
 
     return () => {
       socket.off("gameStarted", onGameStarted);
       socket.off("enemyMove", onEnemyMove);
+      socket.off("variantUpdate", onVariantUpdate);
+      socket.off("chatMessage", onChatMessage);
       socket.off("playerDisconnected", onPlayerDisconnected);
     };
-  }, [gameId, hostClientId, refreshGameState, role]);
+  }, [gameId, hostClientId, refreshGameState, role, config]);
 
   const handleCellClick = useCallback(
     async (cellId: number) => {
@@ -302,7 +369,23 @@ export function useMultiplayerGameSession({
         const overrideClientId =
           role === "guest" && hostClientId ? hostClientId : undefined;
 
-        const r = await hvhMove(gameId, cellId, overrideClientId);
+        const nextPlayerInt = myPlayer === "player0" ? 0 : 1;
+        let nextPlayerOverride: number | undefined = undefined;
+
+        if (config?.mode === "master_hvh") {
+          const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
+          if (newPiecesLeft === 1) nextPlayerOverride = nextPlayerInt;
+        } else if (config?.mode === "fortune_dice_hvh") {
+          if (piecesLeft > 1) nextPlayerOverride = nextPlayerInt;
+        } else if (role === "host" && config?.mode === "fortune_coin_hvh") {
+          const next = Math.random() < 0.5 ? 0 : 1;
+          nextPlayerOverride = next;
+          const nextStr = next === 0 ? "player0" : "player1";
+          socket.emit("variantUpdate", { code, nextTurnOverride: nextStr });
+          message.info(`🪙 ¡Moneda! Turno para ${next === 0 ? "Azul" : "Naranja"}`);
+        }
+
+        const r = await hvhMove(gameId, cellId, overrideClientId, nextPlayerOverride);
         setYen(r.yen);
 
         const nextBlockedCells =
@@ -333,6 +416,33 @@ export function useMultiplayerGameSession({
           setGameOver(false);
           setWinner(null);
           setNextTurn(r.status.next ?? null);
+
+          // Update local pieces/dice
+          if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
+            if (r.status.next !== myPlayer) {
+              if (config.mode === "master_hvh") setPiecesLeft(2);
+            } else {
+              setPiecesLeft(prev => prev - 1);
+            }
+          }
+
+          // Host pushes state for pieces/dice
+          if (role === "host") {
+            if (config?.mode === "master_hvh") {
+              const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
+              socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
+            } else if (config?.mode === "fortune_dice_hvh") {
+              const remaining = piecesLeft - 1;
+              if (remaining > 0) {
+                socket.emit("variantUpdate", { code, piecesLeft: remaining });
+              } else {
+                const newDice = Math.floor(Math.random() * 6) + 1;
+                setDiceValue(newDice);
+                setPiecesLeft(newDice);
+                socket.emit("variantUpdate", { code, diceValue: newDice, piecesLeft: newDice });
+              }
+            }
+          }
         }
 
         socket.emit("playMove", { code, cellId });
@@ -353,7 +463,7 @@ export function useMultiplayerGameSession({
     },
     [
       code,
-      config?.mode,
+      config,
       disabledCells,
       error,
       gameId,
@@ -363,6 +473,8 @@ export function useMultiplayerGameSession({
       nextTurn,
       role,
       gameOver,
+      piecesLeft,
+      holes,
     ],
   );
 
@@ -381,6 +493,11 @@ export function useMultiplayerGameSession({
     onLeaveLobby();
   }, [code, gameId, onLeaveLobby, role]);
 
+  const handleSendChat = useCallback((text: string) => {
+    if (!text.trim()) return;
+    socket.emit("sendMessage", { code, text: text.trim() });
+  }, [code]);
+
   return {
     gameId,
     yen,
@@ -395,5 +512,14 @@ export function useMultiplayerGameSession({
     playerProfiles,
     handleCellClick,
     handleAbandon,
+    // Chat
+    messages,
+    hasNewMessages,
+    setHasNewMessages,
+    handleSendChat,
+    // Variants
+    piecesLeft,
+    diceValue,
   };
 }
+
