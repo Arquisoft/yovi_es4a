@@ -151,7 +151,7 @@ describe("VerifyEmail Component", () => {
 
     await user.click(btn);
 
-    expect(mockNavigate).toHaveBeenCalledWith("/home");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
   it("el botón de 'Volver al Inicio' debe redirigir manualmente en caso de error", async () => {
