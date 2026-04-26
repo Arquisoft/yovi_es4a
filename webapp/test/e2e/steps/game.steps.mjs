@@ -7,7 +7,15 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 
 async function navigateToVariantConfig(page, variantLabel) {
   await page.goto(`${BASE}/home`);
-  await page.waitForSelector('text=Elige una variante', { timeout: 15_000 });
+  
+  // Si no estamos directamente en la pantalla de selección, pulsamos "Cambiar variante"
+  const isSelectScreen = await page.isVisible('text=Elige una variante');
+  if (!isSelectScreen) {
+    const btn = page.locator('button:has-text("Cambiar variante")').first();
+    await btn.waitFor({ state: 'visible', timeout: 10_000 });
+    await btn.click();
+    await page.waitForSelector('text=Elige una variante', { timeout: 10_000 });
+  }
 
   if (variantLabel && variantLabel !== 'Clásico') {
     await page.click(`.ant-card:has-text("${variantLabel}")`);
@@ -16,7 +24,7 @@ async function navigateToVariantConfig(page, variantLabel) {
 
   await page.click('[data-testid="variant-confirm-btn"]');
   // Esperar a que cargue la pantalla de configuración HvB/HvH
-  await page.waitForSelector('text=Human vs. Bot', { timeout: 10_000 });
+  await page.waitForSelector('text=Human vs. Bot', { timeout: 12_000 });
 }
 
 /**

@@ -73,7 +73,7 @@ describe("RegisterForm Component", () => {
     });
   });
 
-  it("debe renderizar todos los campos correctamente", async() => {
+  it("debe renderizar todos los campos correctamente", async () => {
     render(<RegisterForm />);
 
     expect(screen.getByLabelText(/Nombre de Usuario/i)).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("RegisterForm Component", () => {
     });
   }, 10000);
 
-  it("debe permitir la selección de un avatar", async() => {
+  it("debe permitir la selección de un avatar", async () => {
     render(<RegisterForm />);
 
     const avatar2 = screen.getByRole("button", {

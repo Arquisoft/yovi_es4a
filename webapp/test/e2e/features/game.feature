@@ -24,7 +24,6 @@ Feature: Juego Y
       Then veo la variante "Tabu Y"
       And veo la variante "Human vs. Human"
 
-  @skip
   Scenario: Seleccionar dificultad e iniciar partida
     Given estoy en la pantalla de selección de dificultad para HvB
     When selecciono la dificultad "Fácil"
@@ -32,14 +31,22 @@ Feature: Juego Y
     Then veo el tablero de juego
     And veo el indicador de turno
 
-  @skip
   Scenario: Empezar partida HvH
     Given estoy en la pantalla de configuración de la variante "classic"
     When pulso el botón "Jugar" en la sección HvH
     Then veo el tablero de juego HvH
 
-  @skip
   Scenario: El tablero muestra celdas jugables
     Given estoy jugando una partida HvB con bot "random_bot"
     Then el tablero tiene celdas clicables
     And la barra de estado indica de quién es el turno
+
+  Scenario Outline: Iniciar alternativas de juego exóticas
+    Given estoy en la pantalla de configuración de la variante "<variante>"
+    When pulso el botón "Jugar" en la sección HvH
+    Then veo el tablero de juego HvH
+
+  Examples:
+    | variante |
+    | tabu |
+    | holey |
