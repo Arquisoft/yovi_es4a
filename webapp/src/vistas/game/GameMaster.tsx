@@ -19,7 +19,7 @@ import {
   parseBoardSize,
   parseHvHStarter,
 } from "../../game/variants";
-import "../estilos/VariantVisuals.css";
+import "../../estilos/VariantVisuals.css";
 
 type TurnPlayer = "player0" | "player1";
 

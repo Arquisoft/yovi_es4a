@@ -13,7 +13,7 @@ import {
   type MultiplayerRole,
 } from "../../game/useMultiplayerGameSession";
 import MultiplayerChatDrawer from "../MultiplayerChatDrawer";
-import "../estilos/VariantVisuals.css";
+import "../../estilos/VariantVisuals.css";
 import { useEffect } from "react";
 
 function getModeTitle(mode: string | undefined): string {

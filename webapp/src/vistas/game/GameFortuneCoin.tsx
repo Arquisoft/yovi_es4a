@@ -22,7 +22,7 @@ import {
   parseBoardSize,
 } from "../../game/variants";
 import AuthModal from "../registroLogin/AuthModal";
-import "../estilos/VariantVisuals.css";
+import "../../estilos/VariantVisuals.css";
 
 const { Text } = Typography;
 
