@@ -12,21 +12,21 @@ import {
   putConfig,
   type GameStateResponse,
   type YEN,
-} from "../api/gamey";
-import type { RecordUserGameRequest } from "../api/users";
-import Board from "../game/Board";
-import GameShell from "../game/GameShell";
-import useDeferredGameSave from "../game/useDeferredGameSave";
+} from "../../api/gamey";
+import type { RecordUserGameRequest } from "../../api/users";
+import Board from "../../game/Board";
+import GameShell from "../../game/GameShell";
+import useDeferredGameSave from "../../game/useDeferredGameSave";
 import {
   getHvHStarterLabel,
   parseBoardSize,
   parseHvHStarter,
-} from "../game/variants";
-import { parseYenToCells, type Cell } from "../game/yen";
-import { getUserSession } from "../utils/session";
-import AuthModal from "./registroLogin/AuthModal";
-import confettiAnimation from "../assets/Confetti.json";
-import gameOverAnimation from "../assets/GameOver.json";
+} from "../../game/variants";
+import { parseYenToCells, type Cell } from "../../game/yen";
+import { getUserSession } from "../../utils/session";
+import AuthModal from "../registroLogin/AuthModal";
+import confettiAnimation from "../../assets/Confetti.json";
+import gameOverAnimation from "../../assets/GameOver.json";
 
 const { Text, Title } = Typography;
 

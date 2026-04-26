@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { ReactNode } from "react";
 
-import GameMultiplayer from "../vistas/GameMultiplayer";
+import GameMultiplayer from "../vistas/game/GameMultiplayer";
 import { useMultiplayerGameSession } from "../game/useMultiplayerGameSession";
 import { parseYenToCells } from "../game/yen";
 import type { UseMultiplayerGameSessionResult } from "../game/useMultiplayerGameSession";

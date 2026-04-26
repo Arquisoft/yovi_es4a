@@ -5,14 +5,14 @@ import { ArrowRightOutlined, SwapOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
-import MultiplayerSessionGamePage from "../game/MultiplayerSessionGamePage";
-import { parseYenToCells } from "../game/yen";
+import MultiplayerSessionGamePage from "../../game/MultiplayerSessionGamePage";
+import { parseYenToCells } from "../../game/yen";
 import {
   useMultiplayerGameSession,
   type MultiplayerConfig,
   type MultiplayerRole,
-} from "../game/useMultiplayerGameSession";
-import MultiplayerChatDrawer from "./MultiplayerChatDrawer";
+} from "../../game/useMultiplayerGameSession";
+import MultiplayerChatDrawer from "../MultiplayerChatDrawer";
 import "../estilos/VariantVisuals.css";
 import { useEffect } from "react";
 

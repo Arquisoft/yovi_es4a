@@ -8,20 +8,20 @@ import {
   hvhMove,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
+} from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
 import type {
   SessionGameMoveResponse,
   SessionGameStartResponse,
-} from "../game/useSessionGame";
-import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+} from "../../game/useSessionGame";
+import useLocalVariantGameSave from "../../game/useLocalVariantGameSave";
 import {
   createLocalHvHResultConfig,
   LOCAL_HVH_TURN_CONFIG,
   LOCAL_HVH_WINNER_PALETTE,
   parseBoardSize,
-} from "../game/variants";
-import AuthModal from "./registroLogin/AuthModal";
+} from "../../game/variants";
+import AuthModal from "../registroLogin/AuthModal";
 import "../estilos/VariantVisuals.css";
 
 const { Text } = Typography;

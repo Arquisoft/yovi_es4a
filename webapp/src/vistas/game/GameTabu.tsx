@@ -23,12 +23,12 @@ import {
   hvhMove,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import LocalHvHSessionLayout from "../game/LocalHvHSessionLayout";
+} from "../../api/gamey";
+import LocalHvHSessionLayout from "../../game/LocalHvHSessionLayout";
 import type {
   SessionGameMoveResponse,
   SessionGameStartResponse,
-} from "../game/useSessionGame";
+} from "../../game/useSessionGame";
 import {
   getAdjacentCells,
   hasPlayableCells,
@@ -36,7 +36,7 @@ import {
   LOCAL_HVH_WINNER_PALETTE,
   parseBoardSize,
   parseHvHStarter,
-} from "../game/variants";
+} from "../../game/variants";
 
 type TurnPlayer = "player0" | "player1";
 

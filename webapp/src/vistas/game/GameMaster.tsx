@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -6,19 +6,19 @@ import {
   hvhMove,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import LocalHvHSessionLayout from "../game/LocalHvHSessionLayout";
+} from "../../api/gamey";
+import LocalHvHSessionLayout from "../../game/LocalHvHSessionLayout";
 import type {
   SessionGameMoveResponse,
   SessionGameStartResponse,
-} from "../game/useSessionGame";
+} from "../../game/useSessionGame";
 import {
   createLocalHvHResultConfig,
   LOCAL_HVH_TURN_CONFIG,
   LOCAL_HVH_WINNER_PALETTE,
   parseBoardSize,
   parseHvHStarter,
-} from "../game/variants";
+} from "../../game/variants";
 import "../estilos/VariantVisuals.css";
 
 type TurnPlayer = "player0" | "player1";
@@ -27,45 +27,18 @@ function oppositePlayer(player: TurnPlayer): TurnPlayer {
   return player === "player0" ? "player1" : "player0";
 }
 
-function rollDice(): number {
-  const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  return (array[0] % 6) + 1;
-}
-
-export default function GameFortuneDice() {
+export default function GameMaster() {
   const [searchParams] = useSearchParams();
 
   const size = parseBoardSize(searchParams.get("size"));
   const hvhStarter = parseHvHStarter(searchParams.get("hvhstarter"));
-  const [diceValue, setDiceValue] = useState(() => rollDice());
-  const [piecesLeft, setPiecesLeft] = useState(diceValue);
 
+  const [piecesLeft, setPiecesLeft] = useState(2);
   const currentPlayerRef = useRef<TurnPlayer>("player0");
-  const piecesLeftRef = useRef(diceValue);
-  const rollTimerRef = useRef<number | null>(null);
-  const [isRolling, setIsRolling] = useState(false);
-
-  const showRoll = useCallback((value: number) => {
-    if (rollTimerRef.current !== null) {
-      window.clearTimeout(rollTimerRef.current);
-    }
-
-    setIsRolling(true);
-    setDiceValue(value);
-    rollTimerRef.current = window.setTimeout(() => {
-      setIsRolling(false);
-      rollTimerRef.current = null;
-    }, 600);
-  }, []);
-
-  useEffect(() => () => {
-    if (rollTimerRef.current !== null) {
-      window.clearTimeout(rollTimerRef.current);
-    }
-  }, []);
 
   const start = useCallback(async (): Promise<SessionGameStartResponse<YEN>> => {
+    setPiecesLeft(2);
+
     await putConfig({
       size,
       hvb_starter: "human",
@@ -74,12 +47,6 @@ export default function GameFortuneDice() {
     });
 
     const game = await createHvhGame({ size, hvh_starter: hvhStarter });
-    const firstRoll = rollDice();
-
-    piecesLeftRef.current = firstRoll;
-    showRoll(firstRoll);
-    setPiecesLeft(firstRoll);
-
     if (game.status.state === "ongoing") {
       currentPlayerRef.current = (game.status.next ?? "player0") as TurnPlayer;
       return {
@@ -89,15 +56,17 @@ export default function GameFortuneDice() {
     }
 
     return game;
-  }, [hvhStarter, showRoll, size]);
+  }, [hvhStarter, size]);
 
   const move = useCallback(async (
     gameId: string,
     cellId: number,
   ): Promise<SessionGameMoveResponse<YEN>> => {
     const currentPlayer = currentPlayerRef.current;
+    const remainingAfterMove = piecesLeft === 2 ? 1 : 2;
+
     const nextPlayerOverride =
-      piecesLeftRef.current > 1 ? (currentPlayer === "player0" ? 0 : 1) : undefined;
+      remainingAfterMove === 1 ? (currentPlayer === "player0" ? 0 : 1) : undefined;
 
     const result = await hvhMove(gameId, cellId, undefined, nextPlayerOverride);
 
@@ -105,10 +74,9 @@ export default function GameFortuneDice() {
       return result;
     }
 
-    piecesLeftRef.current -= 1;
+    setPiecesLeft(remainingAfterMove);
 
-    if (piecesLeftRef.current > 0) {
-      setPiecesLeft(piecesLeftRef.current);
+    if (remainingAfterMove === 1) {
       return {
         ...result,
         status: { state: "ongoing", next: currentPlayer },
@@ -116,55 +84,40 @@ export default function GameFortuneDice() {
     }
 
     const nextPlayer = oppositePlayer(currentPlayer);
-    const nextRoll = rollDice();
-
     currentPlayerRef.current = nextPlayer;
-    piecesLeftRef.current = nextRoll;
-    showRoll(nextRoll);
-    setPiecesLeft(nextRoll);
-
     return {
       ...result,
       status: { state: "ongoing", next: nextPlayer },
     };
-  }, [showRoll]);
+  }, [piecesLeft]);
 
   return (
     <LocalHvHSessionLayout<YEN>
       boardSize={size}
-      mode="fortune_dice_hvh"
-      opponent="Jugador local (Fortune Dado)"
+      mode="master_hvh"
+      opponent="Jugador local (Master Y)"
       startedBy={hvhStarter}
       deps={[size, hvhStarter]}
       start={start}
       move={move}
       shouldCountMove={(turn) => turn === "player0"}
       resultConfig={createLocalHvHResultConfig(
-        "Juego Y - Fortune Dado",
+        "Juego Y - Master Y",
         size,
         hvhStarter,
-        "Las piezas por turno dependen del dado",
+        "Cada turno obliga a colocar 2 piezas",
       )}
       winnerPalette={LOCAL_HVH_WINNER_PALETTE}
       turnConfig={{
         ...LOCAL_HVH_TURN_CONFIG,
-        textPrefix: "Dado:",
+        textPrefix: "Master:",
       }}
       turnIndicatorExtra={
         <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 12,
-            marginLeft: 8,
-          }}
+          className="moves-indicator move-active"
+          style={{ marginLeft: 8, display: "inline-flex" }}
         >
-          <div className={`dice-container ${isRolling ? "dice-rolling" : ""}`}>
-            {diceValue}
-          </div>
-          <div className="moves-indicator move-active">
-            {piecesLeft} piezas
-          </div>
+          <span>⚡</span> {piecesLeft} mov.
         </div>
       }
     />

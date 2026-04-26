@@ -1,4 +1,4 @@
-import LocalHvHVariantPage from "../game/LocalHvHVariantPage";
+import LocalHvHVariantPage from "../../game/LocalHvHVariantPage";
 
 function invertWinner(winner: string | null): string | null {
   if (winner === "player0") return "player1";

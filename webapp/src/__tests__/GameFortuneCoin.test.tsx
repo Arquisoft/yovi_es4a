@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import GameFortuneCoin from "../vistas/GameFortuneCoin";
+import GameFortuneCoin from "../vistas/game/GameFortuneCoin";
 import { createHvhGame, deleteHvhGame, hvhMove, putConfig } from "../api/gamey";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 

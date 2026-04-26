@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import GameMaster from "../vistas/GameMaster";
+import GameMaster from "../vistas/game/GameMaster";
 import { createHvhGame, deleteHvhGame, hvhMove, putConfig } from "../api/gamey";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 

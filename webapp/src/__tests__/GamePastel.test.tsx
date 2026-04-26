@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import GamePastel from "../vistas/GamePastel";
+import GamePastel from "../vistas/game/GamePastel";
 import { createHvhGame, deleteHvhGame, hvhMove, putConfig } from "../api/gamey";
 import { getUserSession } from "../utils/session";
 import useDeferredGameSave from "../game/useDeferredGameSave";

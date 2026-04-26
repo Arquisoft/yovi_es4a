@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
-import GameWhyNot from "../vistas/GameWhyNot";
+import GameWhyNot from "../vistas/game/GameWhyNot";
 
 const localVariantPageMock = vi.fn();
 

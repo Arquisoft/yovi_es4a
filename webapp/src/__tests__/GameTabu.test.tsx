@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
 
-import GameTabu from "../vistas/GameTabu";
+import GameTabu from "../vistas/game/GameTabu";
 import {
   createHvhGame,
   deleteHvhGame,
