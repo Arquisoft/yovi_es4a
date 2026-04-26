@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Spin, Result, Button } from "antd";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
@@ -15,6 +16,14 @@ export default function VerifyEmail() {
   // Asegúrate de que apunte a tu gateway si estás usando Docker
   const apiEndpoint =
     import.meta.env.VITE_API_URL || "http://localhost:8000/api/users";
+
+  const goToLogin = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    navigate("/");
+  };
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -33,15 +42,20 @@ export default function VerifyEmail() {
         setStatus("success");
         setMessageText(data.message);
 
-        // Tras el éxito, redirigimos a /home en 3 segundos
-        setTimeout(() => {
-          navigate("/login");
-        }, 4000);
+        // Tras el éxito, redirigimos a / en 6 segundos (el login está en /)
+        timerRef.current = setTimeout(() => {
+          goToLogin();
+        }, 6000);
       })
       .catch((err) => {
         setStatus("error");
         setMessageText(err.message);
       });
+
+    // Limpieza al desmontar para evitar fugas de memoria o redirecciones indeseadas
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [searchParams, navigate, apiEndpoint]);
 
   return (
@@ -65,7 +79,7 @@ export default function VerifyEmail() {
         {status === "loading" && (
           <Spin
             size="large"
-            tip={<div style={{ marginTop: "15px" }}>{messageText}</div>}
+            description={<div style={{ marginTop: "15px" }}>{messageText}</div>}
           />
         )}
 
@@ -77,14 +91,15 @@ export default function VerifyEmail() {
             extra={[
               <Button
                 type="primary"
-                key="home"
-                onClick={() => navigate("/")}
+                key="login"
+                onClick={goToLogin}
               >
-                Ir al Home ahora
+                Volver al Login
               </Button>,
             ]}
           />
         )}
+
 
         {status === "error" && (
           <Result
@@ -93,11 +108,12 @@ export default function VerifyEmail() {
             subTitle={messageText}
             extra={
               <Button type="primary" onClick={() => navigate("/")}>
-                Volver al Inicio
+                Volver al Login
               </Button>
             }
           />
         )}
+
       </div>
     </div>
   );

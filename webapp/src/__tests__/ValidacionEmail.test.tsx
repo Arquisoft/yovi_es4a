@@ -112,7 +112,7 @@ describe("VerifyEmail Component", () => {
     });
 
     // Tras validación por motivo de seguridad redirige al login para probar credenciales
-    expect(mockNavigate).toHaveBeenCalledWith("/login");
+    expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
   it("debe manejar errores de la API si el token es inválido o expiró", async () => {
@@ -134,7 +134,7 @@ describe("VerifyEmail Component", () => {
     expect(screen.getByText(errorMsg)).toBeInTheDocument();
   });
 
-  it("el botón de 'Ir al Home ahora' debe redirigir manualmente", async () => {
+  it("el botón de 'Volver al Login' debe redirigir manualmente tras el éxito", async () => {
     mockSearchParams = new URLSearchParams("?token=valido");
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
@@ -146,7 +146,7 @@ describe("VerifyEmail Component", () => {
 
     // Buscamos el botón de éxito (aparece después de la carga)
     const btn = await screen.findByRole("button", {
-      name: /Ir al Home ahora/i,
+      name: /Volver al Login/i,
     });
 
     await user.click(btn);
@@ -154,12 +154,12 @@ describe("VerifyEmail Component", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
-  it("el botón de 'Volver al Inicio' debe redirigir manualmente en caso de error", async () => {
+  it("el botón de 'Volver al Login' debe redirigir manualmente en caso de error", async () => {
     // Sin token causará un error automático sin cargar
     render(<VerifyEmail />);
     const user = userEvent.setup();
 
-    const btn = screen.getByRole("button", { name: /Volver al Inicio/i });
+    const btn = screen.getByRole("button", { name: /Volver al Login/i });
 
     await user.click(btn);
 

@@ -44,7 +44,16 @@ type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
 
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
 const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
-const FALLBACK_BOTS = ["random_bot", "mcts_medio", "mcts_dificil", "mcts_demencial"];
+const FALLBACK_BOTS = ["random_bot", "mcts_medio", "mcts_completo_medio", "mcts_completo_dificil"];
+
+const LEGACY_BOT_ALIASES: Record<string, string> = {
+  mcts_dificil: "mcts_completo_medio",
+  mcts_demencial: "mcts_completo_dificil",
+};
+
+function normalizeBotId(botId: string) {
+  return LEGACY_BOT_ALIASES[botId] ?? botId;
+}
 
 function loadLastConfigHvB(): LastConfigHvB | null {
   try {
@@ -61,7 +70,7 @@ function loadLastConfigHvB(): LastConfigHvB | null {
     ) {
       return null;
     }
-    return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
+    return { size: parsed.size, botId: normalizeBotId(parsed.botId), hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
   }
@@ -159,6 +168,10 @@ export default function Home({ variant, onChangeVariant }: Props) {
   useEffect(() => {
     if (!meta) return;
     setSize((currentSize) => clampSize(currentSize, meta));
+    setBotId((currentBotId) => {
+      const normalizedBotId = normalizeBotId(currentBotId);
+      return meta.bots.includes(normalizedBotId) ? normalizedBotId : FALLBACK_BOTS[0];
+    });
   }, [meta]);
 
   useEffect(() => {
@@ -225,6 +238,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
           saveLastConfigHvB({ size, botId: nextBot, hvbstarter });
         }}
         onConfirm={handleConfirmDifficulty}
+        onBackHome={() => setShowDifficulty(false)}
       />
     );
   }

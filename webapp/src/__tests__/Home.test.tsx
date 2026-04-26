@@ -40,10 +40,11 @@ vi.mock("../vistas/AppHeader.tsx", () => ({
 }));
 
 vi.mock("../vistas/Dificultyselect.tsx", () => ({
-    default: ({ selectedBot, onSelect, onConfirm }: any) => (
+    default: ({ selectedBot, onSelect, onConfirm, onBackHome }: any) => (
         <div data-testid="difficulty-select" data-bot={selectedBot}>
             <button aria-label="select-mcts_bot" onClick={() => onSelect("mcts_bot")}>mcts_bot</button>
             <button aria-label="confirm-difficulty" onClick={onConfirm}>Confirmar</button>
+            <button aria-label="back-home" onClick={onBackHome}>Volver</button>
         </div>
     ),
 }));
@@ -401,6 +402,23 @@ describe("Home", () => {
             LAST_CONFIG_KEY_HVB,
             expect.stringContaining('"size":5'),
         );
+    });
+
+    it("permite volver desde la selección de dificultad a Home", async () => {
+        metaOk();
+
+        const user = userEvent.setup();
+        renderHome();
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
+
+        expect(screen.getByTestId("difficulty-select")).toBeInTheDocument();
+
+        await user.click(screen.getByLabelText("back-home"));
+
+        expect(screen.queryByTestId("difficulty-select")).not.toBeInTheDocument();
+        expect(screen.getByText("Human vs. Bot")).toBeInTheDocument();
     });
 
     it("permite cambiar hvhstarter y navega a /game-hvh con query completa", async () => {
