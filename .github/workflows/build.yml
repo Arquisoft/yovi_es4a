@@ -6,32 +6,167 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
-  tests:
+  test-node:
+    name: Test Node (Users & Webapp)
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
     - uses: actions/setup-node@v4
       with:
         node-version: 22
+        cache: 'npm'
+        cache-dependency-path: |
+          users/package-lock.json
+          webapp/package-lock.json
     - run: npm --prefix users ci
     - run: npm --prefix webapp ci
     - run: npm --prefix users run test:coverage
     - run: npm --prefix webapp run test:coverage
+    - name: Upload Node coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: node-coverage
+        path: |
+          users/coverage/lcov.info
+          webapp/coverage/lcov.info
+
+  test-rust:
+    name: Test Rust (gamey)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: gamey
     - name: Install cargo-llvm-cov
-      run: cargo install cargo-llvm-cov --locked
+      uses: taiki-e/install-action@cargo-llvm-cov
     - name: Generate gamey code coverage
       run: cd gamey && cargo llvm-cov --lcov --output-path lcov.info
     - name: Normalize Rust coverage paths
       run: |
         sed -i "s|SF:${GITHUB_WORKSPACE}/|SF:|g" gamey/lcov.info
         grep '^SF:' gamey/lcov.info | head
+    - name: Upload Rust coverage
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-coverage
+        path: gamey/lcov.info
+
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Download Node coverage
+      uses: actions/download-artifact@v4
+      with:
+        name: node-coverage
+        path: .
+    - name: Download Rust coverage
+      uses: actions/download-artifact@v4
+      with:
+        name: rust-coverage
+        path: .
     - name: Analyze with SonarQube
       uses: SonarSource/sonarqube-scan-action@master
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  e2e:
+    name: Run E2E tests
+    runs-on: ubuntu-latest
+    needs: [test-node, test-rust]
+
+    # ── MongoDB como servicio de infraestructura ──────────────────────────────
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node ──────────────────────────────────────────────────────────────
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install users dependencies
+        run: cd users && npm ci
+
+      - name: Install webapp dependencies
+        run: cd webapp && npm ci
+
+      # ── Rust / gamey ──────────────────────────────────────────────────────
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gamey/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('gamey/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build gamey (debug mode)
+        run: cd gamey && cargo build
+
+      # ── Arrancar servicios en background ──────────────────────────────────
+      - name: Start gamey server
+        run: |
+          ./gamey/target/debug/gamey --mode server --port 4000 &
+        env:
+          RUST_LOG: warn
+
+      - name: Start users service
+        run: |
+          cd users && node users-service.js &
+        env:
+          MONGODB_URI: mongodb://localhost:27017/yovi
+          PORT: 8001
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Esperando gamey en :4000..."
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:4000/status && echo " OK" && break
+            echo "  intento $i/20 — reintentando en 3s"
+            sleep 3
+          done
+
+          echo "Esperando users en :8001..."
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8001/api-docs > /dev/null 2>&1 && echo " OK" && break
+            curl -sf http://localhost:8001/ > /dev/null 2>&1 && echo " OK" && break
+            echo "  intento $i/20 — reintentando en 3s"
+            sleep 3
+          done
+
+      # ── Playwright ────────────────────────────────────────────────────────
+      - name: Install Playwright browsers
+        run: cd webapp && npm run test:e2e:install-browsers
+
+      # ── E2E ───────────────────────────────────────────────────────────────
+      - name: Run E2E tests
+        run: cd webapp && npm run test:e2e
+        env:
+          VITE_API_PROXY_TARGET: http://localhost:8001
+          VITE_GAME_PROXY_TARGET: http://localhost:4000

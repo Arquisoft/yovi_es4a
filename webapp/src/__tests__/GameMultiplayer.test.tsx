@@ -110,6 +110,7 @@ vi.mock("../vistas/MultiplayerChatDrawer", () => ({
 }));
 
 describe("GameMultiplayer", () => {
+  // const mockedSocket = vi.mocked(socket);
   const mockedUseMultiplayerGameSession = vi.mocked(useMultiplayerGameSession);
   const mockedParseYenToCells = vi.mocked(parseYenToCells);
 

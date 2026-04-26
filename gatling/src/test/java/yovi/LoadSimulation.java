@@ -24,6 +24,12 @@ public class LoadSimulation extends Simulation {
         .pause(1, 2)
         .exec(Requests.getRanking)
         .pause(1, 3)
+        .exec(Requests.getUserProfile)
+        .pause(1)
+        .exec(Requests.getUserStats)
+        .pause(1)
+        .exec(Requests.getUserHistory)
+        .pause(1, 2)
         .repeat(3).on(
             exec(Requests.playExternal)
             .pause(Duration.ofMillis(500), Duration.ofSeconds(1))
@@ -51,6 +57,8 @@ public class LoadSimulation extends Simulation {
                 .pause(Duration.ofMillis(300))
             )
             .exec(Requests.deleteHvBGame)
+            .pause(1)
+            .exec(Requests.postGameHistory)
             .pause(1, 3)
         );
 
@@ -77,6 +85,8 @@ public class LoadSimulation extends Simulation {
                 .pause(Duration.ofMillis(300))
             )
             .exec(Requests.deleteHvHGame)
+            .pause(1)
+            .exec(Requests.postGameHistory)
             .pause(1, 2)
         );
 
@@ -99,24 +109,24 @@ public class LoadSimulation extends Simulation {
         setUp(
             // ~50% visitantes
             visitorScenario.injectOpen(
-                rampUsers(rampUsers / 2).during(Duration.ofSeconds(rampSecs)),
-                constantUsersPerSec((double)(rampUsers / 2) / steadySecs)
+                rampUsers(rampUsers).during(Duration.ofSeconds(rampSecs)),
+                constantUsersPerSec((double)(rampUsers) / steadySecs)
                     .during(Duration.ofSeconds(steadySecs))
             ),
             // ~30% jugadores HvB
             hvbPlayerScenario.injectOpen(
                 nothingFor(Duration.ofSeconds(5)),
-                rampUsers(Math.max(1, (int)(rampUsers * 0.3))).during(Duration.ofSeconds(rampSecs))
+                rampUsers(Math.max(1, (int)(rampUsers * 0.6))).during(Duration.ofSeconds(rampSecs))
             ),
             // ~15% jugadores HvH
             hvhPlayerScenario.injectOpen(
                 nothingFor(Duration.ofSeconds(8)),
-                rampUsers(Math.max(1, (int)(rampUsers * 0.15))).during(Duration.ofSeconds(rampSecs))
+                rampUsers(Math.max(1, (int)(rampUsers * 0.4))).during(Duration.ofSeconds(rampSecs))
             ),
             // ~5% bots externos
             botExternalScenario.injectOpen(
                 nothingFor(Duration.ofSeconds(3)),
-                atOnceUsers(Math.max(1, (int)(rampUsers * 0.05)))
+                atOnceUsers(Math.max(1, (int)(rampUsers * 0.2)))
             )
         ).protocols(httpProtocol)
          .assertions(

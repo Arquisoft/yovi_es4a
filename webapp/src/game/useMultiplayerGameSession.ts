@@ -225,7 +225,7 @@ export function useMultiplayerGameSession({
 
           setGameOver(false);
           setWinner(null);
-          setNextTurn(r.status.next ?? null);
+          setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
         }
       }
       catch (e: any) {

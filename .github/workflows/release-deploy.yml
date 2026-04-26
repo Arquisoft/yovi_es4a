@@ -99,13 +99,18 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('gamey/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Build gamey (release)
-        run: cd gamey && cargo build --release
+      - name: Build gamey (debug mode)
+        # ── OPTIMIZACIÓN: Compilación en modo debug para E2E ─────────────────
+        # Al omitir el flag '--release', el compilador de Rust no aplica las 
+        # optimizaciones de producción que son muy costosas en tiempo de CI.
+        # El juego funcionará exactamente igual para verificar la lógica en
+        # Playwright, ahorrando minutos de espera en cada test E2E.
+        run: cd gamey && cargo build
 
       # ── Arrancar servicios en background ──────────────────────────────────
       - name: Start gamey server
         run: |
-          ./gamey/target/release/gamey --mode server --port 4000 &
+          ./gamey/target/debug/gamey --mode server --port 4000 &
         env:
           RUST_LOG: warn
 
@@ -155,90 +160,45 @@ jobs:
           response=$(curl -fsS "https://www.duckdns.org/update?domains=${{ secrets.DUCKDNS_DOMAIN }}&token=${{ secrets.DUCKDNS_TOKEN }}&ip=")
           test "$response" = "OK"
 
-  docker-push-users:
-    name: Publish users image
+  docker-push:
+    name: Publish images
     runs-on: ubuntu-latest
     needs: e2e
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        service: [users, webapp, gamey, gateway]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Publish to Registry (users)
+      - name: Publish to Registry (General)
+        if: matrix.service != 'webapp'
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-users
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-${{ matrix.service }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
-          workdir: users
+          workdir: ${{ matrix.service }}
 
-  docker-push-webapp:
-    name: Publish webapp image
-    runs-on: ubuntu-latest
-    needs: e2e
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Publish to Registry (webapp)
+      - name: Publish to Registry (Webapp)
+        if: matrix.service == 'webapp'
         uses: elgohr/Publish-Docker-Github-Action@v5
         with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-webapp
+          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-${{ matrix.service }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
-          workdir: webapp
+          workdir: ${{ matrix.service }}
           buildargs: VITE_API_URL=/api/users
-
-  docker-push-gamey:
-    name: Publish gamey image
-    runs-on: ubuntu-latest
-    needs: e2e
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Publish to Registry (gamey)
-        uses: elgohr/Publish-Docker-Github-Action@v5
-        with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gamey
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          workdir: gamey
-  docker-push-gateway:
-    name: Publish gateway image
-    runs-on: ubuntu-latest
-    needs: e2e
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Publish to Registry (gateway)
-        uses: elgohr/Publish-Docker-Github-Action@v5
-        with:
-          name: ${{ github.repository_owner }}/${{ github.event.repository.name }}-gateway
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: ghcr.io
-          workdir: gateway
 
   deploy:
     name: Deploy over SSH
     runs-on: ubuntu-latest
-    needs: [update-duckdns, docker-push-users, docker-push-webapp, docker-push-gamey, docker-push-gateway]
+    needs: [update-duckdns, docker-push]
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -251,6 +211,22 @@ jobs:
             set -euxo pipefail
             cd /opt/yovi/yovi_es4a
             git pull
+            
+            # 1. DESCARGA E INICIO
             docker compose pull
             docker compose up -d --remove-orphans
+            
+            # 2. VALIDACIÓN (Health Check)
+            echo "Aguardando consolidación de servicios..."
+            sleep 15
+            if docker compose ps | grep -q "Exit"; then
+              echo "Error crítico: Al menos un contenedor falló tras iniciar."
+              docker compose logs
+              exit 1
+            fi
+            
+            echo "Despliegue operativo:"
             docker compose ps
+            
+            # 3. LIMPIEZA (Prevenir disco lleno en VM)
+            docker image prune -af

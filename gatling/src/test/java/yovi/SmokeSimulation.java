@@ -24,8 +24,14 @@ public class SmokeSimulation extends Simulation {
         .exec(Requests.getConfig)
         .pause(Duration.ofMillis(300))
 
-        // 2. Ranking
+        // 2. Ranking y Usuarios
         .exec(Requests.getRanking)
+        .pause(Duration.ofMillis(300))
+        .exec(Requests.getUserProfile)
+        .pause(Duration.ofMillis(300))
+        .exec(Requests.getUserStats)
+        .pause(Duration.ofMillis(300))
+        .exec(Requests.getUserHistory)
         .pause(Duration.ofMillis(300))
 
         // 3. Bot externo
@@ -45,6 +51,8 @@ public class SmokeSimulation extends Simulation {
         .pause(Duration.ofMillis(300))
         .exec(Requests.deleteHvBGame)
         .pause(Duration.ofMillis(300))
+        .exec(Requests.postGameHistory)
+        .pause(Duration.ofMillis(300))
 
         // 5. Partida HvH completa: configurar → crear → leer → mover → borrar
         // FIX: putConfigForHvH es obligatorio antes de createHvHGame porque
@@ -58,7 +66,9 @@ public class SmokeSimulation extends Simulation {
         .pause(Duration.ofMillis(300))
         .exec(Requests.postHvHMove)
         .pause(Duration.ofMillis(300))
-        .exec(Requests.deleteHvHGame);
+        .exec(Requests.deleteHvHGame)
+        .pause(Duration.ofMillis(300))
+        .exec(Requests.postGameHistory);
 
     {
         setUp(
