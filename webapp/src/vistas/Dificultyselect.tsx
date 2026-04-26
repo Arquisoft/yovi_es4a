@@ -1,5 +1,6 @@
 import { Button, Card, Flex, Space, Typography } from "antd";
 import {
+  ArrowLeftOutlined,
   RobotOutlined,
   ThunderboltOutlined,
   PlayCircleOutlined,
@@ -14,6 +15,7 @@ type Props = {
   selectedBot: string;
   onSelect: (botId: string) => void;
   onConfirm: () => void;
+  onBackHome: () => void;
 };
 
 const DIFFICULTY_ORDER = ["random_bot", "mcts_medio", "mcts_completo_medio", "mcts_completo_dificil"];
@@ -59,7 +61,7 @@ function sortedBots(bots: string[]): string[] {
   return DIFFICULTY_ORDER.filter((botId) => available.has(botId));
 }
 
-export default function DifficultySelect({ bots, selectedBot, onSelect, onConfirm }: Props) {
+export default function DifficultySelect({ bots, selectedBot, onSelect, onConfirm, onBackHome }: Props) {
   const ordered = sortedBots(bots);
 
   return (
@@ -119,7 +121,11 @@ export default function DifficultySelect({ bots, selectedBot, onSelect, onConfir
                 })}
               </Flex>
 
-              <Flex justify="center">
+              <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+                <Button icon={<ArrowLeftOutlined />} onClick={onBackHome}>
+                  Volver
+                </Button>
+
                 <Button
                   type="primary"
                   size="large"

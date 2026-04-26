@@ -238,6 +238,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
           saveLastConfigHvB({ size, botId: nextBot, hvbstarter });
         }}
         onConfirm={handleConfirmDifficulty}
+        onBackHome={() => setShowDifficulty(false)}
       />
     );
   }
