@@ -142,6 +142,7 @@ jobs:
         env:
           MONGODB_URI: mongodb://localhost:27017/yovi
           PORT: 8001
+          IS_E2E: "true"
 
       - name: Wait for services to be ready
         run: |
