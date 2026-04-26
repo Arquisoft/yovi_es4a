@@ -16,7 +16,7 @@ type Props = {
   onConfirm: () => void;
 };
 
-const DIFFICULTY_ORDER = ["random_bot", "mcts_medio", "mcts_dificil", "mcts_demencial"];
+const DIFFICULTY_ORDER = ["random_bot", "mcts_medio", "mcts_completo_medio", "mcts_completo_dificil"];
 
 const BOT_META: Record<string, { label: string; description: string; icon: React.ReactNode; color: string }> = {
   random_bot: {
@@ -31,13 +31,13 @@ const BOT_META: Record<string, { label: string; description: string; icon: React
     icon: <ThunderboltOutlined />,
     color: "#faad14",
   },
-  mcts_dificil: {
+  mcts_completo_medio: {
     label: "Difícil",
     description: "Calcula miles de partidas. Cuesta vencerle.",
     icon: <ThunderboltOutlined />,
     color: "#f5222d",
   },
-  mcts_demencial: {
+  mcts_completo_dificil: {
     label: "Demencial",
     description: "Simulaciones masivas. Solo para los más valientes.",
     icon: <FireOutlined />,
@@ -55,13 +55,8 @@ function botMeta(botId: string) {
 }
 
 function sortedBots(bots: string[]): string[] {
-  return [...bots].sort((a, b) => {
-    const ia = DIFFICULTY_ORDER.indexOf(a);
-    const ib = DIFFICULTY_ORDER.indexOf(b);
-    const ra = ia === -1 ? Infinity : ia;
-    const rb = ib === -1 ? Infinity : ib;
-    return ra - rb;
-  });
+  const available = new Set(bots);
+  return DIFFICULTY_ORDER.filter((botId) => available.has(botId));
 }
 
 export default function DifficultySelect({ bots, selectedBot, onSelect, onConfirm }: Props) {
