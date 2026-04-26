@@ -20,6 +20,15 @@ export type MultiplayerConfig = {
   mode: string;
 };
 
+type MultiplayerPastelPhase = "place_neutral" | "pie_choice" | "playing";
+
+type MultiplayerPastelState = {
+  phase: MultiplayerPastelPhase;
+  neutralCellId: number | null;
+  swapped: boolean;
+  firstPlayer: "player0" | "player1";
+};
+
 export type MultiplayerPlayerProfile = {
   username: string | null;
   profilePicture: string | null;
@@ -48,10 +57,15 @@ export type UseMultiplayerGameSessionResult = {
   error: string;
   disabledCells: Set<number>;
   myPlayer: string;
+  displayMyPlayer: string;
   myColor: string;
   playerProfiles: MultiplayerPlayerProfiles;
   handleCellClick: (cellId: number) => Promise<void>;
   handleAbandon: () => Promise<void>;
+  handlePastelSwap: () => void;
+  handlePastelPass: () => void;
+  neutralCells: Set<number>;
+  pastelState: MultiplayerPastelState | null;
 
   // Chat
   messages: ChatMessage[];
@@ -62,6 +76,30 @@ export type UseMultiplayerGameSessionResult = {
   piecesLeft: number;
   diceValue: number;
 };
+
+function swapPlayer(player: string | null): string | null {
+  if (player === "player0") return "player1";
+  if (player === "player1") return "player0";
+  return player;
+}
+
+function mapWinnerForMode(
+  mode: string | undefined,
+  winner: string | null,
+  swapped = false,
+): string | null {
+  let resolved = winner;
+
+  if (mode === "why_not_hvh" || mode === "whynot_hvh") {
+    resolved = swapPlayer(resolved);
+  }
+
+  if (mode === "pastel_hvh" && swapped) {
+    resolved = swapPlayer(resolved);
+  }
+
+  return resolved;
+}
 
 export function useMultiplayerGameSession({
   code,
@@ -85,6 +123,9 @@ export function useMultiplayerGameSession({
       player0: { username: null, profilePicture: null },
       player1: { username: null, profilePicture: null },
     });
+  const [pastelState, setPastelState] = useState<MultiplayerPastelState | null>(
+    null,
+  );
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -98,7 +139,51 @@ export function useMultiplayerGameSession({
     return role === "guest" ? "player1" : "player0";
   }, [role]);
 
-  const myColor = myPlayer === "player0" ? "#1677ff" : "#ff7b00";
+  const displayMyPlayer = useMemo(() => {
+    if (config?.mode !== "pastel_hvh" || !pastelState?.swapped) {
+      return myPlayer;
+    }
+
+    return swapPlayer(myPlayer) ?? myPlayer;
+  }, [config?.mode, myPlayer, pastelState?.swapped]);
+
+  const myColor = displayMyPlayer === "player0" ? "#1677ff" : "#ff7b00";
+
+  const neutralCells = useMemo(() => {
+    if (
+      config?.mode !== "pastel_hvh" ||
+      pastelState?.phase !== "pie_choice" ||
+      pastelState.neutralCellId == null
+    ) {
+      return new Set<number>();
+    }
+
+    return new Set<number>([pastelState.neutralCellId]);
+  }, [config?.mode, pastelState]);
+
+  const displayNextTurn = useMemo(() => {
+    if (config?.mode !== "pastel_hvh" || !pastelState) {
+      return nextTurn;
+    }
+
+    if (pastelState.phase === "place_neutral") {
+      return pastelState.firstPlayer;
+    }
+
+    if (pastelState.phase === "pie_choice") {
+      return swapPlayer(pastelState.firstPlayer);
+    }
+
+    if (!pastelState.swapped) {
+      return nextTurn;
+    }
+
+    return swapPlayer(nextTurn);
+  }, [config?.mode, nextTurn, pastelState]);
+
+  const displayWinner = useMemo(() => {
+    return mapWinnerForMode(config?.mode, winner, pastelState?.swapped);
+  }, [config?.mode, pastelState?.swapped, winner]);
 
   const refreshGameState = useCallback(
     async (
@@ -181,6 +266,26 @@ export function useMultiplayerGameSession({
           return;
 
         const extra: Record<string, unknown> = {};
+        if (config?.mode === "pastel_hvh") {
+          const firstPlayer =
+            (r.status.state === "ongoing"
+              ? r.status.next
+              : initialTurn) === "player1"
+              ? "player1"
+              : "player0";
+          const nextPastelState: MultiplayerPastelState = {
+            phase: "place_neutral",
+            neutralCellId: null,
+            swapped: false,
+            firstPlayer,
+          };
+
+          setPastelState(nextPastelState);
+          extra.pastel = nextPastelState;
+        } else {
+          setPastelState(null);
+        }
+
         if (config?.mode === "holey_hvh") {
           const totalCells = (config.size * (config.size + 1)) / 2;
           const generatedHoles = generateHoles(totalCells);
@@ -194,8 +299,8 @@ export function useMultiplayerGameSession({
         }
 
         if (config?.mode === "master_hvh") {
-          setPiecesLeft(1);
-          extra.piecesLeft = 1;
+          setPiecesLeft(2);
+          extra.piecesLeft = 2;
         } else if (config?.mode === "fortune_dice_hvh") {
           const firstDice = Math.floor(Math.random() * 6) + 1;
           setDiceValue(firstDice);
@@ -211,7 +316,7 @@ export function useMultiplayerGameSession({
         setYen(r.yen);
         setGameOver(r.status.state === "finished");
         setWinner(r.status.state === "finished" ? r.status.winner ?? null : null);
-        setNextTurn(r.status.state === "ongoing" ? r.status.next : null);
+        setNextTurn(r.status.state === "ongoing" ? r.status.next ?? null : null);
 
         const myClientId = getOrCreateClientId();
         socket.emit("startGame", {
@@ -239,6 +344,7 @@ export function useMultiplayerGameSession({
     setWinner(null);
     setNextTurn(null);
     setHostClientId(null);
+    setPastelState(null);
     setPlayerProfiles({
       player0: { username: null, profilePicture: null },
       player1: { username: null, profilePicture: null },
@@ -279,6 +385,7 @@ export function useMultiplayerGameSession({
 
       setGameId(startedGameId);
       setHostClientId(startedHostClientId);
+      setPastelState(extra?.pastel ?? null);
 
       if (extra?.holes) {
         const holesSet = new Set<number>(extra.holes);
@@ -308,15 +415,12 @@ export function useMultiplayerGameSession({
         return;
       void refreshGameState(gameId, hostClientId ?? undefined, cellId);
 
-      // Multi-turn variants
-      if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
-        setPiecesLeft(prev => (prev > 1 ? prev - 1 : (config.mode === "master_hvh" ? 2 : prev)));
-      }
     }
 
     function onVariantUpdate(update: any) {
       if (update.piecesLeft !== undefined) setPiecesLeft(update.piecesLeft);
       if (update.diceValue !== undefined) setDiceValue(update.diceValue);
+      if (update.pastel !== undefined) setPastelState(update.pastel);
       if (update.nextTurnOverride !== undefined) {
         setNextTurn(update.nextTurnOverride);
         message.info(`🪙 ¡Moneda! Turno para ${update.nextTurnOverride === "player0" ? "Azul" : "Naranja"}`);
@@ -350,8 +454,40 @@ export function useMultiplayerGameSession({
     };
   }, [gameId, hostClientId, refreshGameState, role, config]);
 
+  const handlePastelDecision = useCallback((swapped: boolean) => {
+    if (config?.mode !== "pastel_hvh" || !pastelState || pastelState.phase !== "pie_choice") {
+      return;
+    }
+
+    const decisionPlayer = swapPlayer(pastelState.firstPlayer);
+    if (decisionPlayer !== myPlayer) {
+      return;
+    }
+
+    const nextPastelState: MultiplayerPastelState = {
+      ...pastelState,
+      phase: "playing",
+      swapped,
+    };
+
+    setPastelState(nextPastelState);
+    socket.emit("variantUpdate", { code, pastel: nextPastelState });
+  }, [code, config?.mode, myPlayer, pastelState]);
+
+  const handlePastelSwap = useCallback(() => {
+    handlePastelDecision(true);
+  }, [handlePastelDecision]);
+
+  const handlePastelPass = useCallback(() => {
+    handlePastelDecision(false);
+  }, [handlePastelDecision]);
+
   const handleCellClick = useCallback(
     async (cellId: number) => {
+      if (config?.mode === "pastel_hvh" && pastelState?.phase === "pie_choice") {
+        return;
+      }
+
       if (
         !gameId ||
         nextTurn !== myPlayer ||
@@ -369,12 +505,34 @@ export function useMultiplayerGameSession({
         const overrideClientId =
           role === "guest" && hostClientId ? hostClientId : undefined;
 
+        if (config?.mode === "pastel_hvh" && pastelState?.phase === "place_neutral") {
+          const r = await hvhMove(gameId, cellId, overrideClientId);
+          setYen(r.yen);
+          setNextTurn(r.status.state === "ongoing" ? r.status.next ?? null : null);
+
+          const nextPastelState: MultiplayerPastelState = {
+            ...(pastelState ?? {
+              phase: "place_neutral",
+              neutralCellId: null,
+              swapped: false,
+              firstPlayer: myPlayer === "player1" ? "player1" : "player0",
+            }),
+            phase: "pie_choice",
+            neutralCellId: cellId,
+          };
+
+          setPastelState(nextPastelState);
+          socket.emit("playMove", { code, cellId });
+          socket.emit("variantUpdate", { code, pastel: nextPastelState });
+          return;
+        }
+
         const nextPlayerInt = myPlayer === "player0" ? 0 : 1;
         let nextPlayerOverride: number | undefined = undefined;
 
         if (config?.mode === "master_hvh") {
-          const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
-          if (newPiecesLeft === 1) nextPlayerOverride = nextPlayerInt;
+          const remainingAfterMove = piecesLeft === 2 ? 1 : 2;
+          if (remainingAfterMove === 1) nextPlayerOverride = nextPlayerInt;
         } else if (config?.mode === "fortune_dice_hvh") {
           if (piecesLeft > 1) nextPlayerOverride = nextPlayerInt;
         } else if (role === "host" && config?.mode === "fortune_coin_hvh") {
@@ -417,29 +575,40 @@ export function useMultiplayerGameSession({
           setWinner(null);
           setNextTurn(r.status.next ?? null);
 
-          // Update local pieces/dice
-          if (config?.mode === "master_hvh" || config?.mode === "fortune_dice_hvh") {
-            if (r.status.next !== myPlayer) {
-              if (config.mode === "master_hvh") setPiecesLeft(2);
-            } else {
-              setPiecesLeft(prev => prev - 1);
-            }
-          }
+          // Host is authoritative for multi-turn counters and syncs guests via variantUpdate.
+          if (config?.mode === "master_hvh") {
+            const nextPiecesLeft = r.status.next === myPlayer ? 1 : 2;
+            setPiecesLeft(nextPiecesLeft);
 
-          // Host pushes state for pieces/dice
-          if (role === "host") {
-            if (config?.mode === "master_hvh") {
-              const newPiecesLeft = piecesLeft === 2 ? 1 : 2;
-              socket.emit("variantUpdate", { code, piecesLeft: newPiecesLeft });
-            } else if (config?.mode === "fortune_dice_hvh") {
+            if (role === "host") {
+              socket.emit("variantUpdate", { code, piecesLeft: nextPiecesLeft });
+            }
+          } else if (config?.mode === "fortune_dice_hvh") {
+            if (r.status.next === myPlayer) {
               const remaining = piecesLeft - 1;
-              if (remaining > 0) {
+              setPiecesLeft(remaining);
+
+              if (role === "host") {
                 socket.emit("variantUpdate", { code, piecesLeft: remaining });
-              } else {
-                const newDice = Math.floor(Math.random() * 6) + 1;
-                setDiceValue(newDice);
-                setPiecesLeft(newDice);
-                socket.emit("variantUpdate", { code, diceValue: newDice, piecesLeft: newDice });
+              }
+            } else {
+              let nextPiecesLeft = piecesLeft;
+              let nextDiceValue = diceValue;
+
+              if (role === "host") {
+                nextDiceValue = Math.floor(Math.random() * 6) + 1;
+                nextPiecesLeft = nextDiceValue;
+              }
+
+              setDiceValue(nextDiceValue);
+              setPiecesLeft(nextPiecesLeft);
+
+              if (role === "host") {
+                socket.emit("variantUpdate", {
+                  code,
+                  diceValue: nextDiceValue,
+                  piecesLeft: nextPiecesLeft,
+                });
               }
             }
           }
@@ -450,7 +619,11 @@ export function useMultiplayerGameSession({
         if (r.status.state === "finished") {
           socket.emit("finishGame", {
             code,
-            winner: r.status.winner ?? null,
+            winner: mapWinnerForMode(
+              config?.mode,
+              r.status.winner ?? null,
+              pastelState?.swapped,
+            ),
           });
         }
       }
@@ -475,6 +648,7 @@ export function useMultiplayerGameSession({
       gameOver,
       piecesLeft,
       holes,
+      pastelState,
     ],
   );
 
@@ -503,15 +677,20 @@ export function useMultiplayerGameSession({
     yen,
     loading,
     gameOver,
-    winner,
-    nextTurn,
+    winner: displayWinner,
+    nextTurn: displayNextTurn,
     error,
     disabledCells,
     myPlayer,
+    displayMyPlayer,
     myColor,
     playerProfiles,
     handleCellClick,
     handleAbandon,
+    handlePastelSwap,
+    handlePastelPass,
+    neutralCells,
+    pastelState,
     // Chat
     messages,
     hasNewMessages,

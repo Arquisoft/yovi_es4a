@@ -27,10 +27,10 @@ import {
   hvhMove,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import type { SessionGameStartResponse, SessionGameMoveResponse } from "../game/useSessionGame";
-import SessionGamePage from "../game/SessionGamePage";
-import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
+} from "../../api/gamey";
+import type { SessionGameStartResponse, SessionGameMoveResponse } from "../../game/useSessionGame";
+import SessionGamePage from "../../game/SessionGamePage";
+import useLocalVariantGameSave from "../../game/useLocalVariantGameSave";
 
 type StarterHvH = "player0" | "player1" | "random";
 

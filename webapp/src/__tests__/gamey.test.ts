@@ -13,6 +13,7 @@ import {
     getConfig,
     putConfig,
     playBot,
+    getOrCreateClientId,
 } from "../api/gamey";
 
 function jsonResponse(data: unknown, ok = true, status = 200) {
@@ -379,6 +380,38 @@ describe("gamey api client", () => {
         });
     });
 
+    it("getOrCreateClientId reutiliza el valor previo de localStorage", () => {
+        localStorage.setItem("yovi_client_id", "existing-client");
+
+        expect(getOrCreateClientId()).toBe("existing-client");
+    });
+
+    it("getHvhGame y deleteHvhGame aceptan overrideClientId en headers", async () => {
+        const fetchSpy = mockFetchOk({ game_id: "g2", mode: "hvh", yen: { size: 7, layout: "." }, status: { state: "ongoing", next: "player0" } });
+
+        await getHvhGame("g2", "override-1");
+        await deleteHvhGame("g2", "override-2");
+
+        expect((fetchSpy.mock.calls[0]?.[1] as any)?.headers["X-Client-Id"]).toBe("override-1");
+        expect((fetchSpy.mock.calls[1]?.[1] as any)?.headers["X-Client-Id"]).toBe("override-2");
+    });
+
+    it("hvhMove envía next_player y overrideClientId cuando se proporcionan", async () => {
+        const fetchSpy = mockFetchOk({
+            game_id: "g2",
+            yen: { size: 7, layout: "." },
+            applied_move: { cell_id: 2, coords: { x: 1, y: 1, z: 2 } },
+            status: { state: "ongoing", next: "player1" },
+        });
+
+        await hvhMove("g2", 2, "override-3", 1);
+
+        expect((fetchSpy.mock.calls[0]?.[1] as any)?.headers["X-Client-Id"]).toBe("override-3");
+        expect((fetchSpy.mock.calls[0]?.[1] as any)?.body).toBe(
+            JSON.stringify({ cell_id: 2, next_player: 1 }),
+        );
+    });
+
     it("playBot devuelve un movimiento con coords", async () => {
         const spy = mockFetchOk({
             coords: { x: 1, y: 1, z: 0 },
@@ -418,6 +451,21 @@ describe("gamey api client", () => {
         if ("action" in res) {
             expect(res.action).toBe("swap");
         }
+    });
+
+    it("playBot puede omitir botId y apiVersion", async () => {
+        const fetchSpy = mockFetchOk({ action: "resign" });
+
+        await playBot({
+            size: 3,
+            turn: 0,
+            players: ["B", "R"],
+            layout: "./B./...",
+        }, null, "");
+
+        expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("/play?position=");
+        expect(String(fetchSpy.mock.calls[0]?.[0])).not.toContain("bot_id=");
+        expect(String(fetchSpy.mock.calls[0]?.[0])).not.toContain("api_version=");
     });
 
     it("lanza el mensaje del backend si fetch falla con json", async () => {

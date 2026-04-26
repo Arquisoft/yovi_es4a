@@ -7,8 +7,13 @@ const ALLOWED_MODES = new Set([
   'classic_hvh',
   'tabu_hvh',
   'holey_hvh',
+  'pastel_hvh',
+  'master_hvh',
+  'fortune_coin_hvh',
   'fortune_dice_hvh',
   'poly_hvh',
+  'why_not_hvh',
+  'whynot_hvh',
 ]);
 
 // Genera un código de 5 caracteres (mayúsculas y números)
@@ -271,6 +276,15 @@ module.exports = function setupSocketHandler(io) {
 
       // Retransmitimos a la sala (excepto al emisor)
       socket.to(code).emit('enemyMove', { cellId });
+    });
+
+    // Sincroniza estado auxiliar de variantes (dados, moneda, pie rule, etc.)
+    socket.on('variantUpdate', ({ code, ...update }) => {
+      const room = rooms[code];
+      if (!room)
+        return;
+
+      socket.to(code).emit('variantUpdate', update);
     });
 
     // Fin normal de partida

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
 
-import GameTabu from "../vistas/GameTabu";
+import GameTabu from "../vistas/game/GameTabu";
 import {
   createHvhGame,
   deleteHvhGame,
@@ -13,6 +13,7 @@ import { hasPlayableCells } from "../game/variants";
 import useLocalVariantGameSave from "../game/useLocalVariantGameSave";
 
 const sessionGamePageMock = vi.fn();
+const authModalMock = vi.fn();
 const registerFinishedGameMock = vi.fn();
 const registerAbandonedGameMock = vi.fn();
 
@@ -33,18 +34,48 @@ vi.mock("../api/gamey", () => ({
   putConfig: vi.fn(),
 }));
 
-vi.mock("../game/variants", () => ({
-  hasPlayableCells: vi.fn(),
-}));
+vi.mock("../game/variants", async () => {
+  const actual = await vi.importActual<any>("../game/variants");
+  return {
+    ...actual,
+    hasPlayableCells: vi.fn(),
+  };
+});
 
 vi.mock("../game/useLocalVariantGameSave", () => ({
   default: vi.fn(),
 }));
 
-vi.mock("../game/SessionGamePage", () => ({
+vi.mock("../game/LocalHvHSessionLayout", () => ({
   default: (props: any) => {
-    sessionGamePageMock(props);
-    return <div>SessionGamePage</div>;
+    const save = (useLocalVariantGameSave as any)({
+      boardSize: props.boardSize,
+      mode: props.mode,
+      opponent: props.opponent,
+      startedBy: props.startedBy,
+      deleteGame: deleteHvhGame,
+    });
+
+    sessionGamePageMock({
+      ...props,
+      onGameFinished: async ({ gameId, winner, totalMoves }: any) => {
+        await save.registerFinishedGame(gameId, winner, totalMoves);
+      },
+      onGameAbandoned: async ({ gameId, totalMoves }: any) => {
+        await save.registerAbandonedGame(gameId, totalMoves);
+      },
+      canOfferGuestSave: save.canOfferGuestSave,
+      onGuestSaveRequested: save.handleGuestSaveRequested,
+      guestSaveLoading: save.savingPendingGame,
+    });
+
+    authModalMock({
+      open: save.authModalOpen,
+      onClose: save.closeAuthModal,
+      onLoginSuccess: save.handleLoginSuccess,
+    });
+
+    return <div>LocalHvHSessionLayout</div>;
   },
 }));
 
@@ -54,8 +85,14 @@ describe("GameTabu", () => {
     mockSearchParams = new URLSearchParams("size=7&hvhstarter=player0");
 
     vi.mocked(useLocalVariantGameSave).mockReturnValue({
+      authModalOpen: false,
+      savingPendingGame: false,
+      canOfferGuestSave: true,
       registerFinishedGame: registerFinishedGameMock,
       registerAbandonedGame: registerAbandonedGameMock,
+      handleGuestSaveRequested: vi.fn(),
+      handleLoginSuccess: vi.fn(),
+      closeAuthModal: vi.fn(),
     } as any);
 
     vi.mocked(createHvhGame).mockResolvedValue({
@@ -80,7 +117,7 @@ describe("GameTabu", () => {
     expect(props.turnConfig.textPrefix).toContain("casilla(s) prohibida(s)");
   });
 
-  it("normaliza parámetros inválidos", () => {
+  it("normaliza parametros invalidos", () => {
     mockSearchParams = new URLSearchParams("size=1&hvhstarter=otra-cosa");
 
     render(<GameTabu />);
@@ -107,7 +144,7 @@ describe("GameTabu", () => {
     });
   });
 
-  it("move actualiza celdas tabú mientras la partida sigue", async () => {
+  it("move actualiza celdas tabu mientras la partida sigue", async () => {
     render(<GameTabu />);
     const props = sessionGamePageMock.mock.calls.at(-1)?.[0];
 
@@ -122,7 +159,7 @@ describe("GameTabu", () => {
     });
   });
 
-  it("move fuerza empate si no quedan movimientos válidos", async () => {
+  it("move fuerza empate si no quedan movimientos validos", async () => {
     vi.mocked(hasPlayableCells).mockReturnValue(false);
 
     render(<GameTabu />);
@@ -133,7 +170,7 @@ describe("GameTabu", () => {
     expect(result.status).toEqual({ state: "finished", winner: null });
   });
 
-  it("limpia celdas tabú cuando el backend devuelve partida terminada", async () => {
+  it("limpia celdas tabu cuando el backend devuelve partida terminada", async () => {
     vi.mocked(hvhMove).mockResolvedValue({
       yen: { size: 7, layout: "." },
       status: { state: "finished", winner: "player0" },
@@ -163,13 +200,13 @@ describe("GameTabu", () => {
     expect(registerAbandonedGameMock).toHaveBeenCalledWith("g8", 5);
   });
 
-  it("configura el hook de guardado local con los datos de Tabú", () => {
+  it("configura el hook de guardado local con los datos de Tabu", () => {
     render(<GameTabu />);
 
     expect(useLocalVariantGameSave).toHaveBeenCalledWith({
       boardSize: 7,
       mode: "tabu_hvh",
-      opponent: "Jugador local (Tabú)",
+      opponent: "Jugador local (Tabu)",
       startedBy: "player0",
       deleteGame: deleteHvhGame,
     });

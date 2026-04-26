@@ -9,6 +9,32 @@ const getUserSessionMock = vi.fn();
 
 vi.mock("../api/users", () => ({
     getUserHistory: (...args: any[]) => getUserHistoryMock(...args),
+    getHistoryOpponentLabel: (game: any) => game.opponent || "Jugador local",
+    getHistoryStartedByLabel: (game: any) => {
+        if (!game.startedBy) return null;
+        if (game.startedBy === "human") return "Humano";
+        if (game.startedBy === "player0") return "Player 0";
+        if (game.startedBy === "player1") return "Player 1";
+        if (game.startedBy === "random") return "Aleatorio";
+        return game.startedBy;
+    },
+    getGameModeShortLabel: (mode: string) => ({
+        classic_hvb: "Clasico HvB",
+        classic_hvh: "Clasico HvH",
+        tabu_hvh: "Tabu HvH",
+    }[mode] ?? mode),
+    getGameModeLongLabel: (mode: string) => ({
+        classic_hvb: "Clasico - Humano vs Bot",
+        classic_hvh: "Clasico - Humano vs Humano",
+        tabu_hvh: "Tabu - Humano vs Humano",
+    }[mode] ?? mode),
+    getGameModeTagColor: () => "blue",
+    HISTORY_MODE_FILTER_OPTIONS: [
+        { value: "all", label: "Todos los modos" },
+        { value: "classic_hvb", label: "ClÃ¡sico HvB" },
+        { value: "classic_hvh", label: "ClÃ¡sico HvH" },
+        { value: "tabu_hvh", label: "TabÃº HvH" },
+    ],
 }));
 
 vi.mock("../utils/session", () => ({
@@ -196,14 +222,14 @@ describe("UserHistory", () => {
         expect(screen.getByText("D:1")).toBeInTheDocument();
         expect(screen.getByText("A:1")).toBeInTheDocument();
 
-        expect(screen.getAllByText("Clásico HvB").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Clásico HvH").length).toBeGreaterThan(0);
-        expect(screen.getByText("Clásico — Humano vs Bot")).toBeInTheDocument();
-        expect(screen.getByText("Clásico — Humano vs Humano")).toBeInTheDocument();
+        expect(screen.getAllByText("Clasico HvB").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Clasico HvH").length).toBeGreaterThan(0);
+        expect(screen.getByText("Clasico - Humano vs Bot")).toBeInTheDocument();
+        expect(screen.getByText("Clasico - Humano vs Humano")).toBeInTheDocument();
         expect(screen.getByText("Ganada")).toBeInTheDocument();
         expect(screen.getByText("Abandonada")).toBeInTheDocument();
         expect(screen.getByText("Rival: random_bot")).toBeInTheDocument();
-        expect(screen.getByText("Empieza: human")).toBeInTheDocument();
+        expect(screen.getByText("Empieza: Humano")).toBeInTheDocument();
         expect(screen.getByText("Tamaño: 7")).toBeInTheDocument();
         expect(screen.getByText("Movimientos: 10")).toBeInTheDocument();
     });
@@ -229,8 +255,8 @@ describe("UserHistory", () => {
         render(<UserHistory />);
 
         expect(await screen.findByText("Empatada")).toBeInTheDocument();
-        expect(screen.getAllByText("Tabú HvH").length).toBeGreaterThan(0);
-        expect(screen.getByText("Tabú — Humano vs Humano")).toBeInTheDocument();
+        expect(screen.getAllByText("Tabu HvH").length).toBeGreaterThan(0);
+        expect(screen.getByText("Tabu - Humano vs Humano")).toBeInTheDocument();
         expect(screen.getByText("Rival: Jugador local")).toBeInTheDocument();
         expect(screen.queryByText(/Empieza:/)).toBeNull();
     });
@@ -431,5 +457,53 @@ describe("UserHistory", () => {
         render(<UserHistory />);
 
         expect(getUserHistoryMock).not.toHaveBeenCalled();
+    });
+
+    it("si cambias un filtro tras estar en otra página, vuelve a pedir page 1", async () => {
+        getUserHistoryMock
+            .mockResolvedValueOnce(
+                buildHistoryResponse({
+                    pagination: { page: 1, pageSize: 5, totalGames: 6, totalPages: 2 },
+                }),
+            )
+            .mockResolvedValueOnce(
+                buildHistoryResponse({
+                    pagination: { page: 2, pageSize: 5, totalGames: 6, totalPages: 2 },
+                }),
+            )
+            .mockResolvedValue(buildHistoryResponse());
+
+        const user = userEvent.setup();
+        render(<UserHistory />);
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
+        });
+
+        await user.click(screen.getByRole("button", { name: "next-page" }));
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenCalledWith("marcelo", 2, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "newest",
+            });
+        });
+
+        fireEvent.change(screen.getAllByRole("combobox")[2], {
+            target: { value: "movesAsc" },
+        });
+
+        await waitFor(() => {
+            expect(getUserHistoryMock).toHaveBeenLastCalledWith("marcelo", 1, 5, {
+                mode: "all",
+                result: "all",
+                sortBy: "movesAsc",
+            });
+        });
     });
 });

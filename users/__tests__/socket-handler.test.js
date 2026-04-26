@@ -485,4 +485,40 @@ describe('Socket Handler', () => {
       expect.any(Object)
     );
   }, 100000);
+  it('retransmite variantUpdate al rival en la sala', async () => {
+    await setup();
+    connectionCallback(socketHost);
+
+    const cbCreate = vi.fn();
+    socketHost.handlers['createRoom'](
+      {
+        size: 11,
+        mode: 'pastel_hvh',
+        username: 'hostUser',
+        profilePicture: 'host.png',
+      },
+      cbCreate
+    );
+    const code = cbCreate.mock.calls[0][0].code;
+
+    socketHost.handlers['variantUpdate']({
+      code,
+      pastel: {
+        phase: 'pie_choice',
+        neutralCellId: 4,
+        swapped: false,
+        firstPlayer: 'player0',
+      },
+    });
+
+    expect(socketHost.to).toHaveBeenCalledWith(code);
+    expect(socketHost.emit).toHaveBeenCalledWith('variantUpdate', {
+      pastel: {
+        phase: 'pie_choice',
+        neutralCellId: 4,
+        swapped: false,
+        firstPlayer: 'player0',
+      },
+    });
+  });
 });

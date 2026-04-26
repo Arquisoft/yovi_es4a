@@ -82,14 +82,14 @@ describe("VariantSelect", () => {
 
     it("muestra el tag 'Próximamente' para variantes no implementadas", () => {
         renderVariantSelect();
-        const tags = screen.getAllByText("Próximamente");
+        const tags = screen.getAllByText("Proximamente");
         expect(tags.length).toBeGreaterThan(0);
     });
 
     it("no muestra 'Próximamente' para variantes implementadas", () => {
         renderVariantSelect();
         const classicContainer = screen.getByText("Clásico").closest("div");
-        expect(classicContainer).not.toHaveTextContent("Próximamente");
+        expect(classicContainer).not.toHaveTextContent("Proximamente");
     });
 
     it("el botón confirmar está habilitado al arrancar (clásico seleccionado)", () => {
@@ -112,14 +112,26 @@ describe("VariantSelect", () => {
         );
     });
 
+    it("permite seleccionar una variante implementada distinta del clásico", async () => {
+        const user = userEvent.setup();
+        const { onSelect } = renderVariantSelect();
+
+        await user.click(screen.getByText("Master Y"));
+        await user.click(screen.getByRole("button", { name: /Continuar con/i }));
+
+        expect(onSelect).toHaveBeenCalledWith(
+            expect.objectContaining({ id: "master", implemented: true })
+        );
+    });
+
     // ── Variantes no implementadas ────────────────────────────────────────────
 
     it("hacer clic en una variante no implementada NO la selecciona", async () => {
         const user = userEvent.setup();
         const { onSelect } = renderVariantSelect();
 
-        const pastelCard = screen.getByText("Regla del Pastel");
-        await user.click(pastelCard);
+        const hexCard = screen.getByText("Hex");
+        await user.click(hexCard);
 
         // Al confirmar, la selección sigue siendo el clásico
         await user.click(screen.getByRole("button", { name: /Continuar con/i }));
@@ -174,7 +186,7 @@ describe("VariantSelect", () => {
 
         await user.click(infoButtons[1]); // Pastel
         expect(screen.queryByText(/Dos jugadores se alternan colocando fichas/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/El Jugador 1 elige dónde va la primera ficha/i)).toBeInTheDocument();
+        expect(screen.getByText(/El Jugador 1 elige donde va la primera ficha/i)).toBeInTheDocument();
     });
 
     // ── Botón Volver ─────────────────────────────────────────────────────────

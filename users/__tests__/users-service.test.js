@@ -342,6 +342,44 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
     expect(res.body.stats.currentWinStreak).toBe(0)
   })
+
+  it('registra empates y actualiza gamesDrawn', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-draw-test',
+        mode: 'classic_hvh',
+        result: 'draw',
+        boardSize: 7,
+        totalMoves: 12,
+        opponent: 'Jugador local',
+        startedBy: 'player0',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.result).toBe('draw')
+    expect(res.body.stats.gamesDrawn).toBeGreaterThanOrEqual(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
+  })
+
+  it('normaliza aliases legacy como whynot_hvh al modo canónico', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-legacy-alias',
+        mode: 'whynot_hvh',
+        result: 'won',
+        boardSize: 9,
+        totalMoves: 9,
+        opponent: 'Jugador local',
+        startedBy: 'player1',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.mode).toBe('why_not_hvh')
+  })
 })
 
 describe('GET /users/:username/history', () => {
@@ -459,6 +497,15 @@ describe('GET /users/:username/history', () => {
     expect(resOld.status).toBe(200)
   })
 
+  it('ajusta la página solicitada al máximo disponible', async () => {
+    const res = await api.get('/users/HistoryUser/history?page=99&pageSize=3')
+
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.totalPages).toBe(2)
+    expect(res.body.pagination.page).toBe(2)
+    expect(res.body.games).toHaveLength(1)
+  })
+
   it('devuelve paginación correcta cuando el usuario no tiene partidas', async () => {
     await createVerifiedUser('HistoryEmpty', 'emptyhistory@test.com')
     const res = await api.get('/users/HistoryEmpty/history')
@@ -534,6 +581,7 @@ describe('GET /ranking', () => {
     await createVerifiedUser('RankA', 'ranka@test.com')
     await createVerifiedUser('RankB', 'rankb@test.com')
     await createVerifiedUser('RankC', 'rankc@test.com')
+    await createVerifiedUser('RankWeekly', 'rankweekly@test.com')
 
     await api.patch('/users/RankA/stats').send({ won: true, totalMoves: 10 })
     await api.patch('/users/RankA/stats').send({ won: true, totalMoves: 8 })
@@ -545,6 +593,26 @@ describe('GET /ranking', () => {
 
     await api.patch('/users/RankC/stats').send({ won: false, totalMoves: 5 })
     await api.patch('/users/RankC/stats').send({ won: false, totalMoves: 5 })
+
+    await api.post('/users/RankWeekly/games').send({
+      gameId: 'rank-week-1',
+      mode: 'classic_hvb',
+      result: 'won',
+      boardSize: 7,
+      totalMoves: 11,
+      opponent: 'bot_a',
+      startedBy: 'human',
+    })
+
+    await api.post('/users/RankWeekly/games').send({
+      gameId: 'rank-week-2',
+      mode: 'classic_hvb',
+      result: 'lost',
+      boardSize: 7,
+      totalMoves: 13,
+      opponent: 'bot_b',
+      startedBy: 'bot',
+    })
   })
 
   it('returns ranking sorted by winRate by default', async () => {
@@ -639,6 +707,23 @@ describe('GET /verify', () => {
 
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Token inválido o expirado/i)
+  })
+
+  it('verifica correctamente un usuario y elimina el token de verificación', async () => {
+    await api.post('/createuser').send({
+      username: 'VerifyOk',
+      password: '1234',
+      email: 'verifyok@test.com',
+    })
+
+    const createdUser = await User.findOne({ username: 'VerifyOk' })
+    const res = await api.get(`/verify?token=${createdUser.verificationToken}`)
+    const verifiedUser = await User.findOne({ username: 'VerifyOk' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.message).toMatch(/Correo verificado con éxito/i)
+    expect(verifiedUser.isVerified).toBe(true)
+    expect(verifiedUser.verificationToken).toBeFalsy()
   })
 })
 
