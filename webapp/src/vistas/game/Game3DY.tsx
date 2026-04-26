@@ -6,10 +6,10 @@ import {
   hvhMove,
   putConfig,
   type YEN,
-} from "../api/gamey";
-import SessionGamePage from "../game/SessionGamePage";
-import { getUserSession } from "../utils/session";
-import { recordUserGame } from "../api/users";
+} from "../../api/gamey";
+import SessionGamePage from "../../game/SessionGamePage";
+import { getUserSession } from "../../utils/session";
+import { recordUserGame } from "../../api/users";
 
 export default function Game3DY() {
   const size = 6; // Fixed size for 3D demonstration
