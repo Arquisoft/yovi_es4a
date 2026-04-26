@@ -46,31 +46,94 @@ export default function HelpModal() {
           label: "Modos de Juego",
           children: (
             <Typography>
-              <Title level={5}>Human vs Bot (HvB)</Title>
+              <Title level={4}>Clásico - Human vs Bot (HvB)</Title>
               <Paragraph>
-                Juegas contra la inteligencia artificial. Puedes elegir el bot
+                Juegas contra la máquina. Puedes elegir la dificultad del bot
                 con el que enfrentarte:
               </Paragraph>
               <ul>
                 <li>
-                  <Text strong>random_bot</Text> — coloca fichas de forma
+                  <Text strong>Fácil</Text> — coloca fichas de forma
                   aleatoria. Ideal para aprender.
                 </li>
                 <li>
-                  <Text strong>mcts_bot</Text> — usa el algoritmo Monte Carlo
-                  Tree Search. Mucho más difícil de vencer.
+                  <Text strong>Medio</Text> — Analiza un número limitado de
+                  posibles juagdas. Empieza a ser un reto
+                </li>
+                <li>
+                  <Text strong>Difícil</Text> — Analiza un número elevado de
+                  posibles juagdas. Un reto para jugadores experimentados.
+                </li>
+                <li>
+                  <Text strong>Demencial</Text> — Hace simulaciones masivas de
+                  jugadas para elegir la mejor. Solo para los más valientes.
                 </li>
               </ul>
               <Paragraph>
-                También puedes elegir quién empieza: tú (Human) o el bot.
+                También puedes elegir quién empieza: tú (Human), el bot o de forma aleatoria.
               </Paragraph>
 
-              <Title level={5}>Human vs Human (HvH)</Title>
+              <Title level={4}>Clásico - Human vs Human (HvH)</Title>
               <Paragraph>
                 Dos jugadores humanos se turnan en el mismo dispositivo. Se
                 identifica a los jugadores como <Text strong>Player 0</Text>{" "}
                 (fichas azules) y <Text strong>Player 1</Text> (fichas
                 naranjas). Puedes elegir quién coloca la primera ficha.
+              </Paragraph>
+
+              <Title level={4}>Otras variantes HvH</Title>
+
+              <Title level={5}>Regla del Pastel</Title>
+              <Paragraph>
+                El primer jugador escoge una celda del tablero. Entonces, 
+                el segundo jugador tiene la opción de elegir si quedarse con
+                esa celda o ceder el turno.
+              </Paragraph>
+
+              <Title level={5}>Master Y</Title>
+              <Paragraph>
+                Las reglas son las mismas que el modo clásico, pero aquí cada jugador 
+                coloca dos fichas seguidas en vez de una.
+              </Paragraph>
+
+              <Title level={5}>Fortune Moneda</Title>
+              <Paragraph>
+                En cada turno se lanza una moneda virtual, que escoge a qué jugador
+                le toca colocar la ficha. El turno es completamente aleatorio.
+              </Paragraph>
+
+              <Title level={5}>Fortune Dado</Title>
+              <Paragraph>
+                En cada turno se lanza un dado virtual, que determina el número de
+                fichas que coloca el jugador en ese turno.
+              </Paragraph>
+
+              <Title level={5}>Tabú</Title>
+              <Paragraph>
+                Cada vez que un jugador coloca una ficha, se bloquean para el
+                siguiente turno las casillas adyacentes. De esta forma, el siguiente
+                jugador no podrá colocar su ficha en esas posiciones bloqueadas.
+              </Paragraph>
+
+              <Title level={5}>Holey</Title>
+              <Paragraph>
+                Al inicio de la partida se bloquean aleatoriamente un número de
+                casillas del tablero. Estas casillas bloqueadas no pueden ser utilizadas
+                por ningún jugador durante toda la partida.
+              </Paragraph>
+
+              <Title level={5}>WhY Not</Title>
+              <Paragraph>
+                El mecanismo de juego es el básico, pero la norma de victoria es diferente:
+                el jugador que consiga conectar los tres laterales del tablero 
+                <Text strong>pierde</Text>.
+              </Paragraph>
+
+              <Title level={4}>Multiplayer Online</Title>
+              <Paragraph>
+                En esta versión podrás jugar con tus amigos. Crea una sala con la
+                variante que quieras e invita a algún amigo a unirse. También puedes unirte
+                a otras salas con el código correspondiente para jugar con otros usuarios de la app.
               </Paragraph>
             </Typography>
           ),
@@ -130,13 +193,6 @@ export default function HelpModal() {
                 Para empezar, un tablero de tamaño <Text strong>5 o 7</Text> es
                 ideal. Los tableros grandes (10+) son para partidas largas y
                 estrategia avanzada.
-              </Paragraph>
-
-              <Title level={5}>¿El bot tarda en responder?</Title>
-              <Paragraph>
-                El <Text strong>random_bot</Text> responde al instante. El{" "}
-                <Text strong>mcts_bot</Text> puede tardar unos segundos porque
-                calcula muchas jugadas posibles.
               </Paragraph>
 
               <Title level={5}>¿Cómo sé quién ha ganado?</Title>
