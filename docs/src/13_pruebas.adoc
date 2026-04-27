@@ -49,16 +49,95 @@ La cobertura de código nos permite identificar qué partes del sistema no está
 
 === Pruebas de Carga (Informe de Pruebas de Carga)
 
-Las pruebas de carga evalúan la capacidad del sistema para manejar múltiples usuarios simultáneos y picos de tráfico.
+Las pruebas de carga evalúan la capacidad del sistema para manejar múltiples usuarios simultáneos, picos de tráfico y situaciones de estrés sobre la infraestructura desplegada. Para ello se ha utilizado **Gatling** con simulaciones definidas mediante el SDK de Java.
 
-*   **Tecnología**: Se utiliza **Gatling** (Java SDK) para definir las simulaciones de carga.
-*   **Tipos de Pruebas Realizadas**:
-    *   **Smoke Test**: Verificación de estabilidad mínima con una carga ligera.
-    *   **Load Test**: Simulación de una carga de trabajo nominal (p. ej. 50-100 usuarios concurrentes) para observar tiempos de respuesta.
-    *   **Stress Test**: Incremento progresivo de la carga hasta encontrar el punto de degradación del servicio.
-*   **Resumen de Resultados**:
-    *   **Tiempos de Respuesta**: La mayoría de las peticiones críticas se resuelven en el percentil 95 por debajo de los 200ms.
-    *   **Escalabilidad**: El motor de juego (Rust) demuestra un rendimiento excepcional, manteniendo tiempos constantes independientemente de la carga en otros servicios.
-    *   **Robustez**: El sistema recupera la normalidad rápidamente tras picos de estrés extremo sin pérdida de datos.
+Se han definido tres tipos principales de simulación:
 
-Los informes detallados generados por Gatling se utilizan para identificar posibles optimizaciones en la configuración de los contenedores Docker y la gestión de conexiones de base de datos.
+* **Smoke Test (`SmokeSimulation`)**: prueba de humo orientada a validar rápidamente que las rutas principales de la aplicación funcionan correctamente. Se ejecuta con una carga mínima y recorre operaciones clave como obtención de metadatos, consulta de ranking, perfil, estadísticas, partidas contra bot, partidas multijugador y guardado de histórico.
+
+* **Load Test (`LoadSimulation`)**: prueba de carga que simula un entorno de uso más realista. Incrementa progresivamente el número de usuarios concurrentes hasta alcanzar un estado estable, permitiendo observar el comportamiento del sistema bajo una carga nominal. La simulación combina varios perfiles de uso: visitantes, jugadores contra bot, partidas multijugador y ráfagas de peticiones externas.
+
+* *Stress Test (`StressSimulation`)*: prueba de estrés diseñada para someter el sistema a una carga elevada y comprobar si mantiene la disponibilidad, los tiempos de respuesta y la tasa de éxito dentro de unos límites aceptables. Esta simulación genera una carga agresiva contra el API Gateway, incluyendo movimientos continuos, bots internos, visitantes pesados y ráfagas de peticiones. El objetivo es detectar el punto de degradación y analizar cómo responde la arquitectura ante condiciones extremas.
+
+
+==== Ejecución en local
+
+Antes de ejecutar las pruebas, se levanta el sistema completo mediante Docker Compose:
+
+[source,bash]
+----
+docker compose up -d --build
+----
+
+A continuación, desde el módulo de Gatling, se ejecutan las simulaciones indicando la URL base de la aplicación mediante la variable de entorno `YOVI_BASE_URL`.
+
+[source,bash]
+----
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+En Windows PowerShell, la variable de entorno se define de la siguiente forma:
+
+[source,powershell]
+----
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+==== Ejecución en despliegue
+
+Además de las pruebas locales, se ejecutó la simulación de estrés contra el despliegue real en la máquina virtual de Azure, accesible mediante HTTPS a través del dominio público de la aplicación.
+
+[source,bash]
+----
+YOVI_BASE_URL=https://yovies4a.duckdns.org ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+En Windows PowerShell:
+
+[source,powershell]
+----
+$env:YOVI_BASE_URL="https://yovies4a.duckdns.org"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+==== Resultados obtenidos
+
+Los informes generados por Gatling se almacenan automáticamente en el directorio:
+
+[source,bash]
+----
+target/gatling/
+----
+
+
+A continuación se muestran las capturas de los informes generados por Gatling para cada simulación:
+
+image::gatling-smoke.png["Resultados de SmokeSimulation", width=80%]
+
+image::gatling-load.png["Resultados de LoadSimulation", width=80%]
+
+image::gatling-stress-local.png["Resultados de StressSimulation en local", width=80%]
+
+image::gatling-stress-deploy.png["Resultados de StressSimulation en despliegue", width=80%]
+
+
+En las pruebas realizadas se observa un comportamiento estable del sistema en los distintos niveles de carga. La prueba de humo (`SmokeSimulation`) ejecutó **20 peticiones**, todas ellas correctas, con **0 errores**. Esta prueba valida que las rutas principales de la aplicación responden correctamente antes de someter el sistema a escenarios de mayor carga.
+
+En la prueba de carga (`LoadSimulation`) se ejecutaron **436 peticiones**, también con **0 errores**. El sistema mantuvo un throughput aproximado de **7,52 peticiones por segundo**, con un tiempo medio de respuesta de **73 ms** y un percentil 95 de **142 ms**. Estos resultados muestran que, bajo una carga nominal, la aplicación mantiene tiempos de respuesta bajos y cumple correctamente las aserciones definidas en Gatling.
+
+En las pruebas de estrés se comparó el comportamiento entre el entorno local y el despliegue remoto. En local, la simulación ejecutó **66.073 peticiones**, todas ellas correctas, alcanzando un throughput aproximado de **420,85 peticiones por segundo**. El tiempo medio de respuesta fue de **89 ms**, con un percentil 95 de **239 ms** y un tiempo máximo de **1.710 ms**.
+
+En el despliegue remoto, la prueba de estrés ejecutó **72.698 peticiones**, también con **0 errores**, alcanzando un throughput aproximado de **466,01 peticiones por segundo**. En este caso, el tiempo medio de respuesta fue de **69 ms**, con un percentil 95 de **158 ms** y un tiempo máximo de **1.437 ms**.
+
+A diferencia de ejecuciones anteriores, en estas capturas no se observan errores `KO`, `502 Bad Gateway` ni timeouts TCP/SSL. Todas las aserciones configuradas en Gatling aparecen como superadas, incluyendo el porcentaje mínimo de eventos correctos y los límites máximos de tiempo de respuesta.
+
+Por tanto, los resultados muestran que el sistema mantiene un comportamiento robusto tanto en local como en despliegue. Incluso en escenarios de estrés, la aplicación conserva una tasa de éxito del **100%**, mantiene tiempos de respuesta aceptables y no presenta pérdida de disponibilidad durante la ejecución de las pruebas.
