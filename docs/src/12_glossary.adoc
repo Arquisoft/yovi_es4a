@@ -84,4 +84,10 @@ endif::arc42help[]
 | **WebSockets / Socket.io**
 | Tecnología que permite una comunicación bidireccional en tiempo real entre el cliente (webapp) y el servidor, utilizada para la implementación del modo multijugador online y el chat en vivo durante las partidas.
 
+| **Tabu Y**
+| Variante del juego base en la cual está prohibido colocar una ficha en una casilla adyacente al último movimiento realizado por el rival, forzando un cambio de estrategia.
+
+| **Holey Y**
+| Variante del juego que introduce agujeros generados aleatoriamente en el tablero, los cuales actúan como casillas permanentemente bloqueadas y alteran los caminos disponibles.
+
 |===
