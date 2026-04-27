@@ -13,25 +13,46 @@ ifndef::imagesdir[:imagesdir: ../images]
 | La interfaz gráfica del sistema debe implementarse como una aplicación web usando React y Vite.
 
 | Servicio de usuarios desarrollado con Node.js y Express
-| El servicio dedicado a la gestión de usaurios debe implementarse con una API REST con Node.js y Express, utilizando persistencia en MongoDB.
+| El sistema debe incluir un servicio dedicado a la gestión de usuarios, implementado mediante una API REST con Node.js y Express, utilizando persistencia en MongoDB.
 
 | Juego desarrollado con Rust
-| La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y exponerse mediante un servicio HTTP.
+| La lógica del juego (validación de movimientos, comprobación de victoria, cálculo de bots, etc.) debe implementarse en Rust y exponerse mediante un servicio HTTP independiente.
+
+| Separación en subsistemas (web + motor de juego)
+| La arquitectura debe dividirse al menos en dos subsistemas: una aplicación web y un motor de juego en Rust, comunicándose entre sí mediante servicios web.
 
 | Comunicación entre servicios mediante HTTP y JSON
 | La integración entre los distintos módulos del sistema debe realizarse mediante peticiones HTTP e intercambio de datos en formato JSON.
 
 | Uso de notación YEN para representar el estado de la partida
-| El estado del tablero se representa mediante la notación YEN. Además, el sistema puede intercambiar jugadas mediante identificadores de celda dentro de las sesiones de juego.
+| El estado del tablero debe representarse mediante la notación YEN para permitir interoperabilidad entre servicios y bots externos.
+
+| API externa para bots
+| El sistema debe exponer un API documentado que permita a bots interactuar con él, incluyendo el método `play` que recibe una posición en YEN y devuelve la siguiente acción.
 
 | Soporte de tablero de tamaño variable
 | El sistema debe soportar un tablero cuyo tamaño sea configurable (un tamaño establecido predefinido, y que el usuario pueda escoger otro tamaño diferente, dentro de los límites definidos).
 
 | Diferentes estrategias de bot (dificultad)
-| El bot debe tener más de una estrategia y el usuario debe poder elegirla (relacionado con niveles de dificultad).
+| El sistema debe incluir varias estrategias de juego para el bot, permitiendo al usuario seleccionar el nivel de dificultad.
 
-| Host en Docker
-| El sistema deberá estar "levantado" con Docker en una máquina virtual para la entrega final.
+| Soporte de múltiples variantes del juego
+| El sistema puede permitir la implimentación de variantes del juego Y (como Tabu, Holey, Pastel, Fortune, etc.).
+
+| Soporte de multijugador en tiempo real
+| El sistema debe permitir que varios usuarios jueguen simultáneamente, utilizando comunicación en tiempo real (WebSockets) para sincronizar partidas y permitir interacción entre jugadores.
+
+| Arquitectura basada en microservicios
+| El sistema debe organizarse en varios servicios independientes (webapp, users, gamey, gateway), cada uno con responsabilidades diferenciadas.
+
+| Uso de contenedores Docker
+| El sistema debe desplegarse mediante contenedores Docker, facilitando su ejecución en una máquina virtual y garantizando portabilidad.
+
+| Monitorización y observabilidad
+| El sistema debe incorporar herramientas de monitorización (Prometheus y Grafana) para analizar el estado y rendimiento de los servicios, en línea con los criterios de evaluación.
+
+| Pruebas automatizadas
+| El sistema debe incluir pruebas unitarias, de integración y end-to-end, así como pruebas de carga, siguiendo los criterios de calidad definidos en la práctica.
 
 | Documentación con arc42
 | La documentación debe seguir la estructura base de la plantilla arc42.
@@ -47,17 +68,29 @@ ifndef::imagesdir[:imagesdir: ../images]
 | Restricción | Descripción
 
 | Énfasis en calidad y evaluación
-| Se valora explícitamente documentación, pruebas, despliegue, repositorio y calidad general.
+| El proyecto será evaluado en base a la calidad de la documentación, implementación, pruebas, despliegue y arquitectura general del sistema.
+
+| Uso de buenas prácticas de desarrollo
+| Se requiere mantener un repositorio organizado, con revisiones de código, trazabilidad de cambios y cumplimiento de estándares de calidad.
 
 | Trabajo en equipo y control de cambios
-| Al ser un proyecto en grupo, se necesita un flujo de trabajo con control de versiones, revisiones y acuerdos, además de comunicación entre compañeros.
+| El desarrollo se realiza en equipo, por lo que es necesario el uso de control de versiones, revisiones de código y coordinación entre miembros.
 
 | Gestión de tareas
-| Se utilizará la funcionalidad de Github "Github Issues" para asignar y gestionar las tareas de cada miembro del equipo.
+| Se utilizará GitHub Issues para la planificación, asignación y seguimiento de tareas del proyecto.
+
+| Integración y despliegue continuos (CI/CD)
+| El proyecto debe automatizar la ejecución de tests y el despliegue mediante pipelines de integración y entrega continua.
+
+| Pruebas y validación
+| Se deben incluir pruebas unitarias, pruebas de integración, pruebas end-to-end y pruebas de carga, siguiendo los criterios de evaluación.
 
 | Tiempo y alcance limitados
-| El proyecto tiene diferentes entregas a lo largo de su desarrollo (versiones).
+| El proyecto se desarrolla en varias iteraciones (entregas parciales), por lo que es necesario priorizar funcionalidades y gestionar el alcance.
 
 | Reuniones de equipo
-| Se realizará al lo menos una reunión semanal (sesión de laboratorio). Además, se harán reuniones extras cuando se vea necesario (presenciales o telemáticas) para poner de acuerso diferentes implementaciones. Estas quedarán reflejadas en sus respectivas actas en el apartado "Wiki" del repositorio de GitHub.
+| Se realizará al menos una reunión semanal (sesión de laboratorio), complementada con reuniones adicionales cuando sea necesario. Las decisiones se documentarán en el repositorio.
+
+| Evaluación basada en múltiples criterios
+| El sistema será evaluado teniendo en cuenta documentación, desarrollo, pruebas, gestión del proyecto, despliegue, funcionalidad y atributos de calidad.
 |===
