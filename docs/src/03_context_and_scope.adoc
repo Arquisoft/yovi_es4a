@@ -6,21 +6,45 @@ ifndef::imagesdir[:imagesdir: ../images]
 === Contexto de negocio
 image::03_1-ContextoNegocio.png["Diagrama correspondiente al Contexto de Negocio", width=90%]
 
-* *Jugador*: Usa el sistema para registrarse o iniciar sesión, configurar partidas, jugar al juego Y desde la interfaz web y consultar resultados/estadísticas.
-* *Bot*: Sistema externo que interactúa con YOVI mediante una API, permitiendo automatizar partidas o realizar jugadas.
-* *Administrador*: Responsable de desplegar, supervisar y mantener el sistema.
-* *YOVI*: Sistema principal que ofrece la funcionalidad de juego y expone las capacidades necesarias tanto para usuarios finales como para integraciones externas.
+* *Jugador*: Interactúa con el sistema a través de la interfaz web. Puede registrarse o iniciar sesión, configurar partidas, jugar en diferentes modos (local, contra bot o multijugador online), comunicarse con otros jugadores en tiempo real y consultar su historial/estadísticas.
+
+* *Bot*: Sistema externo que interactúa con YOVI mediante una API pública. Puede utilizar el método `play` enviando posiciones en notación YEN para obtener la siguiente jugada o acción, permitiendo automatizar partidas o realizar jugadas para competir contra el sistema.
+
+* *Administrador*: Responsable de desplegar, supervisar y mantener el sistema, asegurando su disponibilidad, correcto funcionamiento y monitorización.
+
+* *YOVI*: Sistema principal que ofrece la funcionalidad del juego Y. Ofrece una interfaz web para los usuarios y una API externa para integraciones con bots, gestionando la lógica de juego, las partidas, los usuarios y las estadísticas.
 
 === Contexto técnico
 image::03_2-ContextoTecnico.png["Diagrama correspondiente al Contexto Técnico", width=100%]
 
-* *Web Browser (Jugador)*: Cliente desde el que el usuario accede a la aplicación web.
-* *Bot Externo*: Cliente software que consume la API del sistema para interactuar con las partidas.
-* *Servidor (Docker)*: Aloja los servicios backend y el motor del juego. Contiene:
-** *gateway (Nginx)*: Punto de entrada único al sistema. Redirige las peticiones al frontend o a los servicios backend según la ruta solicitada.
-** *webapp (React/Vite)*: Aplicación frontend tipo SPA que implementa la interfaz de usuario.
-** *users (Node/Express)*: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, ...).
-** *gamey (Rust)*: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.
-** *MongoDB*: Servicio de persistencia utilizado por el módulo de usuarios.
+* *Web Browser (Jugador)*: Cliente desde el que el usuario accede a la aplicación web. Interactúa con el sistema mediante HTTPS cargando la SPA y realizando peticiones a la API.
 
-La comunicación técnica principal del sistema se realiza a través del gateway. El navegador carga la aplicación frontend a través de este componente, y tanto la interfaz web como los clientes externos acceden a los servicios backend mediante rutas HTTP diferenciadas.
+* *Bot Externo*: Cliente software que consume la API del sistema para interactuar con las partidas, utilizando endpoints REST (como `/play`) y enviando posiciones en formato JSON/YEN.
+
+* *Servidor de despliegue (Docker)*: Entorno donde se ejecutan los distintos servicios del sistema, desplegados como contenedores independientes. Incluye:
+
+** *gateway (Nginx)*: Punto de entrada único al sistema. Gestiona el acceso externo mediante HTTPS y redirige las peticiones a los distintos servicios internos en función de la ruta:
+*** `/` → webapp
+*** `/api/users` → users
+*** `/api/v1`, `/play` → gamey
+
+** *webapp (React/Vite)*: Aplicación frontend tipo SPA que implementa la interfaz de usuario. Se comunica con los servicios backend mediante peticiones HTTP (REST) y establece conexiones WebSocket para el modo multijugador online.
+
+** *users (Node/Express)*: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, etc.). 
+*** Expone una API REST para operaciones CRUD y consulta de datos.
+*** Gestiona la comunicación en tiempo real mediante WebSockets (Socket.IO) para el modo multijugador (salas, movimientos, chat).
+
+** *gamey (Rust)*: Servicio backend que encapsula la lógica del juego.
+*** Gestiona la creación de partidas, validación de movimientos y detección de victoria.
+*** Expone una API REST (`/api/v1`) para partidas HvH y HvB.
+*** Expone el endpoint `/play` para interacción con bots externos.
+
+** *MongoDB*: Servicio de persistencia utilizado por el módulo de usuarios para almacenar información de cuentas, estadísticas e historial de partidas.
+
+* La comunicación técnica principal del sistema se realiza a través del gateway, que actúa como punto central de acceso externo. 
+
+* El navegador carga la aplicación frontend a través de este componente, y la webapp interactúa con los servicios backend (`users` y `gamey`) mediante REST/JSON. 
+
+* En el caso del modo multijugador online, se establece además una comunicación en tiempo real mediante WebSockets entre el cliente y el servicio `users`, permitiendo la sincronización de partidas, gestión de salas y envío de mensajes entre jugadores.
+
+* Los bots externos acceden directamente al sistema a través del gateway, utilizando la API REST expuesta por `gamey`.

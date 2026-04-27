@@ -10,26 +10,57 @@ El sistema desarrollado permite jugar al juego Y a través de una interfaz web, 
 Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 
 * La app dispone de una interfaz web para jugar al juego Y.
-* Se ofrecen dos modos base de juego:
-** Partida jugador contra jugador - HvH.
-** Partida jugador contra bot - HvB.
+
+* Se ofrecen varios modos de juego:
+** Partida jugador contra jugador local (HvH).
+** Partida jugador contra bot (HvB).
 *** En el modo contra bot, el usuario puede seleccionar el nivel de dificultad, asociado a varias estrategias.
+** Partida multijugador online en tiempo real.
+*** Los usuarios pueden crear o unirse a salas de juego.
+*** Se incluye un sistema de chat entre jugadores dentro de la sala.
+
 * La aplicación incorpora un flujo de selección de variante antes de configurar la partida.
-** La variante clásica constituye la base principal del sistema
-** Existen otras variantes adicionales como Tabu Y y Holey Y ya funcionales, y otras todavía no implementadas.
+** La variante clásica constituye la base principal del sistema.
+** Se han implementado múltiples variantes adicionales que modifican las reglas del juego:
+*** Regla del Pastel
+*** Master Y
+*** Fortune Coin
+*** Fortune Dice
+*** Tabu Y
+*** Holey Y
+*** Why Not
+** Las variantes alteran las reglas de movimiento, turnos y condiciones de victoria.
+
 * El tablero tiene tamaño variable, configurable por el usuario dentro de unos límites establecidos.
+
 * El usuario puede elegir quién empieza la partida:
-** En HvB: El usuario, el bot, o aleatorio.
-** En HvH: el Jugador 1, el Jugador 2, o aleatorio.
+** En HvB: el usuario, el bot o aleatorio.
+** En HvH: el jugador 1, el jugador 2 o aleatorio.
+** En ciertas variantes, el flujo de turnos puede modificarse dinámicamente (por ejemplo, en la regla del pastel o variantes Fortune).
+
 * El usuario podrá registrarse en la aplicación, o inciar sesión si ya tiene cuenta asociada.
-** Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).
-** En caso de continuar como usuario invitado (sin iniciar sesión), no se guardará el historial ni las estadísticas de las partidas.
-*** Al final de cada partida, el usuario invitado podrá optar por registrarse/iniciar sesión para guardar la partida y sus estadísticas, o continuar sin guardar.
-* Se proporciona un API externo (documentado) para que los bots puedan usar el sistema.
-** El API permite consultar/gestionar info de usuarios y partidas.
-** El API incluye un método `play` que recibe al menos una posición (en notación YEN) y devuelve el siguiente movimiento.
+** Cada usuario registrado podrá consultar su historial de partidas, estadísticas (ganadas, perdidas, abandonadas, racha, etc.) y un ranking global con estadísticas de otros usuarios.
+** En caso de jugar como usuario invitado, no se guardará el historial ni las estadísticas.
+*** Al finalizar la partida, el usuario invitado puede registrarse o iniciar sesión para guardar el resultado sin perder el contexto.
+
+* El sistema almacena información detallada de cada partida:
+** Modo de juego y variante utilizada.
+** Resultado (victoria, derrota, abandono o empate).
+** Número de movimientos realizados por el usuario.
+** Rival.
+** Fecha de finalización.
+
+* Se proporciona un API externo documentado para la interacción con bots y sistemas externos.
+** El servicio de juego permite crear partidas, realizar movimientos, consultar estados y obtener jugadas de bots.
+** El API incluye un método `play` que recibe una posición en notación YEN y devuelve el siguiente movimiento o acción.
+** El servicio de usuarios expone endpoints para autenticación, historial, estadísticas y ranking.
+
 * El motor del juego está desacoplado de la interfaz web y se implementa como un servicio independiente en Rust.
+** Gestiona la lógica del juego, validación de movimientos y cálculo de bots.
 ** La comunicación entre la web y el motor se realiza mediante HTTP y mensajes JSON basados en la notación YEN.
+
+* El sistema incorpora monitorización y observabilidad mediante Prometheus y Grafana para analizar el comportamiento de los servicios.
+
 
 *Casos de uso:*
 
@@ -40,7 +71,7 @@ Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 | UC-01
 | *Registrarse*
 | Usuario
-| El usuario crea una cuenta en la aplicación para poder identificarse, verifica su correo y accede a funcionalidades asociadas a su perfil.
+| El usuario crea una cuenta en la aplicación, verifica su correo y accede a funcionalidades asociadas a su perfil.
 
 | UC-02
 | *Iniciar sesión*
@@ -63,9 +94,9 @@ Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 | El usuario selecciona el modo de juego, el tamaño del tablero, quién comienza la partida y el nivel de dificultad (si corresponde).
 
 | UC-06
-| *Crear partida jugador vs jugador*
+| *Crear partida jugador vs jugador local*
 | Usuario
-| El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.
+| El sistema crea una nueva sesión de juego HvH local y devuelve el estado inicial de la partida.
 
 | UC-07
 | *Crear partida jugador vs bot*
@@ -73,44 +104,59 @@ Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 | El sistema crea una nueva sesión de juego HvB, aplicando la configuración elegida y, si corresponde, realizando el primer movimiento del bot.
 
 | UC-08
+| *Crear sala multijugador online*
+| Usuario
+| El usuario crea una sala asociada a un código y espera a que otro jugador se una para comenzar la partida.
+
+| UC-09
+| *Unirse a sala multijugador*
+| Usuario
+| El usuario se une a una sala existente mediante el código asociado para jugar contra otro jugador.
+
+| UC-10
 | *Jugar un turno desde la web*
 | Usuario
 | El usuario selecciona una celda válida y el sistema actualiza el estado de la partida conforme a las reglas de la variante activa.
 
-| UC-09
+| UC-11
+| *Sincronizar partida multijugador*
+| Sistema
+| El sistema transmite los movimientos entre jugadores en tiempo real mediante WebSockets.
+
+| UC-12
 | *Obtener la respuesta del bot*
 | Sistema
 | Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.
 
-| UC-10
+| UC-13
 | *Comprobar si la partida ha finalizado*
 | Sistema
-| Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.
-
-| UC-11
-| *Abandonar una partida*
-| Usuario
-| El usuario decide salir de una partida en curso y el sistema cierra la sesión de juego activa, guardando el estado como "Abandonada" (si corresponde).
-
-| UC-12
-| *Guardar una partida en el historial*
-| Usuario registrado
-| Al finalizar una partida, el sistema permite registrar el resultado en la cuenta del usuario para actualizar su historial y estadísticas.
-
-| UC-13
-| *Ver historial y estadísticas*
-| Usuario registrado
-| El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.
+| Después de cada movimiento, el sistema determina si existe un ganador o si la partida continúa.
 
 | UC-14
-| *Consultar el estado de una partida*
-| Usuario registrado
-| La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.
+| *Abandonar una partida*
+| Usuario
+| El usuario sale de una partida en curso y el sistema la marca como abandonada (si corresponde).
 
 | UC-15
+| *Guardar una partida en el historial*
+| Usuario registrado
+| Al finalizar una partida, el sistema registra el resultado en la cuenta del usuario, actualizando su historial y estadísticas.
+
+| UC-16
+| *Ver historial y estadísticas*
+| Usuario registrado
+| El usuario consulta el historial de partidas anteriores y sus estadísticas guardadas en su cuenta.
+
+| UC-17
 | *Consultar ranking global*
 | Usuario 
-| El usuario puede consultar la clasificación global de jugadores en función de sus resultados.
+| El usuario consulta la clasificación global de jugadores en función de sus resultados.
+
+| UC-18
+| *Enviar mensajes en sala multijugador*
+| Usuario
+| El usuario envía y recibe mensajes en tiempo real durante la partida online.
 |===
 
 
@@ -119,12 +165,19 @@ Actualmente, la aplicación ofrece las siguientes funcionalidades principales:
 Los objetivos de calidad del sistema se concretan y evaluarán en la sección "10. Atributos de Calidad" siguiendo el modelo ISO/IEC 25010, mediante un árbol de calidad y escenarios. De forma resumida, la arquitectura prioriza:
 
 * *Adecuación funcional*: El motor debe garantizar el cumplimiento de reglas y la validación del estado de la partida, evitando acciones inválidas y guiando al usuario durante el juego.
+
 * *Eficiencia de desempeño*: Se busca respuesta ágil y sin “lag” en las operaciones principales, con un uso eficiente de recursos y soporte de concurrencia, apoyado en el motor en Rust y el despliegue en contenedores.
+
 * *Compatibilidad / interoperabilidad*: La comunicación entre subsistemas y con bots externos debe ser estable, clara y validada, basada en JSON con notación YEN y un API bien documentado.
+
 * *Usabilidad*: La web debe ser intuitiva y fácil de aprender, con una interfaz que indique turnos, opciones y restricciones, reduciendo errores del usuario.
+
 * *Fiabilidad / disponibilidad*: El sistema debe mantener estabilidad ante fallos habituales y ser observable/monitorizable para detectar caídas o degradaciones.
+
 * *Seguridad*: Se controlarán accesos (registro/login y API pública), validación de entradas y medidas de protección de credenciales (por ejemplo, cifrado/hasheado de contraseñas).
+
 * *Mantenibilidad*: El diseño modular por microservicios y la separación de responsabilidades deben permitir incorporar nuevas estrategias/reglas o cambios en el API minimizando el impacto en el resto del sistema.
+
 * *Portabilidad*: Al basarse en Docker, el sistema debe ser desplegable en distintos entornos con una instalación reproducible.
 
 
@@ -135,18 +188,18 @@ Los objetivos de calidad del sistema se concretan y evaluarán en la sección "1
 | Stakeholder | Descripción | Expectativas / motivaciones
 
 | Jugador (usuario final)
-| Persona que entra a la web para jugar al juego Y (contra otra persona o contra el bot).
-| Que sea fácil de usar, que cargue rápido, que el juego no dé errores raros, poder elegir tamaño/estrategia y ver su historial y estadísticas.
+| Persona que utiliza la aplicación para jugar al juego Y (contra otro jugador local, contra un bot o en modo multijugador online).
+| Que la aplicación sea fácil de usar, intuitiva, que cargue rápido y sin errores, poder jugar en diferentes modos y variantes, comunicarse en partidas online y consultar su historial y estadísticas.
 
 | Equipo de desarrollo
 | Mario Amandi, Marcelo Díez, Andrea Ivanov y Eloy Rubio
-| Poder avanzar sin bloqueos, tener una arquitectura modular, poder implementar buenos tests y desplegar el sistema, además de mejorar las habilidades de programación (nuevos lenguajes), desarrollo y trabajo en equipo.
+| Poder trabajar sobre una arquitectura modular, implementar y mantener un buen sistema de pruebas (unitarias y E2E) y desplegar el sistema de forma continua, además de mejorar las habilidades de programación (nuevos lenguajes), desarrollo y trabajo en equipo.
 
 | Profesorado
 | Jose E. Labra Gayo, Pablo González, Diego Martín Fernández y Celia Melendi Lavandera
-| Que se cumplan los requisitos, que se justifiquen las decisiones arquitectónicas, que haya pruebas de código y que el despliegue sea accesible por web.
+| Que el sistema cumpla los requisitos, tenga una arquitectura bien justificada, disponga de pruebas automatizadas y sea accesible públicamente.
 
 | Micrati
 | Empresa que decide apostar por el desarrollo del juego y encarga el proyecto.
-| Que el producto final sea usable y presentable, que cumpla los requisitos establecidos, que sea fácil de mantener/mejorar y que no tenga fallos.
+| Que el producto final sea usable, estable, extensible y mantenible, permitiendo futuras mejoras y nuevas funcionalidades sin comprometer el sistema.
 |===

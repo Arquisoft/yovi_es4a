@@ -1,0 +1,143 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-testing]]
+== Pruebas
+
+En esta sección se detallan las pruebas realizadas al sistema para garantizar su correcto funcionamiento, la estabilidad del software y el cumplimiento de los requisitos de calidad. El enfoque de pruebas abarca desde el nivel de componente individual hasta el sistema completo bajo carga.
+
+=== Pruebas Unitarias
+
+Las pruebas unitarias se encargan de verificar el funcionamiento de los componentes, funciones y servicios de forma aislada, asegurando que cada pieza de código se comporte según lo esperado.
+
+*   **Tecnología**: Se utiliza **Vitest** como framework de ejecución de pruebas debido a su velocidad e integración nativa con Vite.
+*   **Alcance**: 
+    *   **Backend (Users)**: Pruebas de los modelos de Mongoose, servicios de lógica de negocio y controladores de API utilizando `supertest`.
+    *   **Frontend (WebApp)**: Pruebas de componentes React utilizando `React Testing Library`, hooks personalizados y utilidades de lógica de juego.
+    *   **Motor de Juego (Gamey)**: Pruebas unitarias de la lógica del motor (movimientos, reglas, estados) y pruebas de integración para el servidor de bots.
+*   **Ejecución**:
+    *   Para ejecutar las pruebas en local: `npm run test` (en webapp y users) y `cargo test` (en el motor de juego).
+    *   Integración continua: Se ejecutan automáticamente en cada *Push* o *Pull Request* a través de GitHub Actions.
+
+=== Pruebas de Propiedades y Rendimiento (Rust)
+
+Dado que el motor de juego es una pieza crítica desarrollada en **Rust**, se han aplicado técnicas avanzadas de validación:
+
+*   **Pruebas de Propiedades (Property-based Testing)**: Se utiliza la librería **proptest** para generar casos de prueba aleatorios pero controlados, asegurando que las invariantes del motor de juego se mantienen bajo cualquier circunstancia.
+*   **Benchmarks**: Se utiliza **Criterion** para realizar análisis de rendimiento y detectar regresiones en la velocidad de ejecución de los algoritmos de juego.
+
+=== Pruebas de Aceptación
+
+Las pruebas de aceptación (E2E) verifican que el sistema completo satisface los requisitos del negocio y funciona correctamente desde la perspectiva del usuario final.
+
+*   **Tecnología**: Se utiliza **Cucumber.js** para la definición de escenarios en lenguaje natural (Gherkin) y **Playwright** para la automatización del navegador.
+*   **Metodología**: Desarrollo guiado por comportamiento (BDD). Los escenarios se definen en archivos `.feature` que describen el comportamiento esperado sin entrar en detalles técnicos.
+*   **Escenarios Clave**:
+    *   **Flujo de Usuario**: Registro exitoso, validación de email, inicio de sesión y gestión de perfil.
+    *   **Jugabilidad**: Inicio de partidas, turnos correctos, detección de victoria/empate y persistencia de resultados.
+    *   **Social**: Funcionamiento del chat, ranking global e historial de partidas.
+
+=== Resultados de Cobertura de Código
+
+La cobertura de código nos permite identificar qué partes del sistema no están siendo validadas por los tests, permitiendo mejorar la robustez del software.
+
+*   **Herramientas**: Se utiliza el motor de cobertura **v8** integrado en Vitest.
+*   **Estado Actual**:
+    *   **WebApp**: Se mantiene una cobertura superior al **85%**, con especial atención a las vistas críticas y servicios de socket.
+    *   **Users Microservice**: La cobertura supera el **87%**, garantizando la seguridad en la gestión de cuentas y persistencia.
+    *   **Motor de Juego (Rust)**: Gracias al tipado fuerte y las pruebas exhaustivas (unitarias y de propiedades), el motor mantiene una alta fiabilidad, con métricas de cobertura integradas en el análisis global.
+*   **Calidad Continua**: Los resultados se exportan a **SonarCloud**, donde se monitorizan métricas de complejidad ciclomática, duplicación de código y "code smells".
+
+=== Pruebas de Carga (Informe de Pruebas de Carga)
+
+Las pruebas de carga evalúan la capacidad del sistema para manejar múltiples usuarios simultáneos, picos de tráfico y situaciones de estrés sobre la infraestructura desplegada. Para ello se ha utilizado **Gatling** con simulaciones definidas mediante el SDK de Java.
+
+Se han definido tres tipos principales de simulación:
+
+* **Smoke Test (`SmokeSimulation`)**: prueba de humo orientada a validar rápidamente que las rutas principales de la aplicación funcionan correctamente. Se ejecuta con una carga mínima y recorre operaciones clave como obtención de metadatos, consulta de ranking, perfil, estadísticas, partidas contra bot, partidas multijugador y guardado de histórico.
+
+* **Load Test (`LoadSimulation`)**: prueba de carga que simula un entorno de uso más realista. Incrementa progresivamente el número de usuarios concurrentes hasta alcanzar un estado estable, permitiendo observar el comportamiento del sistema bajo una carga nominal. La simulación combina varios perfiles de uso: visitantes, jugadores contra bot, partidas multijugador y ráfagas de peticiones externas.
+
+* *Stress Test (`StressSimulation`)*: prueba de estrés diseñada para someter el sistema a una carga elevada y comprobar si mantiene la disponibilidad, los tiempos de respuesta y la tasa de éxito dentro de unos límites aceptables. Esta simulación genera una carga agresiva contra el API Gateway, incluyendo movimientos continuos, bots internos, visitantes pesados y ráfagas de peticiones. El objetivo es detectar el punto de degradación y analizar cómo responde la arquitectura ante condiciones extremas.
+
+
+==== Ejecución en local
+
+Antes de ejecutar las pruebas, se levanta el sistema completo mediante Docker Compose:
+
+[source,bash]
+----
+docker compose up -d --build
+----
+
+A continuación, desde el módulo de Gatling, se ejecutan las simulaciones indicando la URL base de la aplicación mediante la variable de entorno `YOVI_BASE_URL`.
+
+[source,bash]
+----
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+En Windows PowerShell, la variable de entorno se define de la siguiente forma:
+
+[source,powershell]
+----
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+==== Ejecución en despliegue
+
+Además de las pruebas locales, se ejecutó la simulación de estrés contra el despliegue real en la máquina virtual de Azure, accesible mediante HTTPS a través del dominio público de la aplicación.
+
+[source,bash]
+----
+YOVI_BASE_URL=https://yovies4a.duckdns.org ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+En Windows PowerShell:
+
+[source,powershell]
+----
+$env:YOVI_BASE_URL="https://yovies4a.duckdns.org"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation
+----
+
+==== Resultados obtenidos
+
+Los informes generados por Gatling se almacenan automáticamente en el directorio:
+
+[source,bash]
+----
+target/gatling/
+----
+
+
+A continuación se muestran las capturas de los informes generados por Gatling para cada simulación:
+
+image::gatling-smoke.png["Resultados de SmokeSimulation", width=80%]
+
+image::gatling-load.png["Resultados de LoadSimulation", width=80%]
+
+image::gatling-stress-local.png["Resultados de StressSimulation en local", width=80%]
+
+image::gatling-stress-deploy.png["Resultados de StressSimulation en despliegue", width=80%]
+
+
+En las pruebas realizadas se observa un comportamiento estable del sistema en los distintos niveles de carga. La prueba de humo (`SmokeSimulation`) ejecutó **20 peticiones**, todas ellas correctas, con **0 errores**. Esta prueba valida que las rutas principales de la aplicación responden correctamente antes de someter el sistema a escenarios de mayor carga.
+
+En la prueba de carga (`LoadSimulation`) se ejecutaron **436 peticiones**, también con **0 errores**. El sistema mantuvo un throughput aproximado de **7,52 peticiones por segundo**, con un tiempo medio de respuesta de **73 ms** y un percentil 95 de **142 ms**. Estos resultados muestran que, bajo una carga nominal, la aplicación mantiene tiempos de respuesta bajos y cumple correctamente las aserciones definidas en Gatling.
+
+En las pruebas de estrés se comparó el comportamiento entre el entorno local y el despliegue remoto. En local, la simulación ejecutó **66.073 peticiones**, todas ellas correctas, alcanzando un throughput aproximado de **420,85 peticiones por segundo**. El tiempo medio de respuesta fue de **89 ms**, con un percentil 95 de **239 ms** y un tiempo máximo de **1.710 ms**.
+
+En el despliegue remoto, la prueba de estrés ejecutó **72.698 peticiones**, también con **0 errores**, alcanzando un throughput aproximado de **466,01 peticiones por segundo**. En este caso, el tiempo medio de respuesta fue de **69 ms**, con un percentil 95 de **158 ms** y un tiempo máximo de **1.437 ms**.
+
+A diferencia de ejecuciones anteriores, en estas capturas no se observan errores `KO`, `502 Bad Gateway` ni timeouts TCP/SSL. Todas las aserciones configuradas en Gatling aparecen como superadas, incluyendo el porcentaje mínimo de eventos correctos y los límites máximos de tiempo de respuesta.
+
+Por tanto, los resultados muestran que el sistema mantiene un comportamiento robusto tanto en local como en despliegue. Incluso en escenarios de estrés, la aplicación conserva una tasa de éxito del **100%**, mantiene tiempos de respuesta aceptables y no presenta pérdida de disponibilidad durante la ejecución de las pruebas.
