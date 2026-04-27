@@ -34,7 +34,7 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Adecuación funcional*
 
-* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otro usuario en local. **SC8**[[SC8]]
+* Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra diferentes niveles de dificultad de bot (Random, Greedy, MCTS), contra otro usuario en local y en online junto con chat. **SC8**[[SC8]] **SC12**[[SC12]]
 * Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. **SC1**[[SC1]]
 
 *Eficiencia de desempeño*
@@ -53,8 +53,8 @@ image::requisitos de calidad.png[arbol de calidad]
 * Inteligibilidad: Dispone de una interfaz clara e intuitiva diseñada con React para facilitar su uso a todo tipo de usuario. Se busca tener un aspecto actualizado.
 * Capacidad de aprendizaje: El juego sigue reglas sencillas con facilidad de aprendizaje. La dificultad está presente en aprender qué estrategia seguir.
 * Operabilidad: La propia interfaz te guía durante el juego mostrándote de quién es el turno, las casillas disponibles y opciones disponibles. **SC2**[[SC2]]
-* Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego.
-* Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.
+* Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego. Además, se realizan validaciones de seguridad en los datos de entrada (ej. username).
+* Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas completas, incluyendo victorias, derrotas y empates.
 * Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. **SC3**[[SC3]] El uso de un DNS permite que los usuarios accedan a la aplicación mediante un nombre legible (yovies4a.duckdns.org) en lugar de una dirección IP técnica y difícil de recordar. **SC7**[[SC7]]
 * Asistencia al usuario: Dispone de una ayuda para entender qué hace cada componente en cada caso, además de tooltips y mensajes descriptivos.
 * Autodescripción: Se busca dejar lo más claro posible el uso de cada herramienta ya sea con un texto descriptivo en botones o dibujos que indiquen claramente su finalidad.
@@ -72,7 +72,8 @@ image::requisitos de calidad.png[arbol de calidad]
 
 *Mantenibilidad*
 
-* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]] **SC9*[[SC9]]
+* Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. **SC6**[[SC6]] **SC9**[[SC9]]
+* Extensibilidad: Se ha diseñado una API de Bots que permite incorporar nuevas estrategias de inteligencia artificial (ej. Random, Greedy, MCTS Completo) de manera modular sin afectar al núcleo del motor del juego. **SC11**[[SC11]]
 
 *Portabilidad*
 
@@ -147,6 +148,14 @@ A continuación se exponen distintos escenarios de uso identificados por un cód
 |<<SC10, SC10>>
 |No repudio
 |Se afirma no haber utilizado nunca la aplicación, en la base de datos aparece el registro asociado a un correo autenticado en dos pasos, se mantiene un registro de uso.
+
+|<<SC11, SC11>>
+|Extensibilidad
+|Se desea agregar un nuevo nivel de dificultad para el bot con una estrategia diferente. Gracias a la API de Bots, el desarrollador puede implementar el nuevo bot de forma aislada y registrarlo en la API sin modificar las reglas del motor ni la comunicación.
+
+|<<SC12, SC12>>
+|Adecuación funcional
+|A dos personas les apetece jugar juntas pero están lejos, así que recurren al modo multijugador online, donde además pueden comunicarse a través de un chat en tiempo real.
 
 |===
 
