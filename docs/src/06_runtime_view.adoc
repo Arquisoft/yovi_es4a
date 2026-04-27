@@ -1,16 +1,16 @@
 ifndef::imagesdir[:imagesdir: ../images]
-
+ 
 [[section-runtime-view]]
 == Vista de ejecución
-
+ 
 === Registrar un usuario
 image::06_1-Registrar usuario.drawio.png["Diagrama correspondiente a el proceso de registrar un usuario", width=90%]
-Proceso de registrar un usuario.
-
+El usuario introduce sus datos en la webapp, que envía la petición al servicio `users`. Este valida los datos, inserta el nuevo usuario en MongoDB y devuelve confirmación. La webapp muestra el mensaje de bienvenida. Adicionalmente, el sistema envía un correo de validación de dirección de email que el usuario debe confirmar para activar su cuenta.
+ 
 === Jugar una casilla
 image::06_2-Jugar casilla.drawio.png["Diagrama correspondiente a el proceso de jugar una casilla", width=90%]
-Proceso de jugar una casilla.
-
+El usuario hace clic en una casilla del tablero. La webapp envía el movimiento a `gamey` indicando el identificador de celda. El motor valida el movimiento, actualiza el estado de la sesión en memoria (almacenada en notación YEN) y devuelve el nuevo estado. La webapp renderiza el tablero actualizado.
+ 
 === Jugar una casilla vs bot
 image::06_3-Jugar casillabot.drawio.png["Diagrama correspondiente a el proceso de jugar una casilla en una partida contra un bot", width=90%]
-Proceso de jugar una casilla en una partida contra un bot.
+El usuario hace clic en una casilla. La webapp envía el movimiento humano a `gamey`, que lo valida y actualiza el estado de la sesión. A continuación, en una segunda petición, el bot calcula su respuesta y aplica su movimiento sobre la misma sesión. `gamey` devuelve el estado resultante tras ambos movimientos. La webapp renderiza el tablero con las jugadas del humano y del bot reflejadas.
