@@ -64,7 +64,7 @@ Mapeo de los bloques de construcción a la infraestructura::
 | Bloque de Construcción | Puerto Externo | Descripción
 | gateway | 80 / 443 | Punto de entrada único. Proxy inverso Nginx con terminación TLS (Let's Encrypt o certificado autofirmado). Enruta el tráfico hacia `webapp` y hacia la API de `users`.
 | webapp | — (interno) | Aplicación React servida como contenido estático por el gateway. No expone puertos al exterior directamente.
-| users | 3000 | API REST de gestión de usuarios y partidas. Accesible desde el gateway y desde bots externos a través de este.
+| users | 3000 | API REST de gestión de usuarios y servidor de WebSockets (Socket.io) para tiempo real. Accesible desde el gateway.
 | gamey | 4000 | Motor del juego en Rust. Accesible internamente desde `users` y para pruebas locales directas.
 | prometheus | 9090 | Recolector de métricas del sistema.
 | grafana | 9091 | Visualizador de dashboards de monitorización.
@@ -101,11 +101,11 @@ Estos contenedores representan la lógica de negocio y la interfaz de usuario:
 
 * **webapp:** Aplicación React/TypeScript compilada como contenido estático por Vite. El gateway la sirve directamente. La variable de entorno `VITE_API_URL` se configura en tiempo de build para apuntar al servicio `users` a través del gateway.
 
-* **users (Puerto 3000):** Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la `webapp` y del `gateway`, y delegando la lógica del juego al servicio `gamey`. Expone métricas para Prometheus en el endpoint `/metrics`.
+* **users (Puerto 3000):** Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa también como **servidor de WebSockets (Socket.io)** para la gestión de partidas multijugador en tiempo real, chat y sincronización de estados. Orquesta las llamadas al servicio `gamey` y expone métricas para Prometheus en el endpoint `/metrics`.
 
 * **gamey (Puerto 4000):** Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (aleatoria, greedy y múltiples niveles de MCTS con paralelización via `rayon`). Soporta múltiples variantes del juego (Clásica, Tabu Y, Holey Y). Se comunica mediante JSON usando la notación **YEN**. Puede ejecutarse también en modo CLI para pruebas locales.
 
-* **gateway (Puertos 80/443):** Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia `webapp` y hacia la API de `users` según la ruta solicitada, gestionando también el acceso desde bots externos.
+* **gateway (Puertos 80/443):** Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia `webapp` y hacia la API de `users`, incluyendo el soporte para la actualización de protocolo de WebSockets necesaria para el multijugador.
 
 ==== Servicios de Persistencia
 
