@@ -21,6 +21,7 @@ El sistema adopta una *arquitectura de microservicios* con tres componentes prin
 *Backend (users)*:
 
 * Node.js + Express por su simplicidad para crear APIs REST
+* Socket.io para la comunicación en tiempo real del modo multijugador
 * Swagger para documentar el API
 * Prometheus para recoger métricas del sistema
 
@@ -38,12 +39,13 @@ El sistema adopta una *arquitectura de microservicios* con tres componentes prin
 
 *Comunicación*:
 
-* HTTP/REST con JSON
+* HTTP/REST con JSON para las llamadas a la API
+* WebSockets (Socket.io) para sincronización en tiempo real en partidas multijugador
 * Notación YEN para las posiciones del tablero
 
 *Despliegue*:
 
-* Azure para alojar la maquina virtual en la que se ejecuta la aplicación
+* Azure para alojar la máquina virtual en la que se ejecuta la aplicación
 * Docker para que funcione igual en todos los entornos
 
 === Patrones Arquitectónicos
@@ -63,50 +65,100 @@ gamey separa la lógica del juego de los detalles técnicos:
 
 *Infraestructura*:
 
-* `game_server/`: Servidor del juego con el servidor
+* `game_server/`: Servidor del juego con gestión de sesiones
 * `bot_server/`: Conexión del bot con el servidor
 * `notation/`: Conversión entre formatos (YEN, YGN)
 
 ==== Estrategias de Bot (módulo `bot/`)
 
-El módulo de bots se estructura en torno al trait `YBot` y un registro centralizado (`YBotRegistry`) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de tres implementaciones:
+El módulo de bots se estructura en torno al trait `YBot` y un registro centralizado (`YBotRegistry`) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de las siguientes implementaciones:
 
 * *`random_bot`* (`random.rs`): Elige una celda disponible al azar, sin ninguna heurística. Sirve como línea base de comparación para el resto de estrategias.
 
-* *`greedy_bot`* (`greedy.rs`): Aplica una heurística de _Potencial de Conectividad_ basada en coordenadas triangulares. Puntúa cada celda disponible según su proximidad a los bordes del tablero y su centralidad estratégica, eligiendo siempre el movimiento de menor coste. Es más predecible que MCTS pero sensiblemente mejor que el bot aleatorio.
+* *`mcts_bot`* (`mcts.rs`): Implementa una versión simplificada de _Monte Carlo Tree Search_. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con tres niveles de dificultad:
+** `mcts_medio` — 20.000 iteraciones: respuesta rápida, calidad media-alta.
+** `mcts_dificil` — 30.000 iteraciones: mayor precisión, tiempo de respuesta más elevado.
+** `mcts_demencial` — 100.000 iteraciones: máxima precisión, tiempo de respuesta muy elevado.
 
-* *`mcts_bot`* (`mcts.rs`): Implementa una versión simplificada de _Monte Carlo Tree Search_. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con dos niveles de dificultad:
-** 5.000 iteraciones — respuesta rápida, calidad media-alta.
-** 20.000 iteraciones — mayor precisión, tiempo de respuesta más elevado.
+==== Gestión de Sesiones en gamey
+
+El motor de juego mantiene el estado de cada partida activa en memoria mediante un `SessionStore`. Cada sesión almacena el estado del tablero (en notación YEN), el modo de juego, el bot asignado (en partidas HvB) y el jugador al que le toca mover. Las sesiones son de propiedad del cliente que las crea, identificado por un `client_id` enviado en las cabeceras HTTP.
 
 ==== API REST del Motor de Juego (`game_server/`)
 
-El servidor expone una API versionada bajo el prefijo `/v1` con los siguientes endpoints:
+El servidor expone una API versionada bajo el prefijo `/api/v1` con los siguientes endpoints:
 
 [cols="2,1,4", options="header"]
 |===
 | Endpoint | Método | Descripción
 
-| `/status`
+| `/api/v1/meta`
 | GET
-| Comprueba que el servicio está en marcha.
+| Devuelve la versión de la API y la configuración del tablero (tamaño mínimo y máximo permitidos).
 
-| `/v1/game/config`
+| `/api/v1/config`
 | GET
-| Devuelve la configuración del tablero: tamaño mínimo y máximo permitidos.
+| Devuelve la configuración de partida actual del cliente (tamaño, bot, quién empieza).
 
-| `/v1/game/new`
-| POST
-| Crea una nueva partida genérica a partir de un tamaño de tablero.
+| `/api/v1/config`
+| PUT
+| Actualiza la configuración de partida del cliente.
 
-| `/v1/game/hvb/new/{bot_id}`
+| `/api/v1/hvb/games`
 | POST
-| Inicia una partida Humano vs Bot seleccionando el bot por su identificador y el jugador que empieza.
+| Crea una nueva partida Humano vs Bot. Acepta tamaño de tablero, bot y quién empieza.
 
-| `/v1/game/hvb/move/{bot_id}`
+| `/api/v1/hvb/games/{game_id}`
+| GET
+| Devuelve el estado actual de una partida HvB.
+
+| `/api/v1/hvb/games/{game_id}`
+| DELETE
+| Elimina una partida HvB activa.
+
+| `/api/v1/hvb/games/{game_id}/moves`
 | POST
-| Recibe el movimiento del humano (en notación YEN), lo aplica, calcula la respuesta del bot y devuelve el nuevo estado del tablero.
+| Aplica el movimiento del humano (por `cell_id`) y devuelve el nuevo estado.
+
+| `/api/v1/hvb/games/{game_id}/bot-move`
+| POST
+| Solicita al bot que realice su movimiento y devuelve el nuevo estado.
+
+| `/api/v1/hvb/games/{game_id}/hint`
+| GET
+| Consulta al bot qué movimiento elegiría sin aplicarlo (pista para el humano).
+
+| `/api/v1/hvh/games`
+| POST
+| Crea una nueva partida Humano vs Humano (en el mismo dispositivo).
+
+| `/api/v1/hvh/games/{game_id}`
+| GET
+| Devuelve el estado actual de una partida HvH.
+
+| `/api/v1/hvh/games/{game_id}`
+| DELETE
+| Elimina una partida HvH activa.
+
+| `/api/v1/hvh/games/{game_id}/moves`
+| POST
+| Aplica el movimiento del jugador en turno y devuelve el nuevo estado.
+
+| `/play`
+| GET
+| Endpoint legado: recibe una posición YEN por query param y devuelve el movimiento del bot.
 |===
+
+==== Multijugador en tiempo real (Socket.io)
+
+El modo multijugador online se implementa mediante WebSockets a través de Socket.io, integrado en el servidor `users`. Los eventos principales son:
+
+* *`createRoom`*: el host crea una sala con un código de 5 caracteres.
+* *`joinRoom`*: el invitado se une a la sala con el código.
+* *`startGame`*: el host notifica a la sala que la partida ha comenzado en gamey.
+* *`playMove`*: un jugador envía su movimiento, que se retransmite al rival.
+* *`finishGame`*: se notifica el resultado y se persiste el historial.
+* *`leaveRoom`* / *`disconnect`*: gestión de abandonos y desconexiones inesperadas.
 
 === Decisiones Organizativas
 
