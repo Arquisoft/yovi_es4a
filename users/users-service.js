@@ -12,9 +12,39 @@ const User = require('./users-model');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+const CANONICAL_GAME_MODES = [
+  "classic_hvb",
+  "classic_hvh",
+  "tabu_hvh",
+  "holey_hvh",
+  "fortune_dice_hvh",
+  "poly_hvh",
+  "pastel_hvh",
+  "master_hvh",
+  "fortune_coin_hvh",
+  "why_not_hvh",
+  "3dy_hvh",
+  "hex_hvh",
+];
+const LEGACY_GAME_MODE_ALIASES = {
+  whynot_hvh: "why_not_hvh",
+};
+const ACCEPTED_GAME_MODES = [...CANONICAL_GAME_MODES, ...Object.keys(LEGACY_GAME_MODE_ALIASES)];
+
 // MongoDB connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/yovi';
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.IS_E2E === 'true') {
+  (async function() {
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongod = await MongoMemoryServer.create();
+      await mongoose.connect(mongod.getUri());
+      console.log('Conectado a MongoDB en memoria (Modo E2E)');
+    } catch (err) {
+      console.error('Error iniciando MongoDB en memoria para E2E:', err);
+    }
+  })();
+} else if (process.env.NODE_ENV !== 'test') {
   mongoose.connect(mongoUri)
     .then(() => console.log('Conectado a MongoDB'))
     .catch(err => console.error('Error conectando a MongoDB:', err));
@@ -69,8 +99,12 @@ function normalizePositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function normalizeGameMode(mode) {
+  const trimmedMode = typeof mode === "string" ? mode.trim() : "";
+  return LEGACY_GAME_MODE_ALIASES[trimmedMode] || trimmedMode;
+}
+
 function validateRecordGame(body) {
-  const allowedModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const allowedResults = ["won", "lost", "abandoned", "draw"];
 
   const gameIdValidation = validateGameId(body.gameId);
@@ -78,15 +112,16 @@ function validateRecordGame(body) {
     return { error: gameIdValidation.error };
   }
 
-  const mode = typeof body.mode === "string" ? body.mode.trim() : "";
+  const rawMode = typeof body.mode === "string" ? body.mode.trim() : "";
+  const mode = normalizeGameMode(rawMode);
   const result = typeof body.result === "string" ? body.result.trim() : "";
   const opponent = typeof body.opponent === "string" ? body.opponent.trim() : "";
   const startedBy = typeof body.startedBy === "string" ? body.startedBy.trim() : "";
   const boardSize = Number(body.boardSize);
   const totalMoves = Number(body.totalMoves);
 
-  if (!allowedModes.includes(mode)) {
-    return { error: "'mode' debe ser 'classic_hvb', 'classic_hvh', 'tabu_hvh', 'holey_hvh', 'fortune_dice_hvh' o 'poly_hvh'" };
+  if (!ACCEPTED_GAME_MODES.includes(rawMode) && !CANONICAL_GAME_MODES.includes(mode)) {
+    return { error: `'mode' debe ser uno de: ${CANONICAL_GAME_MODES.join(", ")}` };
   }
 
   if (!allowedResults.includes(result)) {
@@ -208,7 +243,8 @@ app.post('/createuser', async (req, res) => {
       password: hashedPassword,
       email,
       profilePicture: profilePicture || 'seniora.png',
-      verificationToken
+      verificationToken,
+      isVerified: process.env.IS_E2E === 'true'
     });
     
     // Lo guardamos temporalmente en la base de datos
@@ -236,8 +272,8 @@ app.post('/createuser', async (req, res) => {
 
 // 4. Intentamos enviar el correo
     try {
-      // Solo nos conectamos a Google si NO estamos en los tests
-      if (process.env.NODE_ENV !== 'test') {
+      // Solo nos conectamos a Google si NO estamos en los tests unitarios ni E2E
+      if (process.env.NODE_ENV !== 'test' && process.env.IS_E2E !== 'true') {
         const transporter = createMailTransporter();
         if (!transporter) {
            throw new Error("Las credenciales de correo no están configuradas en el servidor.");
@@ -246,8 +282,12 @@ app.post('/createuser', async (req, res) => {
         console.log(`[CORREO ENVIADO]`);
       }
       
-      // El mensaje de éxito se envía siempre, tanto en real como en tests
-      res.status(201).json({ message: `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.` });
+      // El mensaje de éxito cambia según si estamos en E2E o no
+      const successMessage = (process.env.IS_E2E === 'true')
+        ? `¡Bienvenido ${username}! Tu cuenta ha sido creada y verificada automáticamente para las pruebas.`
+        : `¡Bienvenido ${username}! Por favor, revisa tu correo para verificar tu cuenta.`;
+
+      res.status(201).json({ message: successMessage });
       
     } catch (mailError) {
       // 5. SI FALLA EL CORREO: Borramos al usuario para que pueda volver a intentarlo
@@ -299,7 +339,8 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado' });
 
-    if (!user.isVerified) {
+    // En modo E2E saltamos la verificación para facilitar los tests
+    if (!user.isVerified && process.env.IS_E2E !== 'true') {
       return res.status(403).json({ error: 'Por favor, verifica tu correo electrónico en tu bandeja de entrada antes de iniciar sesión.' });
     }
 
@@ -528,11 +569,11 @@ app.get("/users/:username/history", async (req, res) => {
   const page = normalizePositiveInteger(req.query.page, 1);
   const pageSize = Math.min(normalizePositiveInteger(req.query.pageSize, 5), 50);
 
-  const validModes = ["classic_hvb", "classic_hvh", "tabu_hvh", "holey_hvh", "fortune_dice_hvh", "poly_hvh"];
   const validResults = ["won", "lost", "abandoned", "draw"];
   const validSorts = ["newest", "oldest", "movesDesc", "movesAsc"];
 
-  const mode = validModes.includes(req.query.mode) ? req.query.mode : null;
+  const requestedMode = normalizeGameMode(req.query.mode);
+  const mode = CANONICAL_GAME_MODES.includes(requestedMode) ? requestedMode : null;
   const result = validResults.includes(req.query.result) ? req.query.result : null;
   const sortBy = validSorts.includes(req.query.sortBy) ? req.query.sortBy : "newest";
 
@@ -545,7 +586,23 @@ app.get("/users/:username/history", async (req, res) => {
     if (!user)
       return res.status(404).json({ error: "Usuario no encontrado" });
 
-    let history = Array.isArray(user.gameHistory) ? [...user.gameHistory] : [];
+    let history = Array.isArray(user.gameHistory)
+      ? user.gameHistory.map((game) => {
+          const plainGame =
+            typeof game?.toObject === "function" ? game.toObject() : game;
+
+          return {
+            gameId: plainGame.gameId,
+            mode: normalizeGameMode(plainGame.mode),
+            result: plainGame.result,
+            boardSize: plainGame.boardSize,
+            totalMoves: plainGame.totalMoves,
+            opponent: typeof plainGame.opponent === "string" ? plainGame.opponent : "",
+            startedBy: typeof plainGame.startedBy === "string" ? plainGame.startedBy : "",
+            finishedAt: plainGame.finishedAt,
+          };
+        })
+      : [];
 
     if (mode)
       history = history.filter((game) => game.mode === mode);

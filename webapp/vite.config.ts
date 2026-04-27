@@ -12,7 +12,7 @@ import react from "@vitejs/plugin-react";
 //   /play        → gamey (:4000) — ruta directa, sin rewrite
 //   /status      → gamey (:4000) — health check
 const usersTarget = process.env.VITE_API_PROXY_TARGET  ?? "http://localhost:8001";
-const gameyTarget = process.env.VITE_GAME_PROXY_TARGET ?? "http://localhost:4000";
+const gameyTarget = process.env.VITE_GAME_PROXY_TARGET ?? "http://localhost:4001";
 
 export default defineConfig({
 

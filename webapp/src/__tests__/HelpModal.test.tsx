@@ -65,8 +65,8 @@ describe("HelpModal", () => {
 
     await user.click(screen.getByRole("tab", { name: "Modos de Juego" }));
 
-    expect(screen.getByText("Human vs Bot (HvB)")).toBeInTheDocument();
-    expect(screen.getByText("Human vs Human (HvH)")).toBeInTheDocument();
+    expect(screen.getByText("Clásico - Human vs Bot (HvB)")).toBeInTheDocument();
+    expect(screen.getByText("Clásico - Human vs Human (HvH)")).toBeInTheDocument();
   });
 
   it("muestra el contenido de 'Cómo usar la app' al pulsar la pestaña", async () => {

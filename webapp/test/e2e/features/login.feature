@@ -5,7 +5,6 @@ Feature: Login de usuarios
     When pulso "Continuar sin cuenta"
     Then soy redirigido a "/home"
 
-  @skip
   Scenario: Login falla con credenciales incorrectas
     Given estoy en la página de inicio
     When introduzco usuario "usuarioinexistente" y contraseña "wrongpass"

@@ -12,6 +12,8 @@ Aquí podras jugar al famoso Juego Y clásico, incluyendo también diferentes va
 
 A continuación te presentamos la estructura de la aplicación.
 
+[Video Demo](https://youtu.be/A2htShDhNlI)
+
 ## Registro / Inicio de sesión
 - Para poder acceder a la aplicación puedes iniciar sesión si ya tienes una cuenta creada, o registrarte con un correo y verificar tu cuenta para poder guardar la información de las partidas jugadas.
 
@@ -44,25 +46,60 @@ Te enfrentas a un bot para poder jugar. También puedes escoger la dificultad:
 - Difícil: El bot calcula miles de partidas posibles. Ya cuesta más vencerle
 - Demencial: El bot hace simulaciones masivas de jugadas. Se lo recomendamos a los más valientes!
 
-<img width="49%" height="auto" src="./images/HvBDificultad.png"> <img width="49%" height="auto" src="./images/HvBClasico.png">
+<img width="49%" height="auto" src="./images/ClasicoHvB1.png"> <img width="49%" height="auto" src="./images/ClasicoHvB2.png">
 
 #### Human vs Human
 Sigue siendo el modo clásico de juego, pero aquí te puedes enfrentar a algún amigo que se atreva a retarte.
 
-<img width="49%" height="auto" src="./images/HvHClasico.png">
+<img width="49%" height="auto" src="./images/ClasicoHvH.png">
 
-### Tabú Y - Human vs Human
-Aquí aumenta un poco la dificultad del juego.
+### Otras variantes
 
-Según se van colocando casillas, se bloquean las adyacentes durante el siguiente turno. De esta forma, se complica el hacer un camino más rápido, ya que pueden bloquearte casillas que necesites.
+Este es el catálogo de modos de juego disponibles:
 
-<img width="49%" height="auto" src="./images/HvHTabu1.png"> <img width="49%" height="auto" src="./images/HvHTabu2.png">
+<img width="49%" height="auto" src="./images/Variantes.png">
 
-### Holey Y
-Al inicio de la partida se bloquean aleatoriamente varias casillas del tablero, por lo que no podrás pasar por ellas. 
+#### Regla del pastel
+El Jugador 1 elige donde va la primera ficha. Entonces el Jugador 2 decide si prefiere quedarse con esa posicion o ceder el turno.
 
-<img width="49%" height="auto" src="./images/HvHHoley.png">
+<img width="49%" height="auto" src="./images/Pastel.png">
 
+#### Master Y
+Las reglas son idénticas al Y estándar salvo que en cada turno el jugador activo coloca 2 piezas en casillas libres.
+
+<img width="49%" height="auto" src="./images/MasterY.png">
+
+#### Fortune Y - Moneda
+Al inicio de cada turno se lanza una moneda. Un mismo jugador puede mover varias veces seguidas y gana quien conecta los tres lados.
+
+<img width="49%" height="auto" src="./images/FortuneMoneda.png">
+
+#### Fortune Y - Dado
+En cada turno se lanza un dado de 6 caras y el resultado marca cuantas piezas puede colocar el jugador activo antes de pasar el turno.
+
+<img width="49%" height="auto" src="./images/FortuneDado.png">
+
+#### Tabú Y 
+Se juega como el Y estándar, pero no se puede colocar una pieza en ninguna casilla adyacente a la última ficha colocada por el oponente.
+
+<img width="49%" height="auto" src="./images/Tabu1.png"> <img width="49%" height="auto" src="./images/Tabu2.png">
+
+#### Holey Y
+Antes de empezar, algunas casillas se marcan como agujeros aleatorios y ningun jugador puede colocar piezas en ellas.
+
+<img width="49%" height="auto" src="./images/Holey.png">
+
+#### WhY Not
+El primer jugador que forme una conexión de los tres lados con sus propias piezas pierde la partida.
+
+<img width="49%" height="auto" src="./images/WhyNot.png">
+
+### Modo Multijugador
+Podrás crear salas o unirte a otras ya creadas para poder jugar online contra otros jugadores. También hay dispinible un Chat de Sala por el que podrás hablar con tu contrincante a lo largo de la partida
+
+<img width="49%" height="auto" src="./images/Multijugador1.png"> <img width="49%" height="auto" src="./images/Multijugador2.png">
+
+<img width="49%" height="auto" src="./images/Multijugador3.png"> <img width="49%" height="auto" src="./images/Multijugador4.png">
 
 ## Historial
 Todos los usuarios registrados podar acceder al apartado de "Mi Historial". 
@@ -75,6 +112,16 @@ Aquí podréis encontrar las estadísticas de vuestras partidas, además de el r
 Tenemos disponible un ranking con todos los usuarios registrados, de forma que puedas ver quienes son los mejores jugadores e intentar batir sus puntuaciones.
 
 <img width="49%" height="auto" src="./images/Ranking.png">
+
+## Editar Perfil
+Podrás acceder a una vista donde puedes modificar los datos de tu cuenta: Foto de perfil, nombre de usuario o contraseña.
+
+<img width="49%" height="auto" src="./images/Perfil.png">
+
+## Ayuda
+Tenemos disponible un apartado de Ayuda en el que podrás consultar las reglas del juego, las diferentes variantes de juego, o una sección de Preguntas Frecuentes.
+
+<img width="49%" height="auto" src="./images/Ayuda.png">
 
 ---
 # Yovi_es4a - Game Y at UniOvi

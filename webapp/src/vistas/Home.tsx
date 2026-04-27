@@ -14,18 +14,25 @@ import {
 } from "antd";
 import {
   BuildOutlined,
+  DeploymentUnitOutlined,
   PlayCircleOutlined,
   TeamOutlined,
-  DeploymentUnitOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+
 import { getMeta, type MetaResponse } from "../api/gamey";
 import { getUserStats, type UserStats } from "../api/users";
+import {
+  gameRouteForVariant,
+  hvhRouteForVariant,
+  HVH_ONLY_VARIANTS,
+  STANDALONE_VARIANTS,
+  type Variant,
+} from "../game/variants";
 import { getUserSession } from "../utils/session";
 import AppHeader from "./AppHeader.tsx";
 import DifficultySelect from "./Dificultyselect.tsx";
 import UserStatsSummary from "./UserStats";
-import type { Variant, VariantId } from "./VariantSelect";
 
 const { Title, Text } = Typography;
 
@@ -37,32 +44,44 @@ type LastConfigHvH = { size: number; hvhstarter: StarterHvH };
 
 const LAST_CONFIG_KEY_HVB = "yovi:lastGameConfig";
 const LAST_CONFIG_KEY_HVH = "yovi:lastGameConfigHvh";
+const FALLBACK_BOTS = ["random_bot", "mcts_medio", "mcts_completo_medio", "mcts_completo_dificil"];
 
-// ─── Bots de fallback ─────────────────────────────────────────────────────────
-// Lista completa de bots conocidos para cuando el backend no está disponible.
-// Incluye los 4 niveles de dificultad que muestra DifficultySelect.
-const FALLBACK_BOTS = ["random_bot", "mcts_medio", "mcts_dificil", "mcts_demencial"];
+const LEGACY_BOT_ALIASES: Record<string, string> = {
+  mcts_dificil: "mcts_completo_medio",
+  mcts_demencial: "mcts_completo_dificil",
+};
 
-// ─── Helpers de localStorage ──────────────────────────────────────────────────
+function normalizeBotId(botId: string) {
+  return LEGACY_BOT_ALIASES[botId] ?? botId;
+}
 
 function loadLastConfigHvB(): LastConfigHvB | null {
   try {
     const raw = localStorage.getItem(LAST_CONFIG_KEY_HVB);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvB>;
-    if (typeof parsed.size !== "number") return null;
-    if (typeof parsed.botId !== "string") return null;
-    if (parsed.hvbstarter !== "human" && parsed.hvbstarter !== "bot" && parsed.hvbstarter !== "random") return null;
-    return { size: parsed.size, botId: parsed.botId, hvbstarter: parsed.hvbstarter };
+    if (typeof parsed.size !== "number" || typeof parsed.botId !== "string") {
+      return null;
+    }
+    if (
+      parsed.hvbstarter !== "human" &&
+      parsed.hvbstarter !== "bot" &&
+      parsed.hvbstarter !== "random"
+    ) {
+      return null;
+    }
+    return { size: parsed.size, botId: normalizeBotId(parsed.botId), hvbstarter: parsed.hvbstarter };
   } catch {
     return null;
   }
 }
 
-function saveLastConfigHvB(cfg: LastConfigHvB) {
+function saveLastConfigHvB(config: LastConfigHvB) {
   try {
-    localStorage.setItem(LAST_CONFIG_KEY_HVB, JSON.stringify(cfg));
-  } catch { }
+    localStorage.setItem(LAST_CONFIG_KEY_HVB, JSON.stringify(config));
+  } catch {
+    // ignore storage errors
+  }
 }
 
 function loadLastConfigHvH(): LastConfigHvH | null {
@@ -71,61 +90,37 @@ function loadLastConfigHvH(): LastConfigHvH | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LastConfigHvH>;
     if (typeof parsed.size !== "number") return null;
-    if (parsed.hvhstarter !== "player0" && parsed.hvhstarter !== "player1" && parsed.hvhstarter !== "random") return null;
+    if (
+      parsed.hvhstarter !== "player0" &&
+      parsed.hvhstarter !== "player1" &&
+      parsed.hvhstarter !== "random"
+    ) {
+      return null;
+    }
     return { size: parsed.size, hvhstarter: parsed.hvhstarter };
   } catch {
     return null;
   }
 }
 
-function saveLastConfigHvH(cfg: LastConfigHvH) {
+function saveLastConfigHvH(config: LastConfigHvH) {
   try {
-    localStorage.setItem(LAST_CONFIG_KEY_HVH, JSON.stringify(cfg));
-  } catch { }
+    localStorage.setItem(LAST_CONFIG_KEY_HVH, JSON.stringify(config));
+  } catch {
+    // ignore storage errors
+  }
 }
 
-function clampSize(n: number, meta: MetaResponse | null) {
+function clampSize(size: number, meta: MetaResponse | null) {
   const min = meta?.min_board_size ?? 2;
   const max = meta?.max_board_size ?? 15;
-  return Math.min(Math.max(n, min), max);
+  return Math.min(Math.max(size, min), max);
 }
-
-// ─── Rutas de juego por variante ─────────────────────────────────────────────
-
-function gameRouteForVariant(variantId: VariantId): string {
-  const map: Record<VariantId, string> = {
-    classic: "/game-hvb",
-    pastel: "/game-pastel",
-    master: "/game-master",
-    fortune_coin: "/game-fortune-coin",
-    fortune_dice: "/game-fortune-dice",
-    tabu: "/game-tabu",
-    holey: "/game-holey",
-    why_not: "/game-why-not",
-    poly_y: "/game-poly-y",
-    hex: "/game-hex",
-  };
-  return map[variantId] ?? "/game-hvb";
-}
-
-/** Ruta HvH: classic tiene su propia ruta /game-hvh; el resto usa la ruta de variante. */
-function hvhRouteForVariant(variantId: VariantId): string {
-  if (variantId === "classic") return "/game-hvh";
-  return gameRouteForVariant(variantId);
-}
-
-// Variantes que solo tienen modo HvH (el bot no puede respetar sus reglas extra)
-const HVH_ONLY_VARIANTS: VariantId[] = ["fortune_coin", "fortune_dice", "poly_y", "holey", "tabu", "why_not", "pastel"];
-const STANDALONE_VARIANTS: VariantId[] = ["hex"];
-
-// ─── Props ───────────────────────────────────────────────────────────────────
 
 type Props = {
   variant: Variant;
   onChangeVariant: () => void;
 };
-
-// ─── Componente ──────────────────────────────────────────────────────────────
 
 export default function Home({ variant, onChangeVariant }: Props) {
   const navigate = useNavigate();
@@ -133,34 +128,24 @@ export default function Home({ variant, onChangeVariant }: Props) {
 
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [size, setSize] = useState(7);
-
-  // HvB config
   const [botId, setBotId] = useState("random_bot");
   const [hvbstarter, setHvbStarter] = useState<StarterHvB>("human");
-
-  // HvH config
   const [hvhStarter, setHvhStarter] = useState<StarterHvH>("player0");
-
-  // Pantalla de dificultad HvB
   const [showDifficulty, setShowDifficulty] = useState(false);
-
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     getMeta()
-      .then((c) => setMeta(c))
+      .then((config) => setMeta(config))
       .catch(() =>
-        // FIX: el fallback incluye los 4 bots reales con sus IDs correctos
-        // para que DifficultySelect pueda mostrar Fácil/Medio/Difícil/Demencial
-        // incluso cuando el backend gamey no está disponible.
         setMeta({
           api_version: "v1",
           min_board_size: 2,
           max_board_size: 15,
           bots: FALLBACK_BOTS,
-        })
+        }),
       );
   }, []);
 
@@ -182,14 +167,18 @@ export default function Home({ variant, onChangeVariant }: Props) {
 
   useEffect(() => {
     if (!meta) return;
-    setSize((prev) => clampSize(prev, meta));
+    setSize((currentSize) => clampSize(currentSize, meta));
+    setBotId((currentBotId) => {
+      const normalizedBotId = normalizeBotId(currentBotId);
+      return meta.bots.includes(normalizedBotId) ? normalizedBotId : FALLBACK_BOTS[0];
+    });
   }, [meta]);
 
   useEffect(() => {
     if (!session?.username) {
       setStats(null);
-      setStatsError(null);
       setStatsLoading(false);
+      setStatsError(null);
       return;
     }
 
@@ -197,71 +186,62 @@ export default function Home({ variant, onChangeVariant }: Props) {
     setStatsError(null);
 
     getUserStats(session.username)
-      .then((data) => setStats(data.stats))
-      .catch((e) => setStatsError(e.message))
+      .then((response) => setStats(response.stats))
+      .catch((error) => setStatsError(error.message))
       .finally(() => setStatsLoading(false));
   }, [session?.username]);
 
   const minSize = meta?.min_board_size ?? 2;
   const maxSize = meta?.max_board_size ?? 15;
-
-  // ─── Bots disponibles (con fallback garantizado) ───────────────────────────
-  // Si meta ya está cargado usamos sus bots; si no, usamos el fallback directamente.
-  // Esto evita que DifficultySelect se renderice con una lista vacía.
   const availableBots = meta?.bots?.length ? meta.bots : FALLBACK_BOTS;
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
-
-  function handleGoToDifficulty() {
-    setShowDifficulty(true);
-  }
-
   function handleConfirmDifficulty() {
-    const s = clampSize(size, meta);
-    saveLastConfigHvB({ size: s, botId, hvbstarter });
+    const clampedSize = clampSize(size, meta);
+    saveLastConfigHvB({ size: clampedSize, botId, hvbstarter });
+
     const params = new URLSearchParams();
-    params.set("size", String(s));
+    params.set("size", String(clampedSize));
     params.set("bot", botId);
     params.set("hvbstarter", hvbstarter);
     params.set("variant", variant.id);
+
     navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
   }
 
   function handlePlayHvH() {
-    const s = clampSize(size, meta);
-    saveLastConfigHvH({ size: s, hvhstarter: hvhStarter });
+    const clampedSize = clampSize(size, meta);
+    saveLastConfigHvH({ size: clampedSize, hvhstarter: hvhStarter });
+
     const params = new URLSearchParams();
-    params.set("size", String(s));
+    params.set("size", String(clampedSize));
     params.set("hvhstarter", hvhStarter);
     params.set("variant", variant.id);
+
     navigate(`${hvhRouteForVariant(variant.id)}?${params.toString()}`);
   }
 
   function handlePlayStandalone() {
-    const s = clampSize(size, meta);
+    const clampedSize = clampSize(size, meta);
     const params = new URLSearchParams();
-    params.set("size", String(s));
+    params.set("size", String(clampedSize));
     params.set("variant", variant.id);
     navigate(`${gameRouteForVariant(variant.id)}?${params.toString()}`);
   }
-
-  // ─── Pantalla de dificultad HvB ───────────────────────────────────────────
 
   if (showDifficulty) {
     return (
       <DifficultySelect
         bots={availableBots}
         selectedBot={botId}
-        onSelect={(next) => {
-          setBotId(next);
-          saveLastConfigHvB({ size, botId: next, hvbstarter });
+        onSelect={(nextBot) => {
+          setBotId(nextBot);
+          saveLastConfigHvB({ size, botId: nextBot, hvbstarter });
         }}
         onConfirm={handleConfirmDifficulty}
+        onBackHome={() => setShowDifficulty(false)}
       />
     );
   }
-
-  // ─── Variante standalone (Hex) ────────────────────────────────────────────
 
   if (STANDALONE_VARIANTS.includes(variant.id)) {
     return (
@@ -273,23 +253,36 @@ export default function Home({ variant, onChangeVariant }: Props) {
             <Card>
               <Space direction="vertical" size={16} style={{ width: "100%" }}>
                 <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
-                <Divider>Configuración</Divider>
+                <Divider>Configuracion</Divider>
                 <Flex justify="center" gap={16} wrap="wrap" align="end">
-                  <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
-                  <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayStandalone}>
+                  <SizeInput
+                    size={size}
+                    setSize={setSize}
+                    meta={meta}
+                    minSize={minSize}
+                    maxSize={maxSize}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<PlayCircleOutlined />}
+                    onClick={handlePlayStandalone}
+                  >
                     Jugar
                   </Button>
                 </Flex>
               </Space>
             </Card>
-            <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
+            <StatsSection
+              session={session}
+              stats={stats}
+              statsLoading={statsLoading}
+              statsError={statsError}
+            />
           </Space>
         </div>
       </Flex>
     );
   }
-
-  // ─── Variantes solo HvH ───────────────────────────────────────────────────
 
   if (HVH_ONLY_VARIANTS.includes(variant.id)) {
     return (
@@ -303,22 +296,36 @@ export default function Home({ variant, onChangeVariant }: Props) {
                 <VariantHeader variant={variant} onChangeVariant={onChangeVariant} />
                 <Divider>Human vs. Human</Divider>
                 <Flex justify="center" gap={16} wrap="wrap" align="end">
-                  <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
-                  <StarterHvHInput hvhStarter={hvhStarter} setHvhStarter={setHvhStarter} saveLastConfigHvH={saveLastConfigHvH} size={size} />
+                  <SizeInput
+                    size={size}
+                    setSize={setSize}
+                    meta={meta}
+                    minSize={minSize}
+                    maxSize={maxSize}
+                  />
+                  <StarterHvHInput
+                    hvhStarter={hvhStarter}
+                    setHvhStarter={setHvhStarter}
+                    saveLastConfigHvH={saveLastConfigHvH}
+                    size={size}
+                  />
                   <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
                     Jugar
                   </Button>
                 </Flex>
               </Space>
             </Card>
-            <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
+            <StatsSection
+              session={session}
+              stats={stats}
+              statsLoading={statsLoading}
+              statsError={statsError}
+            />
           </Space>
         </div>
       </Flex>
     );
   }
-
-  // ─── Variantes completas (HvB + HvH) ─────────────────────────────────────
 
   return (
     <Flex justify="center" align="start" style={{ padding: 20, minHeight: "100vh" }}>
@@ -334,7 +341,13 @@ export default function Home({ variant, onChangeVariant }: Props) {
               <Divider>Human vs. Bot</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
+                <SizeInput
+                  size={size}
+                  setSize={setSize}
+                  meta={meta}
+                  minSize={minSize}
+                  maxSize={maxSize}
+                />
 
                 <div>
                   <Text type="secondary">
@@ -343,9 +356,9 @@ export default function Home({ variant, onChangeVariant }: Props) {
                   <div>
                     <Select
                       value={hvbstarter}
-                      onChange={(next) => {
-                        setHvbStarter(next);
-                        saveLastConfigHvB({ size, botId, hvbstarter: next });
+                      onChange={(nextStarter) => {
+                        setHvbStarter(nextStarter);
+                        saveLastConfigHvB({ size, botId, hvbstarter: nextStarter });
                       }}
                       style={{ width: 200 }}
                       options={[
@@ -360,7 +373,7 @@ export default function Home({ variant, onChangeVariant }: Props) {
                 <Button
                   type="primary"
                   icon={<PlayCircleOutlined />}
-                  onClick={handleGoToDifficulty}
+                  onClick={() => setShowDifficulty(true)}
                 >
                   Jugar
                 </Button>
@@ -369,20 +382,32 @@ export default function Home({ variant, onChangeVariant }: Props) {
               <Divider>Human vs. Human</Divider>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
-                <SizeInput size={size} setSize={setSize} meta={meta} minSize={minSize} maxSize={maxSize} />
-                <StarterHvHInput hvhStarter={hvhStarter} setHvhStarter={setHvhStarter} saveLastConfigHvH={saveLastConfigHvH} size={size} />
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  onClick={handlePlayHvH}
-                >
+                <SizeInput
+                  size={size}
+                  setSize={setSize}
+                  meta={meta}
+                  minSize={minSize}
+                  maxSize={maxSize}
+                />
+                <StarterHvHInput
+                  hvhStarter={hvhStarter}
+                  setHvhStarter={setHvhStarter}
+                  saveLastConfigHvH={saveLastConfigHvH}
+                  size={size}
+                />
+                <Button type="primary" icon={<PlayCircleOutlined />} onClick={handlePlayHvH}>
                   Jugar
                 </Button>
               </Flex>
             </Space>
           </Card>
 
-          <StatsSection session={session} stats={stats} statsLoading={statsLoading} statsError={statsError} />
+          <StatsSection
+            session={session}
+            stats={stats}
+            statsLoading={statsLoading}
+            statsError={statsError}
+          />
         </Space>
       </div>
     </Flex>
@@ -412,8 +437,6 @@ function MultiplayerCard({ onClick }: { onClick: () => void }) {
   );
 }
 
-// ─── Subcomponentes reutilizables ─────────────────────────────────────────────
-
 function VariantHeader({
   variant,
   onChangeVariant,
@@ -436,7 +459,7 @@ function VariantHeader({
         <Tag color={variant.tagColor}>{variant.tagLabel}</Tag>
       </Flex>
       <Button
-        size="medium"
+        size="middle"
         icon={<DeploymentUnitOutlined />}
         onClick={onChangeVariant}
         data-testid="change-variant-btn"
@@ -455,7 +478,7 @@ function SizeInput({
   maxSize,
 }: {
   size: number;
-  setSize: (n: number) => void;
+  setSize: (size: number) => void;
   meta: MetaResponse | null;
   minSize: number;
   maxSize: number;
@@ -463,7 +486,7 @@ function SizeInput({
   return (
     <div>
       <Text type="secondary">
-        <BuildOutlined /> Tamaño [{minSize} - {maxSize}]:
+        <BuildOutlined /> Tamano [{minSize} - {maxSize}]:
       </Text>
       <div>
         <InputNumber
@@ -485,8 +508,8 @@ function StarterHvHInput({
   size,
 }: {
   hvhStarter: StarterHvH;
-  setHvhStarter: (v: StarterHvH) => void;
-  saveLastConfigHvH: (cfg: LastConfigHvH) => void;
+  setHvhStarter: (starter: StarterHvH) => void;
+  saveLastConfigHvH: (config: LastConfigHvH) => void;
   size: number;
 }) {
   return (
@@ -497,9 +520,9 @@ function StarterHvHInput({
       <div>
         <Select
           value={hvhStarter}
-          onChange={(next) => {
-            setHvhStarter(next);
-            saveLastConfigHvH({ size, hvhstarter: next });
+          onChange={(nextStarter) => {
+            setHvhStarter(nextStarter);
+            saveLastConfigHvH({ size, hvhstarter: nextStarter });
           }}
           style={{ width: 200 }}
           options={[
@@ -525,6 +548,7 @@ function StatsSection({
   statsError: string | null;
 }) {
   if (!session) return null;
+
   return (
     <>
       {statsError && (

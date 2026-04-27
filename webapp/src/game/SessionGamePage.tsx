@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Card, Flex, Space, Typography } from "antd";
 import { BulbOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +35,7 @@ type ResultConfig = {
 type TurnPresentation = {
   label: string;
   color: string;
+  labelColor?: string;
 };
 
 type TurnConfig = {
@@ -53,7 +54,7 @@ type AbandonedGamePayload = {
   totalMoves: number;
 };
 
-type Props<TYen extends GameYEN> = {
+export type SessionGamePageProps<TYen extends GameYEN> = {
   deps: readonly unknown[];
   start: () => Promise<SessionGameStartResponse<TYen>>;
   move: (
@@ -74,6 +75,9 @@ type Props<TYen extends GameYEN> = {
   disabledCells?: Set<number>;
   celebrateWinner?: (winner: string | null) => boolean;
   shouldCountMove?: (turn: string | null) => boolean;
+  mapWinner?: (winner: string | null) => string | null;
+  turnIndicator?: React.ReactNode;
+  turnIndicatorExtra?: React.ReactNode;
 };
 
 export default function SessionGamePage<TYen extends GameYEN>({
@@ -92,7 +96,10 @@ export default function SessionGamePage<TYen extends GameYEN>({
   guestSaveLoading = false,
   disabledCells,
   shouldCountMove,
-}: Props<TYen>) {
+  mapWinner,
+  turnIndicator: customTurnIndicator,
+  turnIndicatorExtra,
+}: SessionGamePageProps<TYen>) {
   const { modal } = App.useApp();
   const navigate = useNavigate();
   const botTurnInFlight = useRef(false);
@@ -122,6 +129,11 @@ export default function SessionGamePage<TYen extends GameYEN>({
     botMove,
     shouldCountMove,
   });
+
+  const resolvedWinner = useMemo(
+    () => (mapWinner ? mapWinner(winner) : winner),
+    [mapWinner, winner],
+  );
 
   const cells = useMemo(() => {
     const base = yen ? parseYenToCells(yen) : [];
@@ -165,7 +177,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
     });
   }
 
-  async function handleHint() {
+  const handleHint = useCallback(async () => {
     if (!onHint || !gameId || hintUsed) return;
     setHintLoading(true);
     try {
@@ -177,14 +189,14 @@ export default function SessionGamePage<TYen extends GameYEN>({
     } finally {
       setHintLoading(false);
     }
-  }
+  }, [gameId, hintUsed, onHint]);
 
   function handleGuestSaveRequest() {
     if (!gameId || !gameOver) return;
 
     onGuestSaveRequested?.({
       gameId,
-      winner,
+      winner: resolvedWinner,
       totalMoves: moveCount,
     });
   }
@@ -205,10 +217,10 @@ export default function SessionGamePage<TYen extends GameYEN>({
 
     void onGameFinished?.({
       gameId,
-      winner,
+      winner: resolvedWinner,
       totalMoves: moveCount,
     });
-  }, [gameOver, gameId, winner, moveCount, onGameFinished]);
+  }, [gameOver, gameId, resolvedWinner, moveCount, onGameFinished]);
 
   const activeTurn = nextTurn ? turnConfig.turns[nextTurn] : null;
 
@@ -220,14 +232,14 @@ export default function SessionGamePage<TYen extends GameYEN>({
         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
       };
     }
-    if (gameOver && winner === winnerPalette.highlightedWinner) {
+    if (gameOver && resolvedWinner === winnerPalette.highlightedWinner) {
       return { background: winnerPalette.highlightedBackground };
     }
-    if (gameOver && winner) {
+    if (gameOver && resolvedWinner) {
       return { background: winnerPalette.otherWinnerBackground };
     }
     return {};
-  }, [gameOver, activeTurn, winner, winnerPalette]);
+  }, [gameOver, activeTurn, resolvedWinner, winnerPalette]);
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !activeTurn) return null;
@@ -245,7 +257,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
         <Flex justify="space-between" align="center">
           <Text strong>
             {turnConfig.textPrefix ?? "Turno actual:"}{" "}
-            <span style={{ color: activeTurn.color }}>{activeTurn.label}</span>
+            <span style={{ color: activeTurn.labelColor ?? activeTurn.color }}>{activeTurn.label}</span>
+            {turnIndicatorExtra}
           </Text>
           {onHint && (
             <Button
@@ -272,6 +285,8 @@ export default function SessionGamePage<TYen extends GameYEN>({
     loading,
     nextTurn,
     gameId,
+    handleHint,
+    turnIndicatorExtra,
   ]);
 
   useEffect(() => {
@@ -293,8 +308,9 @@ export default function SessionGamePage<TYen extends GameYEN>({
   }, [gameId]);
 
   const shouldCelebrate =
-    gameOver && winner !== null && winner !== "bot" && !animationFinished;
-  const shouldShowGameOver = gameOver && winner === "bot" && !animationFinished;
+    gameOver && resolvedWinner !== null && resolvedWinner !== "bot" && !animationFinished;
+  const shouldShowGameOver =
+    gameOver && resolvedWinner === "bot" && !animationFinished;
 
   return (
     <GameShell
@@ -306,7 +322,7 @@ export default function SessionGamePage<TYen extends GameYEN>({
       emptyText={resultConfig.emptyText ?? "No se pudo crear la partida."}
       onAbandon={handleAbandonGame}
       abandonDisabled={loading || abandoning || gameOver}
-      turnIndicator={turnIndicator}
+      turnIndicator={customTurnIndicator ?? turnIndicator}
       board={
         <Card
           style={{
@@ -383,13 +399,13 @@ export default function SessionGamePage<TYen extends GameYEN>({
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={4} style={{ margin: 0 }}>
-                  {resultConfig.getResultTitle(winner)}
+                  {resultConfig.getResultTitle(resolvedWinner)}
                 </Title>
               </Flex>
 
               <Flex justify="center" gap={16} wrap="wrap" align="end">
                 <Title level={5} style={{ margin: 0 }}>
-                  {resultConfig.getResultText(winner)}
+                  {resultConfig.getResultText(resolvedWinner)}
                 </Title>
               </Flex>
 

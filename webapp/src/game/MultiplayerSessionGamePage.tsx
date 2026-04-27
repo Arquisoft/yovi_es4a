@@ -24,6 +24,8 @@ type Props = {
   boardSize: number;
   cells: Cell[];
   disabledCells: Set<number>;
+  neutralCells?: Set<number>;
+  boardBanner?: React.ReactNode;
   boardDisabled: boolean;
   onCellClick: (cellId: number) => void;
 
@@ -37,6 +39,8 @@ type Props = {
 
   onAbandon: () => Promise<void> | void;
   onBack: () => void;
+
+  turnIndicatorExtra?: React.ReactNode;
 };
 
 export default function MultiplayerSessionGamePage({
@@ -50,6 +54,8 @@ export default function MultiplayerSessionGamePage({
   boardSize,
   cells,
   disabledCells,
+  neutralCells,
+  boardBanner,
   boardDisabled,
   onCellClick,
   myPlayer,
@@ -60,6 +66,7 @@ export default function MultiplayerSessionGamePage({
   onOpenChat,
   onAbandon,
   onBack,
+  turnIndicatorExtra,
 }: Props) {
   const { modal } = App.useApp();
   const [abandoning, setAbandoning] = useState(false);
@@ -70,7 +77,7 @@ export default function MultiplayerSessionGamePage({
 
   const turnIndicator = useMemo(() => {
     if (gameOver || !nextTurn)
-        return null;
+      return null;
 
     const turnText =
       nextTurn === myPlayer ? "🟢 ¡TU TURNO!" : "⌛ Esperando rival...";
@@ -83,7 +90,10 @@ export default function MultiplayerSessionGamePage({
         }}
       >
         <Flex justify="space-between" align="center">
-          <Text strong>{turnText}</Text>
+          <Space>
+            <Text strong>{turnText}</Text>
+            {turnIndicatorExtra}
+          </Space>
 
           <Space>
             {mode === "tabu_hvh" &&
@@ -119,6 +129,7 @@ export default function MultiplayerSessionGamePage({
     nextTurn,
     onOpenChat,
     gameOver,
+    turnIndicatorExtra,
   ]);
 
   const boardCardStyle = useMemo(() => {
@@ -193,24 +204,29 @@ export default function MultiplayerSessionGamePage({
       abandonDisabled={loading || abandoning || gameOver}
       turnIndicator={turnIndicator}
       board={
-        <Card
-          style={{
-            ...boardCardStyle,
-            width: "100%",
-            overflow: "hidden",
-          }}
-          bodyStyle={{
-            padding: "clamp(8px, 2vw, 16px)",
-          }}
-        >
-          <Board
-            size={boardSize}
-            cells={cells}
-            disabled={boardDisabled}
-            disabledCells={disabledCells}
-            onCellClick={onCellClick}
-          />
-        </Card>
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {boardBanner}
+
+          <Card
+            style={{
+              ...boardCardStyle,
+              width: "100%",
+              overflow: "hidden",
+            }}
+            bodyStyle={{
+              padding: "clamp(8px, 2vw, 16px)",
+            }}
+          >
+            <Board
+              size={boardSize}
+              cells={cells}
+              disabled={boardDisabled}
+              disabledCells={disabledCells}
+              neutralCells={neutralCells}
+              onCellClick={onCellClick}
+            />
+          </Card>
+        </Space>
       }
       result={
         gameOver ? (
@@ -264,3 +280,4 @@ export default function MultiplayerSessionGamePage({
     />
   );
 }
+

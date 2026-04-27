@@ -40,10 +40,11 @@ vi.mock("../vistas/AppHeader.tsx", () => ({
 }));
 
 vi.mock("../vistas/Dificultyselect.tsx", () => ({
-    default: ({ selectedBot, onSelect, onConfirm }: any) => (
+    default: ({ selectedBot, onSelect, onConfirm, onBackHome }: any) => (
         <div data-testid="difficulty-select" data-bot={selectedBot}>
             <button aria-label="select-mcts_bot" onClick={() => onSelect("mcts_bot")}>mcts_bot</button>
             <button aria-label="confirm-difficulty" onClick={onConfirm}>Confirmar</button>
+            <button aria-label="back-home" onClick={onBackHome}>Volver</button>
         </div>
     ),
 }));
@@ -403,6 +404,23 @@ describe("Home", () => {
         );
     });
 
+    it("permite volver desde la selección de dificultad a Home", async () => {
+        metaOk();
+
+        const user = userEvent.setup();
+        renderHome();
+
+        const playButtons = screen.getAllByRole("button", { name: "Jugar" });
+        await user.click(playButtons[0]);
+
+        expect(screen.getByTestId("difficulty-select")).toBeInTheDocument();
+
+        await user.click(screen.getByLabelText("back-home"));
+
+        expect(screen.queryByTestId("difficulty-select")).not.toBeInTheDocument();
+        expect(screen.getByText("Human vs. Bot")).toBeInTheDocument();
+    });
+
     it("permite cambiar hvhstarter y navega a /game-hvh con query completa", async () => {
         metaOk();
 
@@ -568,6 +586,43 @@ describe("Home", () => {
         await user.click(confirmButton);
 
         expect(navigateMock).toHaveBeenCalled();
+    });
+
+    it("renderiza la rama standalone y navega a la ruta específica de la variante", async () => {
+        metaOk();
+        const user = userEvent.setup();
+
+        renderHome({
+            id: "hex",
+            label: "Hex",
+            implemented: false,
+        });
+
+        expect(screen.queryByLabelText("hvb-starter-select")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("hvh-starter-select")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Jugar" }));
+
+        expect(navigateMock).toHaveBeenCalledWith("/game-hex?size=7&variant=hex");
+    });
+
+    it("renderiza la rama HvH-only y navega a su ruta dedicada", async () => {
+        metaOk();
+        const user = userEvent.setup();
+
+        renderHome({
+            id: "master",
+            label: "Master Y",
+            implemented: true,
+        });
+
+        expect(screen.queryByLabelText("hvb-starter-select")).not.toBeInTheDocument();
+        const hvhStarterSelect = await screen.findByLabelText("hvh-starter-select");
+        await user.selectOptions(hvhStarterSelect, "random");
+
+        await user.click(screen.getByRole("button", { name: "Jugar" }));
+
+        expect(navigateMock).toHaveBeenCalledWith("/game-master?size=7&hvhstarter=random&variant=master");
     });
 
     // ── Estadísticas ─────────────────────────────────────────────────────────

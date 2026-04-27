@@ -4,8 +4,9 @@ services:
     image: mongo:latest
     container_name: mongodb
     # Mongo no debería estar abierto a internet, por lo que no exponemos el puerto fuera del contenedor
-    ports:
-      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-secretpassword}
     networks:
       - monitor-net
     volumes:
@@ -38,7 +39,7 @@ services:
       - mongodb
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://mongodb:27017/yovi
+      - MONGODB_URI=${MONGODB_URI}
       - EMAIL_USER=${EMAIL_USER}  # variables para el envío del correo
       - EMAIL_PASS=${EMAIL_PASS}
       - FRONTEND_URL=${FRONTEND_URL} # redirecciona a esta URL tras verificar cuenta
@@ -74,6 +75,7 @@ services:
       - "9090:9090"
     volumes:
       - ./users/monitoring/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
     networks:
       - monitor-net
 
@@ -84,6 +86,7 @@ services:
       - "9091:3000"
     volumes:
       - ./users/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
     networks:
       - monitor-net
 
@@ -93,3 +96,5 @@ networks:
 
 volumes:
   mongo-data:
+  prometheus-data:
+  grafana-data:

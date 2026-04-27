@@ -41,14 +41,15 @@ vi.mock("../game/variants", () => ({
 
 vi.mock("antd", async () => {
   const actual = await vi.importActual<any>("antd");
-  return {
-    ...actual,
-    message: {
-      warning: vi.fn(),
-      error: vi.fn(),
-    },
-  };
-});
+    return {
+      ...actual,
+      message: {
+        info: vi.fn(),
+        warning: vi.fn(),
+        error: vi.fn(),
+      },
+    };
+  });
 
 describe("useMultiplayerGameSession", () => {
   const socketMock = socket as any;
@@ -409,7 +410,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(7);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 7, undefined);
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 7, undefined, undefined);
     expect(socketMock.emit).toHaveBeenLastCalledWith("playMove", {
       code: "ROOM1",
       cellId: 7,
@@ -533,7 +534,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(4);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 4, "host-123");
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 4, "host-123", undefined);
   });
 
   it("muestra message.error si hvhMove falla", async () => {
@@ -592,7 +593,7 @@ describe("useMultiplayerGameSession", () => {
       await result.current.handleCellClick(9);
     });
 
-    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 9, undefined);
+    expect(mockedHvhMove).toHaveBeenCalledWith("game-1", 9, undefined, undefined);
     expect(socketMock.emit).toHaveBeenCalledWith("playMove", {
       code: "ROOM1",
       cellId: 9,
@@ -727,4 +728,184 @@ describe("useMultiplayerGameSession", () => {
     expect(socketMock.off).toHaveBeenCalledWith("enemyMove", expect.any(Function));
     expect(socketMock.off).toHaveBeenCalledWith("playerDisconnected", expect.any(Function));
   });
+  it("inicializa pastel_hvh con estado neutral y lo propaga en startGame", async () => {
+    const config = { size: 11, mode: "pastel_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    expect(socketMock.emit).toHaveBeenCalledWith("startGame", {
+      code: "ROOM1",
+      gameId: "game-1",
+      hostClientId: "client-123",
+      extra: {
+        pastel: {
+          phase: "place_neutral",
+          neutralCellId: null,
+          swapped: false,
+          firstPlayer: "player0",
+        },
+      },
+    });
+
+    expect(result.current.pastelState).toEqual({
+      phase: "place_neutral",
+      neutralCellId: null,
+      swapped: false,
+      firstPlayer: "player0",
+    });
+    expect(result.current.displayMyPlayer).toBe("player0");
+    expect(result.current.neutralCells).toEqual(new Set());
+  });
+
+  it("sincroniza correctamente los 2 movimientos de master_hvh", async () => {
+    const config = { size: 11, mode: "master_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    mockedHvhMove
+      .mockResolvedValueOnce({
+        yen: { size: 11, layout: "TURN-1" },
+        status: { state: "ongoing", next: "player0" },
+      } as any)
+      .mockResolvedValueOnce({
+        yen: { size: 11, layout: "TURN-2" },
+        status: { state: "ongoing", next: "player1" },
+      } as any);
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    expect(result.current.piecesLeft).toBe(2);
+
+    await act(async () => {
+      await result.current.handleCellClick(3);
+    });
+
+    expect(mockedHvhMove).toHaveBeenNthCalledWith(1, "game-1", 3, undefined, 0);
+    expect(result.current.nextTurn).toBe("player0");
+    expect(result.current.piecesLeft).toBe(1);
+    expect(socketMock.emit).toHaveBeenCalledWith("variantUpdate", {
+      code: "ROOM1",
+      piecesLeft: 1,
+    });
+
+    await act(async () => {
+      await result.current.handleCellClick(4);
+    });
+
+    expect(mockedHvhMove).toHaveBeenNthCalledWith(2, "game-1", 4, undefined, undefined);
+    expect(result.current.nextTurn).toBe("player1");
+    expect(result.current.piecesLeft).toBe(2);
+    expect(socketMock.emit).toHaveBeenCalledWith("variantUpdate", {
+      code: "ROOM1",
+      piecesLeft: 2,
+    });
+  });
+
+  it("sincroniza correctamente el contador y reroll de fortune_dice_hvh", async () => {
+    const randomSpy = vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0.4)
+      .mockReturnValueOnce(0.8);
+
+    const config = { size: 11, mode: "fortune_dice_hvh" } as const;
+    const onInvalidState = vi.fn();
+    const onLeaveLobby = vi.fn();
+
+    mockedHvhMove
+      .mockResolvedValueOnce({
+        yen: { size: 11, layout: "DICE-1" },
+        status: { state: "ongoing", next: "player0" },
+      } as any)
+      .mockResolvedValueOnce({
+        yen: { size: 11, layout: "DICE-2" },
+        status: { state: "ongoing", next: "player0" },
+      } as any)
+      .mockResolvedValueOnce({
+        yen: { size: 11, layout: "DICE-3" },
+        status: { state: "ongoing", next: "player1" },
+      } as any);
+
+    const { result } = renderHook(() =>
+      useMultiplayerGameSession({
+        code: "ROOM1",
+        role: "host",
+        config,
+        onInvalidState,
+        onLeaveLobby,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.gameId).toBe("game-1");
+    });
+
+    expect(result.current.diceValue).toBe(3);
+    expect(result.current.piecesLeft).toBe(3);
+
+    await act(async () => {
+      await result.current.handleCellClick(3);
+    });
+
+    expect(mockedHvhMove).toHaveBeenNthCalledWith(1, "game-1", 3, undefined, 0);
+    expect(result.current.nextTurn).toBe("player0");
+    expect(result.current.piecesLeft).toBe(2);
+    expect(socketMock.emit).toHaveBeenCalledWith("variantUpdate", {
+      code: "ROOM1",
+      piecesLeft: 2,
+    });
+
+    await act(async () => {
+      await result.current.handleCellClick(4);
+    });
+
+    expect(mockedHvhMove).toHaveBeenNthCalledWith(2, "game-1", 4, undefined, 0);
+    expect(result.current.nextTurn).toBe("player0");
+    expect(result.current.piecesLeft).toBe(1);
+    expect(socketMock.emit).toHaveBeenCalledWith("variantUpdate", {
+      code: "ROOM1",
+      piecesLeft: 1,
+    });
+
+    await act(async () => {
+      await result.current.handleCellClick(5);
+    });
+
+    expect(mockedHvhMove).toHaveBeenNthCalledWith(3, "game-1", 5, undefined, undefined);
+    expect(result.current.nextTurn).toBe("player1");
+    expect(result.current.diceValue).toBe(5);
+    expect(result.current.piecesLeft).toBe(5);
+    expect(socketMock.emit).toHaveBeenCalledWith("variantUpdate", {
+      code: "ROOM1",
+      diceValue: 5,
+      piecesLeft: 5,
+    });
+
+    randomSpy.mockRestore();
+  });
+  
 });

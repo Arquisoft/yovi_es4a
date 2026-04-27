@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import request from 'supertest'
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
@@ -83,7 +83,7 @@ describe('POST /createuser', () => {
     // Guardamos estado original
     const oldEnv = process.env.NODE_ENV;
     const oldEmail = process.env.EMAIL_USER;
-    
+
     // Forzamos fallo: Le decimos al backend que no está en test, pero le quitamos las credenciales de email
     process.env.NODE_ENV = 'development';
     delete process.env.EMAIL_USER;
@@ -113,7 +113,7 @@ describe('Validaciones de formato de usuario', () => {
     const res = await api
       .post('/createuser')
       .send({ username: 'ab', password: '123', email: 'ab@test.com' })
-    
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/al menos 3 caracteres/i)
   })
@@ -122,7 +122,7 @@ describe('Validaciones de formato de usuario', () => {
     const res = await api
       .post('/createuser')
       .send({ username: 'usuario_extremadamente_largo', password: '123', email: 'largo@test.com' })
-    
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/exceder los 20 caracteres/i)
   })
@@ -131,7 +131,7 @@ describe('Validaciones de formato de usuario', () => {
     const res = await api
       .post('/createuser')
       .send({ password: '123', email: 'falta@test.com' })
-    
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/obligatorio/i)
   })
@@ -342,6 +342,44 @@ describe('POST /users/:username/games', () => {
     expect(res.body.stats.gamesAbandoned).toBeGreaterThanOrEqual(1)
     expect(res.body.stats.currentWinStreak).toBe(0)
   })
+
+  it('registra empates y actualiza gamesDrawn', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-draw-test',
+        mode: 'classic_hvh',
+        result: 'draw',
+        boardSize: 7,
+        totalMoves: 12,
+        opponent: 'Jugador local',
+        startedBy: 'player0',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.result).toBe('draw')
+    expect(res.body.stats.gamesDrawn).toBeGreaterThanOrEqual(1)
+    expect(res.body.stats.currentWinStreak).toBe(0)
+  })
+
+  it('normaliza aliases legacy como whynot_hvh al modo canónico', async () => {
+    const res = await api
+      .post('/users/GameUser/games')
+      .send({
+        gameId: 'game-legacy-alias',
+        mode: 'whynot_hvh',
+        result: 'won',
+        boardSize: 9,
+        totalMoves: 9,
+        opponent: 'Jugador local',
+        startedBy: 'player1',
+      })
+      .set('Accept', 'application/json')
+
+    expect(res.status).toBe(201)
+    expect(res.body.savedGame.mode).toBe('why_not_hvh')
+  })
 })
 
 describe('GET /users/:username/history', () => {
@@ -459,6 +497,15 @@ describe('GET /users/:username/history', () => {
     expect(resOld.status).toBe(200)
   })
 
+  it('ajusta la página solicitada al máximo disponible', async () => {
+    const res = await api.get('/users/HistoryUser/history?page=99&pageSize=3')
+
+    expect(res.status).toBe(200)
+    expect(res.body.pagination.totalPages).toBe(2)
+    expect(res.body.pagination.page).toBe(2)
+    expect(res.body.games).toHaveLength(1)
+  })
+
   it('devuelve paginación correcta cuando el usuario no tiene partidas', async () => {
     await createVerifiedUser('HistoryEmpty', 'emptyhistory@test.com')
     const res = await api.get('/users/HistoryEmpty/history')
@@ -534,6 +581,7 @@ describe('GET /ranking', () => {
     await createVerifiedUser('RankA', 'ranka@test.com')
     await createVerifiedUser('RankB', 'rankb@test.com')
     await createVerifiedUser('RankC', 'rankc@test.com')
+    await createVerifiedUser('RankWeekly', 'rankweekly@test.com')
 
     await api.patch('/users/RankA/stats').send({ won: true, totalMoves: 10 })
     await api.patch('/users/RankA/stats').send({ won: true, totalMoves: 8 })
@@ -545,6 +593,26 @@ describe('GET /ranking', () => {
 
     await api.patch('/users/RankC/stats').send({ won: false, totalMoves: 5 })
     await api.patch('/users/RankC/stats').send({ won: false, totalMoves: 5 })
+
+    await api.post('/users/RankWeekly/games').send({
+      gameId: 'rank-week-1',
+      mode: 'classic_hvb',
+      result: 'won',
+      boardSize: 7,
+      totalMoves: 11,
+      opponent: 'bot_a',
+      startedBy: 'human',
+    })
+
+    await api.post('/users/RankWeekly/games').send({
+      gameId: 'rank-week-2',
+      mode: 'classic_hvb',
+      result: 'lost',
+      boardSize: 7,
+      totalMoves: 13,
+      opponent: 'bot_b',
+      startedBy: 'bot',
+    })
   })
 
   it('returns ranking sorted by winRate by default', async () => {
@@ -640,14 +708,31 @@ describe('GET /verify', () => {
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Token inválido o expirado/i)
   })
+
+  it('verifica correctamente un usuario y elimina el token de verificación', async () => {
+    await api.post('/createuser').send({
+      username: 'VerifyOk',
+      password: '1234',
+      email: 'verifyok@test.com',
+    })
+
+    const createdUser = await User.findOne({ username: 'VerifyOk' })
+    const res = await api.get(`/verify?token=${createdUser.verificationToken}`)
+    const verifiedUser = await User.findOne({ username: 'VerifyOk' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.message).toMatch(/Correo verificado con éxito/i)
+    expect(verifiedUser.isVerified).toBe(true)
+    expect(verifiedUser.verificationToken).toBeFalsy()
+  })
 })
 
 describe('POST /users/:username/games - Validaciones', () => {
   it('devuelve 400 si el modo de juego no es válido', async () => {
     const res = await api
-      .post('/users/StatsUser/games') 
+      .post('/users/StatsUser/games')
       .send({ gameId: 'g1', mode: 'MODO_INVENTADO', result: 'won', boardSize: 10, totalMoves: 5 })
-    
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/'mode' debe ser/i)
   })
@@ -656,11 +741,11 @@ describe('POST /users/:username/games - Validaciones', () => {
     const res = await api
       .post('/users/StatsUser/games')
       .send({ gameId: 'g2', mode: 'classic_hvb', result: 'won', boardSize: -5, totalMoves: 5 })
-    
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/'boardSize' debe ser un número positivo/i)
   })
-  
+
   it('devuelve 400 si falta el gameId', async () => {
     const res = await api
       .post('/users/StatsUser/games')
@@ -704,292 +789,424 @@ describe('GET /users/:username/profile', () => {
   beforeAll(async () => {
     await createVerifiedUser('ProfileUser', 'profileuser@test.com')
   })
- 
+
   it('devuelve username, email y profilePicture del usuario', async () => {
     const res = await api.get('/users/ProfileUser/profile')
- 
+
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('ProfileUser')
     expect(res.body.email).toBe('profileuser@test.com')
     expect(res.body).toHaveProperty('profilePicture')
   })
- 
+
   it('devuelve 404 si el usuario no existe', async () => {
     const res = await api.get('/users/UsuarioFantasma999/profile')
- 
+
     expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
   })
- 
+
   it('devuelve 400 si el username es inválido', async () => {
     const res = await api.get('/users/..bad_user../profile')
- 
+
     expect(res.status).toBe(400)
   })
- 
+
   it('no devuelve la contraseña en la respuesta', async () => {
     const res = await api.get('/users/ProfileUser/profile')
- 
+
     expect(res.status).toBe(200)
     expect(res.body).not.toHaveProperty('password')
   })
 })
- 
+
 describe('PUT /users/:username/password', () => {
   beforeAll(async () => {
     await createVerifiedUser('PassUser', 'passuser@test.com')
   })
- 
+
   it('cambia la contraseña correctamente con credenciales válidas', async () => {
     const res = await api
       .put('/users/PassUser/password')
       .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
- 
+
     expect(res.status).toBe(200)
     expect(res.body.message).toMatch(/actualizada correctamente/i)
   })
- 
+
   it('permite iniciar sesión con la nueva contraseña tras el cambio', async () => {
     // La contraseña ya fue cambiada a 'NuevaPass123!' por el test anterior,
     // así que usamos esa como oldPassword para hacer un segundo cambio
     await api
       .put('/users/PassUser/password')
       .send({ oldPassword: 'NuevaPass123!', newPassword: 'PasswordNuevo1!' })
- 
+
     const login = await api
       .post('/login')
       .send({ username: 'PassUser', password: 'PasswordNuevo1!' })
- 
+
     expect(login.status).toBe(200)
     expect(login.body.username).toBe('PassUser')
   })
- 
+
   it('devuelve 401 si la contraseña actual es incorrecta', async () => {
     const res = await api
       .put('/users/PassUser/password')
       .send({ oldPassword: 'contraseña_incorrecta', newPassword: 'NuevaPass123!' })
- 
+
     expect(res.status).toBe(401)
     expect(res.body.error).toMatch(/contraseña actual es incorrecta/i)
   })
- 
+
   it('devuelve 400 si falta la contraseña actual', async () => {
     const res = await api
       .put('/users/PassUser/password')
       .send({ newPassword: 'NuevaPass123!' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/contraseña actual es obligatoria/i)
   })
- 
+
   it('devuelve 400 si la nueva contraseña tiene menos de 6 caracteres', async () => {
     const res = await api
       .put('/users/PassUser/password')
       .send({ oldPassword: '1234', newPassword: 'abc' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/al menos 6 caracteres/i)
   })
- 
+
   it('devuelve 400 si falta la nueva contraseña', async () => {
     const res = await api
       .put('/users/PassUser/password')
       .send({ oldPassword: '1234' })
- 
+
     expect(res.status).toBe(400)
   })
- 
+
   it('devuelve 404 si el usuario no existe', async () => {
     const res = await api
       .put('/users/UsuarioFantasma999/password')
       .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
- 
+
     expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
   })
- 
+
   it('devuelve 400 si el username es inválido', async () => {
     const res = await api
       .put('/users/..bad_user../password')
       .send({ oldPassword: '1234', newPassword: 'NuevaPass123!' })
- 
+
     expect(res.status).toBe(400)
   })
 })
- 
+
 describe('PATCH /users/:username/username', () => {
   beforeAll(async () => {
     await createVerifiedUser('UsernameOld', 'usernameold@test.com')
     await createVerifiedUser('UsernameOcupado', 'usernameocupado@test.com')
   })
- 
+
   it('cambia el nombre de usuario correctamente', async () => {
     const res = await api
       .patch('/users/UsernameOld/username')
       .send({ newUsername: 'UsernameNew' })
- 
+
     expect(res.status).toBe(200)
     expect(res.body.message).toMatch(/actualizado correctamente/i)
     expect(res.body.username).toBe('UsernameNew')
   })
- 
+
   it('el usuario es accesible con el nuevo nombre tras el cambio', async () => {
     const res = await api.get('/users/UsernameNew/profile')
- 
+
     expect(res.status).toBe(200)
     expect(res.body.username).toBe('UsernameNew')
   })
- 
+
   it('el usuario antiguo ya no existe tras el cambio', async () => {
     const res = await api.get('/users/UsernameOld/profile')
- 
+
     expect(res.status).toBe(404)
   })
- 
+
   it('devuelve 400 si el nuevo username ya está en uso', async () => {
     await createVerifiedUser('UsernameConflicto', 'usernameconflicto@test.com')
- 
+
     const res = await api
       .patch('/users/UsernameConflicto/username')
       .send({ newUsername: 'UsernameOcupado' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/ya está en uso/i)
   })
- 
+
   it('devuelve 400 si el nuevo username es igual al actual', async () => {
     const res = await api
       .patch('/users/UsernameNew/username')
       .send({ newUsername: 'UsernameNew' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/diferente al actual/i)
   })
- 
+
   it('devuelve 400 si el nuevo username tiene menos de 3 caracteres', async () => {
     const res = await api
       .patch('/users/UsernameNew/username')
       .send({ newUsername: 'ab' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/al menos 3 caracteres/i)
   })
- 
+
   it('devuelve 400 si el nuevo username tiene más de 20 caracteres', async () => {
     const res = await api
       .patch('/users/UsernameNew/username')
       .send({ newUsername: 'nombre_demasiado_largo_para_ser_valido' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/exceder los 20 caracteres/i)
   })
- 
+
   it('devuelve 400 si el nuevo username tiene caracteres inválidos', async () => {
     const res = await api
       .patch('/users/UsernameNew/username')
       .send({ newUsername: 'nombre con espacios' })
- 
+
     expect(res.status).toBe(400)
   })
- 
+
   it('devuelve 400 si falta el nuevo username en el body', async () => {
     const res = await api
       .patch('/users/UsernameNew/username')
       .send({})
- 
+
     expect(res.status).toBe(400)
   })
- 
+
   it('devuelve 404 si el usuario no existe', async () => {
     const res = await api
       .patch('/users/UsuarioFantasma999/username')
       .send({ newUsername: 'NuevoNombre' })
- 
+
     expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
   })
 })
- 
+
 describe('PATCH /users/:username/avatar', () => {
   beforeAll(async () => {
     await createVerifiedUser('AvatarUser', 'avataruser@test.com')
   })
- 
+
   it('cambia el avatar correctamente con un avatar válido', async () => {
     const res = await api
       .patch('/users/AvatarUser/avatar')
       .send({ profilePicture: 'disco.png' })
- 
+
     expect(res.status).toBe(200)
     expect(res.body.message).toMatch(/actualizado correctamente/i)
     expect(res.body.profilePicture).toBe('disco.png')
   })
- 
+
   it('el perfil refleja el nuevo avatar tras el cambio', async () => {
     await api
       .patch('/users/AvatarUser/avatar')
       .send({ profilePicture: 'rubia.png' })
- 
+
     const profile = await api.get('/users/AvatarUser/profile')
- 
+
     expect(profile.status).toBe(200)
     expect(profile.body.profilePicture).toBe('rubia.png')
   })
- 
+
   it('acepta todos los avatares válidos', async () => {
     const validAvatars = ['seniora.png', 'disco.png', 'rubia.png', 'elvis.png']
- 
+
     for (const avatar of validAvatars) {
       const res = await api
         .patch('/users/AvatarUser/avatar')
         .send({ profilePicture: avatar })
- 
+
       expect(res.status).toBe(200)
       expect(res.body.profilePicture).toBe(avatar)
     }
   })
- 
+
   it('devuelve 400 si el avatar no es uno de los permitidos', async () => {
     const res = await api
       .patch('/users/AvatarUser/avatar')
       .send({ profilePicture: 'avatar_inventado.png' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Avatar no válido/i)
   })
- 
+
   it('devuelve 400 si falta el campo profilePicture', async () => {
     const res = await api
       .patch('/users/AvatarUser/avatar')
       .send({})
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Avatar no válido/i)
   })
- 
+
   it('devuelve 400 si profilePicture es una cadena vacía', async () => {
     const res = await api
       .patch('/users/AvatarUser/avatar')
       .send({ profilePicture: '' })
- 
+
     expect(res.status).toBe(400)
     expect(res.body.error).toMatch(/Avatar no válido/i)
   })
- 
+
   it('devuelve 404 si el usuario no existe', async () => {
     const res = await api
       .patch('/users/UsuarioFantasma999/avatar')
       .send({ profilePicture: 'disco.png' })
- 
+
     expect(res.status).toBe(404)
     expect(res.body.error).toMatch(/Usuario no encontrado/i)
   })
- 
+
   it('devuelve 400 si el username del parámetro es inválido', async () => {
     const res = await api
       .patch('/users/..bad_user../avatar')
       .send({ profilePicture: 'disco.png' })
- 
+
     expect(res.status).toBe(400)
+  })
+})
+
+describe('Full Coverage - Extra Tests', () => {
+
+  describe('GET /verify - Success case', () => {
+    it('verifica un usuario con token válido', async () => {
+      const username = 'VerifyMe'
+      const email = 'verify@test.com'
+      await api.post('/createuser').send({ username, password: 'password123', email })
+
+      const user = await User.findOne({ username })
+      const token = user.verificationToken
+      expect(token).toBeTruthy()
+
+      const res = await api.get(`/verify?token=${token}`)
+      expect(res.status).toBe(200)
+      expect(res.body.message).toMatch(/Correo verificado con éxito/i)
+
+      const updatedUser = await User.findOne({ username })
+      expect(updatedUser.isVerified).toBe(true)
+      expect(updatedUser.verificationToken).toBeUndefined()
+    })
+
+    it('devuelve 500 si hay error en la base de datos al verificar', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('DB Error'))
+      const res = await api.get('/verify?token=some_token')
+      expect(res.status).toBe(500)
+      expect(res.body.error).toBe('DB Error')
+      spy.mockRestore()
+    })
+  })
+
+  describe('Username validation in URL params (More Coverage)', () => {
+    const invalidUsername = 'a' // Too short
+
+    it('PATCH /users/:username/username - invalid param username', async () => {
+      const res = await api.patch(`/users/${invalidUsername}/username`).send({ newUsername: 'ValidOne' })
+      expect(res.status).toBe(400)
+    })
+
+    it('POST /users/:username/games - invalid param username', async () => {
+      const res = await api.post(`/users/${invalidUsername}/games`).send({ gameId: 'g1', mode: 'classic_hvh', result: 'won', boardSize: 10, totalMoves: 5 })
+      expect(res.status).toBe(400)
+    })
+
+    it('GET /users/:username/history - invalid param username', async () => {
+      const res = await api.get(`/users/${invalidUsername}/history`)
+      expect(res.status).toBe(400)
+    })
+
+    it('PATCH /users/:username/stats - invalid param username', async () => {
+      const res = await api.patch(`/users/${invalidUsername}/stats`).send({ won: true, totalMoves: 5 })
+      expect(res.status).toBe(400)
+    })
+
+    it('GET /users/:username/stats - invalid param username', async () => {
+      const res = await api.get(`/users/${invalidUsername}/stats`)
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe('Error handling (Catch blocks / 500 cases)', () => {
+    it('POST /login - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.post('/login').send({ username: 'someuser', password: 'password' })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('GET /users/:username/profile - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.get('/users/validuser/profile')
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('PUT /users/:username/password - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.put('/users/validuser/password').send({ oldPassword: 'password123', newPassword: 'newpassword123' })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('PATCH /users/:username/username - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.patch('/users/validuser/username').send({ newUsername: 'newuser123' })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('PATCH /users/:username/avatar - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOneAndUpdate').mockRejectedValue(new Error('Crash'))
+      const res = await api.patch('/users/validuser/avatar').send({ profilePicture: 'disco.png' })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('POST /users/:username/games - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.post('/users/validuser/games').send({ gameId: 'g1', mode: 'classic_hvh', result: 'won', boardSize: 10, totalMoves: 5 })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('GET /users/:username/history - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.get('/users/validuser/history')
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('PATCH /users/:username/stats - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.patch('/users/validuser/stats').send({ won: true, totalMoves: 5 })
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('GET /ranking - 500 error', async () => {
+      const spy = vi.spyOn(User, 'find').mockRejectedValue(new Error('Crash'))
+      const res = await api.get('/ranking')
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
+
+    it('GET /users/:username/stats - 500 error', async () => {
+      const spy = vi.spyOn(User, 'findOne').mockRejectedValue(new Error('Crash'))
+      const res = await api.get('/users/validuser/stats')
+      expect(res.status).toBe(500)
+      spy.mockRestore()
+    })
   })
 })

@@ -18,14 +18,22 @@ import {
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  MinusCircleOutlined,
   StopOutlined,
   UserOutlined,
-  MinusCircleOutlined,
 } from "@ant-design/icons";
+
 import AppHeader from "./AppHeader";
 import UserStatsSummary from "./UserStats";
 import {
+  getHistoryOpponentLabel,
+  getHistoryStartedByLabel,
+  getGameModeLongLabel,
+  getGameModeShortLabel,
+  getGameModeTagColor,
   getUserHistory,
+  HISTORY_MODE_FILTER_OPTIONS,
+  type GameMode,
   type HistoryGame,
   type UserHistoryResponse,
 } from "../api/users";
@@ -47,9 +55,17 @@ function resultTag(result: HistoryGame["result"]) {
 
   switch (result) {
     case "won":
-      return <Tag color="success" icon={<CheckCircleOutlined />} style={resultTagStyle}>Ganada</Tag>;
+      return (
+        <Tag color="success" icon={<CheckCircleOutlined />} style={resultTagStyle}>
+          Ganada
+        </Tag>
+      );
     case "lost":
-      return <Tag color="error" icon={<CloseCircleOutlined />} style={resultTagStyle}>Perdida</Tag>;
+      return (
+        <Tag color="error" icon={<CloseCircleOutlined />} style={resultTagStyle}>
+          Perdida
+        </Tag>
+      );
     case "abandoned":
       return (
         <Tag
@@ -81,49 +97,13 @@ function resultTag(result: HistoryGame["result"]) {
   }
 }
 
-function modeTag(mode: HistoryGame["mode"]) {
-  switch (mode) {
-    case "classic_hvb":
-      return <Tag color="#28BBF5">Clásico HvB</Tag>;
-    case "classic_hvh":
-      return <Tag color="#FF7B00">Clásico HvH</Tag>;
-    case "tabu_hvh":
-      return <Tag color="#FF4D6D">Tabú HvH</Tag>;
-    case "holey_hvh":
-      return <Tag color="#A855F7">HoleY HvH</Tag>;
-    case "fortune_dice_hvh":
-      return <Tag color="#FACC15">Fortune Dice HvH</Tag>;
-    case "poly_hvh":
-      return <Tag color="#22C55E">PolY HvH</Tag>;
-    default:
-      return <Tag>{mode}</Tag>;
-  }
-}
-
-function modeLabel(mode: HistoryGame["mode"]) {
-  switch (mode) {
-    case "classic_hvb":
-      return "Clásico — Humano vs Bot";
-    case "classic_hvh":
-      return "Clásico — Humano vs Humano";
-    case "tabu_hvh":
-      return "Tabú — Humano vs Humano";
-    case "holey_hvh":
-      return "HoleY — Humano vs Humano";
-    case "fortune_dice_hvh":
-      return "Fortune Dice — Humano vs Humano";
-    case "poly_hvh":
-      return "PolY — Humano vs Humano";
-    default:
-      return mode;
-  }
-}
-
-function defaultOpponentLabel(mode: HistoryGame["mode"]) {
-  return mode === "classic_hvb" ? "Bot" : "Jugador local";
+function modeTag(mode: GameMode) {
+  return <Tag color={getGameModeTagColor(mode)}>{getGameModeShortLabel(mode)}</Tag>;
 }
 
 function gameDetails(game: HistoryGame) {
+  const startedByLabel = getHistoryStartedByLabel(game);
+
   return (
     <Descriptions
       column={1}
@@ -133,7 +113,7 @@ function gameDetails(game: HistoryGame) {
       }}
     >
       <Descriptions.Item label="Modo">
-        {modeLabel(game.mode)}
+        {getGameModeLongLabel(game.mode)}
       </Descriptions.Item>
 
       <Descriptions.Item label="Fecha">
@@ -149,12 +129,12 @@ function gameDetails(game: HistoryGame) {
       </Descriptions.Item>
 
       <Descriptions.Item label="Rival">
-        {game.opponent || defaultOpponentLabel(game.mode)}
+        {getHistoryOpponentLabel(game)}
       </Descriptions.Item>
 
-      {game.startedBy ? (
+      {startedByLabel ? (
         <Descriptions.Item label="Empieza">
-          {game.startedBy}
+          {startedByLabel}
         </Descriptions.Item>
       ) : null}
     </Descriptions>
@@ -170,9 +150,7 @@ export default function UserHistory() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
-  const [modeFilter, setModeFilter] = useState<
-    "all" | "classic_hvb" | "classic_hvh" | "tabu_hvh" | "holey_hvh" | "fortune_dice_hvh" | "poly_hvh"
-  >("all");
+  const [modeFilter, setModeFilter] = useState<"all" | GameMode>("all");
   const [resultFilter, setResultFilter] = useState<"all" | "won" | "lost" | "abandoned" | "draw">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "movesDesc" | "movesAsc">("newest");
 
@@ -181,8 +159,7 @@ export default function UserHistory() {
   }, [modeFilter, resultFilter, sortBy]);
 
   useEffect(() => {
-    if (!username)
-      return;
+    if (!username) return;
 
     setLoading(true);
     setError(null);
@@ -254,15 +231,7 @@ export default function UserHistory() {
                         value={modeFilter}
                         onChange={setModeFilter}
                         style={{ width: 220 }}
-                        options={[
-                          { value: "all", label: "Todos los modos" },
-                          { value: "classic_hvb", label: "Clásico HvB" },
-                          { value: "classic_hvh", label: "Clásico HvH" },
-                          { value: "tabu_hvh", label: "Tabú HvH" },
-                          { value: "holey_hvh", label: "HoleY HvH" },
-                          { value: "fortune_dice_hvh", label: "Fortune Dice HvH" },
-                          { value: "poly_hvh", label: "PolY HvH" },
-                        ]}
+                        options={HISTORY_MODE_FILTER_OPTIONS}
                       />
 
                       <Select
@@ -329,7 +298,7 @@ export default function UserHistory() {
                                         </Space>
 
                                         <Text type="secondary">
-                                          {modeLabel(game.mode)}
+                                          {getGameModeLongLabel(game.mode)}
                                         </Text>
                                       </Flex>
                                     ),
@@ -347,7 +316,7 @@ export default function UserHistory() {
                           current={data.pagination.page}
                           total={data.pagination.totalGames}
                           pageSize={data.pagination.pageSize}
-                          onChange={(newPage) => setPage(newPage)}
+                          onChange={(nextPage) => setPage(nextPage)}
                           showSizeChanger={false}
                         />
                       </Flex>

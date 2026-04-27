@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getAdjacentCells, generateHoles, hasPlayableCells } from '../game/variants';
+import {
+  createLocalHvHResultConfig,
+  gameRouteForVariant,
+  generateHoles,
+  getAdjacentCells,
+  getHvHStarterLabel,
+  hasPlayableCells,
+  hvhRouteForVariant,
+  parseBoardSize,
+  parseHvHStarter,
+} from '../game/variants';
 
 describe('Game Variants Utility', () => {
   afterEach(() => {
@@ -65,6 +75,37 @@ describe('Game Variants Utility', () => {
 
     it('devuelve false si no hay celdas vacías', () => {
       expect(hasPlayableCells({ size: 3, layout: "BB/R/B" } as any)).toBe(false);
+    });
+  });
+
+  describe('helpers de configuración local HvH', () => {
+    it('parseBoardSize usa fallback cuando el valor es inválido', () => {
+      expect(parseBoardSize(null)).toBe(7);
+      expect(parseBoardSize("1", 9)).toBe(9);
+      expect(parseBoardSize("10", 7)).toBe(10);
+    });
+
+    it('parseHvHStarter normaliza player1 y random', () => {
+      expect(parseHvHStarter("PLAYER1")).toBe("player1");
+      expect(parseHvHStarter("RaNdOm")).toBe("random");
+      expect(parseHvHStarter("desconocido")).toBe("player0");
+    });
+
+    it('devuelve rutas correctas para variantes locales', () => {
+      expect(gameRouteForVariant("fortune_coin")).toBe("/game-fortune-coin");
+      expect(hvhRouteForVariant("classic")).toBe("/game-hvh");
+      expect(hvhRouteForVariant("master")).toBe("/game-master");
+    });
+
+    it('construye el config de resultado con empate o ganador', () => {
+      const config = createLocalHvHResultConfig("Titulo", 11, "random", "Extra");
+
+      expect(config.title).toBe("Titulo");
+      expect(config.subtitle).toBe("Tamaño: 11 · Empieza: Aleatorio · Extra");
+      expect(config.getResultText(null)).toBe("La partida termino en empate.");
+      expect(config.getResultText("player0")).toBe("Player 0 ha ganado la partida.");
+      expect(config.getResultText("player1")).toBe("Player 1 ha ganado la partida.");
+      expect(getHvHStarterLabel("player0")).toBe("Player 0");
     });
   });
 });

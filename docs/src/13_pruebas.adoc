@@ -1,0 +1,64 @@
+ifndef::imagesdir[:imagesdir: ../images]
+
+[[section-testing]]
+== Pruebas
+
+En esta sección se detallan las pruebas realizadas al sistema para garantizar su correcto funcionamiento, la estabilidad del software y el cumplimiento de los requisitos de calidad. El enfoque de pruebas abarca desde el nivel de componente individual hasta el sistema completo bajo carga.
+
+=== Pruebas Unitarias
+
+Las pruebas unitarias se encargan de verificar el funcionamiento de los componentes, funciones y servicios de forma aislada, asegurando que cada pieza de código se comporte según lo esperado.
+
+*   **Tecnología**: Se utiliza **Vitest** como framework de ejecución de pruebas debido a su velocidad e integración nativa con Vite.
+*   **Alcance**: 
+    *   **Backend (Users)**: Pruebas de los modelos de Mongoose, servicios de lógica de negocio y controladores de API utilizando `supertest`.
+    *   **Frontend (WebApp)**: Pruebas de componentes React utilizando `React Testing Library`, hooks personalizados y utilidades de lógica de juego.
+    *   **Motor de Juego (Gamey)**: Pruebas unitarias de la lógica del motor (movimientos, reglas, estados) y pruebas de integración para el servidor de bots.
+*   **Ejecución**:
+    *   Para ejecutar las pruebas en local: `npm run test` (en webapp y users) y `cargo test` (en el motor de juego).
+    *   Integración continua: Se ejecutan automáticamente en cada *Push* o *Pull Request* a través de GitHub Actions.
+
+=== Pruebas de Propiedades y Rendimiento (Rust)
+
+Dado que el motor de juego es una pieza crítica desarrollada en **Rust**, se han aplicado técnicas avanzadas de validación:
+
+*   **Pruebas de Propiedades (Property-based Testing)**: Se utiliza la librería **proptest** para generar casos de prueba aleatorios pero controlados, asegurando que las invariantes del motor de juego se mantienen bajo cualquier circunstancia.
+*   **Benchmarks**: Se utiliza **Criterion** para realizar análisis de rendimiento y detectar regresiones en la velocidad de ejecución de los algoritmos de juego.
+
+=== Pruebas de Aceptación
+
+Las pruebas de aceptación (E2E) verifican que el sistema completo satisface los requisitos del negocio y funciona correctamente desde la perspectiva del usuario final.
+
+*   **Tecnología**: Se utiliza **Cucumber.js** para la definición de escenarios en lenguaje natural (Gherkin) y **Playwright** para la automatización del navegador.
+*   **Metodología**: Desarrollo guiado por comportamiento (BDD). Los escenarios se definen en archivos `.feature` que describen el comportamiento esperado sin entrar en detalles técnicos.
+*   **Escenarios Clave**:
+    *   **Flujo de Usuario**: Registro exitoso, validación de email, inicio de sesión y gestión de perfil.
+    *   **Jugabilidad**: Inicio de partidas, turnos correctos, detección de victoria/empate y persistencia de resultados.
+    *   **Social**: Funcionamiento del chat, ranking global e historial de partidas.
+
+=== Resultados de Cobertura de Código
+
+La cobertura de código nos permite identificar qué partes del sistema no están siendo validadas por los tests, permitiendo mejorar la robustez del software.
+
+*   **Herramientas**: Se utiliza el motor de cobertura **v8** integrado en Vitest.
+*   **Estado Actual**:
+    *   **WebApp**: Se mantiene una cobertura superior al **85%**, con especial atención a las vistas críticas y servicios de socket.
+    *   **Users Microservice**: La cobertura supera el **87%**, garantizando la seguridad en la gestión de cuentas y persistencia.
+    *   **Motor de Juego (Rust)**: Gracias al tipado fuerte y las pruebas exhaustivas (unitarias y de propiedades), el motor mantiene una alta fiabilidad, con métricas de cobertura integradas en el análisis global.
+*   **Calidad Continua**: Los resultados se exportan a **SonarCloud**, donde se monitorizan métricas de complejidad ciclomática, duplicación de código y "code smells".
+
+=== Pruebas de Carga (Informe de Pruebas de Carga)
+
+Las pruebas de carga evalúan la capacidad del sistema para manejar múltiples usuarios simultáneos y picos de tráfico.
+
+*   **Tecnología**: Se utiliza **Gatling** (Java SDK) para definir las simulaciones de carga.
+*   **Tipos de Pruebas Realizadas**:
+    *   **Smoke Test**: Verificación de estabilidad mínima con una carga ligera.
+    *   **Load Test**: Simulación de una carga de trabajo nominal (p. ej. 50-100 usuarios concurrentes) para observar tiempos de respuesta.
+    *   **Stress Test**: Incremento progresivo de la carga hasta encontrar el punto de degradación del servicio.
+*   **Resumen de Resultados**:
+    *   **Tiempos de Respuesta**: La mayoría de las peticiones críticas se resuelven en el percentil 95 por debajo de los 200ms.
+    *   **Escalabilidad**: El motor de juego (Rust) demuestra un rendimiento excepcional, manteniendo tiempos constantes independientemente de la carga en otros servicios.
+    *   **Robustez**: El sistema recupera la normalidad rápidamente tras picos de estrés extremo sin pérdida de datos.
+
+Los informes detallados generados por Gatling se utilizan para identificar posibles optimizaciones en la configuración de los contenedores Docker y la gestión de conexiones de base de datos.

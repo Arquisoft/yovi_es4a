@@ -1,7 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 
-import { recordUserGame, type GameMode } from "../api/users";
+import type { GameMode } from "../api/users";
 import { getUserSession } from "../utils/session";
+import type { FinishedGamePayload } from "./SessionGamePage";
+import useDeferredGameSave from "./useDeferredGameSave";
 
 type Starter = "player0" | "player1" | "random";
 
@@ -20,16 +22,20 @@ export default function useLocalVariantGameSave({
   startedBy,
   deleteGame,
 }: UseLocalVariantGameSaveArgs) {
-  const savedGameIdsRef = useRef<Set<string>>(new Set());
+  const {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
+    registerFinishedGame: registerDeferredFinishedGame,
+    handleGuestSaveRequested,
+    handleLoginSuccess,
+    closeAuthModal,
+    saveGameForCurrentSession,
+  } = useDeferredGameSave();
 
   const registerFinishedGame = useCallback(
     async (gameId: string, winner: string | null, totalMoves: number) => {
-      const session = getUserSession();
-
-      if (!session || savedGameIdsRef.current.has(gameId))
-        return;
-
-      await recordUserGame(session.username, {
+      await registerDeferredFinishedGame({
         gameId,
         mode,
         result:
@@ -41,18 +47,16 @@ export default function useLocalVariantGameSave({
         opponent,
         startedBy,
       });
-
-      savedGameIdsRef.current.add(gameId);
     },
-    [boardSize, mode, opponent, startedBy],
+    [boardSize, mode, opponent, registerDeferredFinishedGame, startedBy],
   );
 
   const registerAbandonedGame = useCallback(
     async (gameId: string, totalMoves: number) => {
       const session = getUserSession();
 
-      if (session && !savedGameIdsRef.current.has(gameId)) {
-        await recordUserGame(session.username, {
+      if (session) {
+        await saveGameForCurrentSession({
           gameId,
           mode,
           result: "abandoned",
@@ -61,17 +65,21 @@ export default function useLocalVariantGameSave({
           opponent,
           startedBy,
         });
-
-        savedGameIdsRef.current.add(gameId);
       }
 
       await deleteGame(gameId);
     },
-    [boardSize, deleteGame, mode, opponent, startedBy],
+    [boardSize, deleteGame, mode, opponent, saveGameForCurrentSession, startedBy],
   );
 
   return {
+    authModalOpen,
+    savingPendingGame,
+    canOfferGuestSave,
     registerFinishedGame,
     registerAbandonedGame,
+    handleGuestSaveRequested: (payload: FinishedGamePayload) => handleGuestSaveRequested(payload),
+    handleLoginSuccess,
+    closeAuthModal,
   };
 }
