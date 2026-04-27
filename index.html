@@ -500,6 +500,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_calidad_de_código_y_testing">8.7. Calidad de Código y Testing</a></li>
 <li><a href="#_proceso_de_desarrollo_y_gestión_github_ecosystem">8.8. Proceso de Desarrollo y Gestión (GitHub Ecosystem)</a></li>
 <li><a href="#_tecnologías">8.9. Tecnologías</a></li>
+<li><a href="#_personalización_y_perfil_de_usuario">8.10. Personalización y Perfil de Usuario</a></li>
+<li><a href="#_comunicación_en_tiempo_real_y_chat">8.11. Comunicación en Tiempo Real y Chat</a></li>
 </ul>
 </li>
 <li><a href="#section-design-decisions">9. Decisiones de Arquitectura (ADR)</a>
@@ -513,6 +515,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_adr_7_adopción_de_playwright_cucumber_para_tests_e2e">9.7. ADR 7: Adopción de Playwright + Cucumber para tests E2E</a></li>
 <li><a href="#_adr_8_uso_de_gatling_java_dsl_para_pruebas_de_rendimiento">9.8. ADR 8: Uso de Gatling (Java DSL) para pruebas de rendimiento</a></li>
 <li><a href="#_adr_9_terminación_tls_en_el_gateway_con_lets_encrypt">9.9. ADR 9: Terminación TLS en el gateway con Let&#8217;s Encrypt</a></li>
+<li><a href="#_adr_10_uso_de_socket_io_para_comunicación_multijugador">9.10. ADR 10: Uso de Socket.io para comunicación multijugador</a></li>
+<li><a href="#_adr_11_estrategia_de_persistencia_de_partidas_en_tiempo_real">9.11. ADR 11: Estrategia de persistencia de partidas en tiempo real</a></li>
+<li><a href="#_adr_12_personalización_de_perfil_de_usuario_avatares">9.12. ADR 12: Personalización de perfil de usuario (Avatares)</a></li>
 </ul>
 </li>
 <li><a href="#section-quality-scenarios">10. Requisitos de Calidad</a>
@@ -523,6 +528,15 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#section-technical-risks">11. Riesgos y Deudas Técnicas</a></li>
 <li><a href="#section-glossary">12. Glosario</a></li>
+<li><a href="#section-testing">13. Pruebas</a>
+<ul class="sectlevel2">
+<li><a href="#_pruebas_unitarias">13.1. Pruebas Unitarias</a></li>
+<li><a href="#_pruebas_de_propiedades_y_rendimiento_rust">13.2. Pruebas de Propiedades y Rendimiento (Rust)</a></li>
+<li><a href="#_pruebas_de_aceptación">13.3. Pruebas de Aceptación</a></li>
+<li><a href="#_resultados_de_cobertura_de_código">13.4. Resultados de Cobertura de Código</a></li>
+<li><a href="#_pruebas_de_carga_informe_de_pruebas_de_carga">13.5. Pruebas de Carga (Informe de Pruebas de Carga)</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -592,18 +606,31 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p>La app dispone de una interfaz web para jugar al juego Y.</p>
 </li>
 <li>
-<p>Se ofrecen dos modos base de juego:</p>
+<p>Se ofrecen varios modos de juego:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Partida jugador contra jugador - HvH.</p>
+<p>Partida jugador contra jugador local (HvH).</p>
 </li>
 <li>
-<p>Partida jugador contra bot - HvB.</p>
+<p>Partida jugador contra bot (HvB).</p>
 <div class="ulist">
 <ul>
 <li>
 <p>En el modo contra bot, el usuario puede seleccionar el nivel de dificultad, asociado a varias estrategias.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Partida multijugador online en tiempo real.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Los usuarios pueden crear o unirse a salas de juego.</p>
+</li>
+<li>
+<p>Se incluye un sistema de chat entre jugadores dentro de la sala.</p>
 </li>
 </ul>
 </div>
@@ -616,10 +643,38 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p>La variante clásica constituye la base principal del sistema</p>
+<p>La variante clásica constituye la base principal del sistema.</p>
 </li>
 <li>
-<p>Existen otras variantes adicionales como Tabu Y y Holey Y ya funcionales, y otras todavía no implementadas.</p>
+<p>Se han implementado múltiples variantes adicionales que modifican las reglas del juego:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Regla del Pastel</p>
+</li>
+<li>
+<p>Master Y</p>
+</li>
+<li>
+<p>Fortune Coin</p>
+</li>
+<li>
+<p>Fortune Dice</p>
+</li>
+<li>
+<p>Tabu Y</p>
+</li>
+<li>
+<p>Holey Y</p>
+</li>
+<li>
+<p>Why Not</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Las variantes alteran las reglas de movimiento, turnos y condiciones de victoria.</p>
 </li>
 </ul>
 </div>
@@ -632,10 +687,13 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p>En HvB: El usuario, el bot, o aleatorio.</p>
+<p>En HvB: el usuario, el bot o aleatorio.</p>
 </li>
 <li>
-<p>En HvH: el Jugador 1, el Jugador 2, o aleatorio.</p>
+<p>En HvH: el jugador 1, el jugador 2 o aleatorio.</p>
+</li>
+<li>
+<p>En ciertas variantes, el flujo de turnos puede modificarse dinámicamente (por ejemplo, en la regla del pastel o variantes Fortune).</p>
 </li>
 </ul>
 </div>
@@ -645,14 +703,14 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p>Cada usuario podrá ver un historial de partidas y sus estadísticas (ganadas/perdidas, número de partidas, etc.).</p>
+<p>Cada usuario registrado podrá consultar su historial de partidas, estadísticas (ganadas, perdidas, abandonadas, racha, etc.) y un ranking global con estadísticas de otros usuarios.</p>
 </li>
 <li>
-<p>En caso de continuar como usuario invitado (sin iniciar sesión), no se guardará el historial ni las estadísticas de las partidas.</p>
+<p>En caso de jugar como usuario invitado, no se guardará el historial ni las estadísticas.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Al final de cada partida, el usuario invitado podrá optar por registrarse/iniciar sesión para guardar la partida y sus estadísticas, o continuar sin guardar.</p>
+<p>Al finalizar la partida, el usuario invitado puede registrarse o iniciar sesión para guardar el resultado sin perder el contexto.</p>
 </li>
 </ul>
 </div>
@@ -661,14 +719,39 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </div>
 </li>
 <li>
-<p>Se proporciona un API externo (documentado) para que los bots puedan usar el sistema.</p>
+<p>El sistema almacena información detallada de cada partida:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>El API permite consultar/gestionar info de usuarios y partidas.</p>
+<p>Modo de juego y variante utilizada.</p>
 </li>
 <li>
-<p>El API incluye un método <code>play</code> que recibe al menos una posición (en notación YEN) y devuelve el siguiente movimiento.</p>
+<p>Resultado (victoria, derrota, abandono o empate).</p>
+</li>
+<li>
+<p>Número de movimientos realizados por el usuario.</p>
+</li>
+<li>
+<p>Rival.</p>
+</li>
+<li>
+<p>Fecha de finalización.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Se proporciona un API externo documentado para la interacción con bots y sistemas externos.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>El servicio de juego permite crear partidas, realizar movimientos, consultar estados y obtener jugadas de bots.</p>
+</li>
+<li>
+<p>El API incluye un método <code>play</code> que recibe una posición en notación YEN y devuelve el siguiente movimiento o acción.</p>
+</li>
+<li>
+<p>El servicio de usuarios expone endpoints para autenticación, historial, estadísticas y ranking.</p>
 </li>
 </ul>
 </div>
@@ -678,10 +761,16 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
+<p>Gestiona la lógica del juego, validación de movimientos y cálculo de bots.</p>
+</li>
+<li>
 <p>La comunicación entre la web y el motor se realiza mediante HTTP y mensajes JSON basados en la notación YEN.</p>
 </li>
 </ul>
 </div>
+</li>
+<li>
+<p>El sistema incorpora monitorización y observabilidad mediante Prometheus y Grafana para analizar el comportamiento de los servicios.</p>
 </li>
 </ul>
 </div>
@@ -708,7 +797,7 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-01</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Registrarse</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario crea una cuenta en la aplicación para poder identificarse, verifica su correo y accede a funcionalidades asociadas a su perfil.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario crea una cuenta en la aplicación, verifica su correo y accede a funcionalidades asociadas a su perfil.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-02</p></td>
@@ -736,9 +825,9 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-06</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs jugador</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear partida jugador vs jugador local</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvH y devuelve el estado inicial de la partida.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema crea una nueva sesión de juego HvH local y devuelve el estado inicial de la partida.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-07</p></td>
@@ -748,51 +837,69 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-08</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Crear sala multijugador online</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario crea una sala asociada a un código y espera a que otro jugador se una para comenzar la partida.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Unirse a sala multijugador</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario se une a una sala existente mediante el código asociado para jugar contra otro jugador.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Jugar un turno desde la web</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El usuario selecciona una celda válida y el sistema actualiza el estado de la partida conforme a las reglas de la variante activa.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-09</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Sincronizar partida multijugador</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema transmite los movimientos entre jugadores en tiempo real mediante WebSockets.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Obtener la respuesta del bot</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tras la jugada del usuario en una partida HvB, el servicio de juego calcula y aplica automáticamente el movimiento del bot.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-13</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Comprobar si la partida ha finalizado</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sistema</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Después de cada movimiento, el servicio determina si existe un ganador o si la partida continúa.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-11</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Abandonar una partida</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario decide salir de una partida en curso y el sistema cierra la sesión de juego activa, guardando el estado como "Abandonada" (si corresponde).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-12</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Guardar una partida en el historial</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Al finalizar una partida, el sistema permite registrar el resultado en la cuenta del usuario para actualizar su historial y estadísticas.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UC-13</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ver historial y estadísticas</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario ve el historial partidas anteriores y sus estadisticas guardadas en su cuenta.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Después de cada movimiento, el sistema determina si existe un ganador o si la partida continúa.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-14</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar el estado de una partida</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La interfaz puede recuperar el estado actual de una sesión de juego mediante su identificador.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Abandonar una partida</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario sale de una partida en curso y el sistema la marca como abandonada (si corresponde).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UC-15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Guardar una partida en el historial</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Al finalizar una partida, el sistema registra el resultado en la cuenta del usuario, actualizando su historial y estadísticas.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ver historial y estadísticas</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario registrado</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario consulta el historial de partidas anteriores y sus estadísticas guardadas en su cuenta.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-17</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Consultar ranking global</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario puede consultar la clasificación global de jugadores en función de sus resultados.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario consulta la clasificación global de jugadores en función de sus resultados.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UC-18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Enviar mensajes en sala multijugador</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usuario</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El usuario envía y recibe mensajes en tiempo real durante la partida online.</p></td>
 </tr>
 </tbody>
 </table>
@@ -849,23 +956,23 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Jugador (usuario final)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Persona que entra a la web para jugar al juego Y (contra otra persona o contra el bot).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Que sea fácil de usar, que cargue rápido, que el juego no dé errores raros, poder elegir tamaño/estrategia y ver su historial y estadísticas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Persona que utiliza la aplicación para jugar al juego Y (contra otro jugador local, contra un bot o en modo multijugador online).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Que la aplicación sea fácil de usar, intuitiva, que cargue rápido y sin errores, poder jugar en diferentes modos y variantes, comunicarse en partidas online y consultar su historial y estadísticas.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Equipo de desarrollo</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mario Amandi, Marcelo Díez, Andrea Ivanov y Eloy Rubio</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Poder avanzar sin bloqueos, tener una arquitectura modular, poder implementar buenos tests y desplegar el sistema, además de mejorar las habilidades de programación (nuevos lenguajes), desarrollo y trabajo en equipo.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Poder trabajar sobre una arquitectura modular, implementar y mantener un buen sistema de pruebas (unitarias y E2E) y desplegar el sistema de forma continua, además de mejorar las habilidades de programación (nuevos lenguajes), desarrollo y trabajo en equipo.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Profesorado</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Jose E. Labra Gayo, Pablo González, Diego Martín Fernández y Celia Melendi Lavandera</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Que se cumplan los requisitos, que se justifiquen las decisiones arquitectónicas, que haya pruebas de código y que el despliegue sea accesible por web.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Que el sistema cumpla los requisitos, tenga una arquitectura bien justificada, disponga de pruebas automatizadas y sea accesible públicamente.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Micrati</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Empresa que decide apostar por el desarrollo del juego y encarga el proyecto.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Que el producto final sea usable y presentable, que cumpla los requisitos establecidos, que sea fácil de mantener/mejorar y que no tenga fallos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Que el producto final sea usable, estable, extensible y mantenible, permitiendo futuras mejoras y nuevas funcionalidades sin comprometer el sistema.</p></td>
 </tr>
 </tbody>
 </table>
@@ -896,11 +1003,15 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Servicio de usuarios desarrollado con Node.js y Express</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El servicio dedicado a la gestión de usaurios debe implementarse con una API REST con Node.js y Express, utilizando persistencia en MongoDB.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe incluir un servicio dedicado a la gestión de usuarios, implementado mediante una API REST con Node.js y Express, utilizando persistencia en MongoDB.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Juego desarrollado con Rust</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">La lógica clave del juego (crear tablero, manejar movimientos, implementación de bot, etc) tiene que estar desarrollado en Rust y exponerse mediante un servicio HTTP.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La lógica del juego (validación de movimientos, comprobación de victoria, cálculo de bots, etc.) debe implementarse en Rust y exponerse mediante un servicio HTTP independiente.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Separación en subsistemas (web + motor de juego)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La arquitectura debe dividirse al menos en dos subsistemas: una aplicación web y un motor de juego en Rust, comunicándose entre sí mediante servicios web.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Comunicación entre servicios mediante HTTP y JSON</p></td>
@@ -908,7 +1019,11 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Uso de notación YEN para representar el estado de la partida</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El estado del tablero se representa mediante la notación YEN. Además, el sistema puede intercambiar jugadas mediante identificadores de celda dentro de las sesiones de juego.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El estado del tablero debe representarse mediante la notación YEN para permitir interoperabilidad entre servicios y bots externos.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API externa para bots</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe exponer un API documentado que permita a bots interactuar con él, incluyendo el método <code>play</code> que recibe una posición en YEN y devuelve la siguiente acción.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Soporte de tablero de tamaño variable</p></td>
@@ -916,11 +1031,31 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Diferentes estrategias de bot (dificultad)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El bot debe tener más de una estrategia y el usuario debe poder elegirla (relacionado con niveles de dificultad).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe incluir varias estrategias de juego para el bot, permitiendo al usuario seleccionar el nivel de dificultad.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Host en Docker</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema deberá estar "levantado" con Docker en una máquina virtual para la entrega final.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Soporte de múltiples variantes del juego</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema puede permitir la implimentación de variantes del juego Y (como Tabu, Holey, Pastel, Fortune, etc.).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Soporte de multijugador en tiempo real</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe permitir que varios usuarios jueguen simultáneamente, utilizando comunicación en tiempo real (WebSockets) para sincronizar partidas y permitir interacción entre jugadores.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Arquitectura basada en microservicios</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe organizarse en varios servicios independientes (webapp, users, gamey, gateway), cada uno con responsabilidades diferenciadas.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uso de contenedores Docker</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe desplegarse mediante contenedores Docker, facilitando su ejecución en una máquina virtual y garantizando portabilidad.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Monitorización y observabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe incorporar herramientas de monitorización (Prometheus y Grafana) para analizar el estado y rendimiento de los servicios, en línea con los criterios de evaluación.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pruebas automatizadas</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema debe incluir pruebas unitarias, de integración y end-to-end, así como pruebas de carga, siguiendo los criterios de calidad definidos en la práctica.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Documentación con arc42</p></td>
@@ -949,23 +1084,39 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Énfasis en calidad y evaluación</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se valora explícitamente documentación, pruebas, despliegue, repositorio y calidad general.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El proyecto será evaluado en base a la calidad de la documentación, implementación, pruebas, despliegue y arquitectura general del sistema.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uso de buenas prácticas de desarrollo</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se requiere mantener un repositorio organizado, con revisiones de código, trazabilidad de cambios y cumplimiento de estándares de calidad.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trabajo en equipo y control de cambios</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Al ser un proyecto en grupo, se necesita un flujo de trabajo con control de versiones, revisiones y acuerdos, además de comunicación entre compañeros.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El desarrollo se realiza en equipo, por lo que es necesario el uso de control de versiones, revisiones de código y coordinación entre miembros.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Gestión de tareas</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se utilizará la funcionalidad de Github "Github Issues" para asignar y gestionar las tareas de cada miembro del equipo.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se utilizará GitHub Issues para la planificación, asignación y seguimiento de tareas del proyecto.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Integración y despliegue continuos (CI/CD)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El proyecto debe automatizar la ejecución de tests y el despliegue mediante pipelines de integración y entrega continua.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pruebas y validación</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se deben incluir pruebas unitarias, pruebas de integración, pruebas end-to-end y pruebas de carga, siguiendo los criterios de evaluación.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tiempo y alcance limitados</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El proyecto tiene diferentes entregas a lo largo de su desarrollo (versiones).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El proyecto se desarrolla en varias iteraciones (entregas parciales), por lo que es necesario priorizar funcionalidades y gestionar el alcance.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reuniones de equipo</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se realizará al lo menos una reunión semanal (sesión de laboratorio). Además, se harán reuniones extras cuando se vea necesario (presenciales o telemáticas) para poner de acuerso diferentes implementaciones. Estas quedarán reflejadas en sus respectivas actas en el apartado "Wiki" del repositorio de GitHub.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se realizará al menos una reunión semanal (sesión de laboratorio), complementada con reuniones adicionales cuando sea necesario. Las decisiones se documentarán en el repositorio.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Evaluación basada en múltiples criterios</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El sistema será evaluado teniendo en cuenta documentación, desarrollo, pruebas, gestión del proyecto, despliegue, funcionalidad y atributos de calidad.</p></td>
 </tr>
 </tbody>
 </table>
@@ -986,16 +1137,16 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Jugador</strong>: Usa el sistema para registrarse o iniciar sesión, configurar partidas, jugar al juego Y desde la interfaz web y consultar resultados/estadísticas.</p>
+<p><strong>Jugador</strong>: Interactúa con el sistema a través de la interfaz web. Puede registrarse o iniciar sesión, configurar partidas, jugar en diferentes modos (local, contra bot o multijugador online), comunicarse con otros jugadores en tiempo real y consultar su historial/estadísticas.</p>
 </li>
 <li>
-<p><strong>Bot</strong>: Sistema externo que interactúa con YOVI mediante una API, permitiendo automatizar partidas o realizar jugadas.</p>
+<p><strong>Bot</strong>: Sistema externo que interactúa con YOVI mediante una API pública. Puede utilizar el método <code>play</code> enviando posiciones en notación YEN para obtener la siguiente jugada o acción, permitiendo automatizar partidas o realizar jugadas para competir contra el sistema.</p>
 </li>
 <li>
-<p><strong>Administrador</strong>: Responsable de desplegar, supervisar y mantener el sistema.</p>
+<p><strong>Administrador</strong>: Responsable de desplegar, supervisar y mantener el sistema, asegurando su disponibilidad, correcto funcionamiento y monitorización.</p>
 </li>
 <li>
-<p><strong>YOVI</strong>: Sistema principal que ofrece la funcionalidad de juego y expone las capacidades necesarias tanto para usuarios finales como para integraciones externas.</p>
+<p><strong>YOVI</strong>: Sistema principal que ofrece la funcionalidad del juego Y. Ofrece una interfaz web para los usuarios y una API externa para integraciones con bots, gestionando la lógica de juego, las partidas, los usuarios y las estadísticas.</p>
 </li>
 </ul>
 </div>
@@ -1010,37 +1161,82 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Web Browser (Jugador)</strong>: Cliente desde el que el usuario accede a la aplicación web.</p>
+<p><strong>Web Browser (Jugador)</strong>: Cliente desde el que el usuario accede a la aplicación web. Interactúa con el sistema mediante HTTPS cargando la SPA y realizando peticiones a la API.</p>
 </li>
 <li>
-<p><strong>Bot Externo</strong>: Cliente software que consume la API del sistema para interactuar con las partidas.</p>
+<p><strong>Bot Externo</strong>: Cliente software que consume la API del sistema para interactuar con las partidas, utilizando endpoints REST (como <code>/play</code>) y enviando posiciones en formato JSON/YEN.</p>
 </li>
 <li>
-<p><strong>Servidor (Docker)</strong>: Aloja los servicios backend y el motor del juego. Contiene:</p>
+<p><strong>Servidor de despliegue (Docker)</strong>: Entorno donde se ejecutan los distintos servicios del sistema, desplegados como contenedores independientes. Incluye:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>gateway (Nginx)</strong>: Punto de entrada único al sistema. Redirige las peticiones al frontend o a los servicios backend según la ruta solicitada.</p>
+<p><strong>gateway (Nginx)</strong>: Punto de entrada único al sistema. Gestiona el acceso externo mediante HTTPS y redirige las peticiones a los distintos servicios internos en función de la ruta:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>/</code> → webapp</p>
 </li>
 <li>
-<p><strong>webapp (React/Vite)</strong>: Aplicación frontend tipo SPA que implementa la interfaz de usuario.</p>
+<p><code>/api/users</code> → users</p>
 </li>
 <li>
-<p><strong>users (Node/Express)</strong>: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, &#8230;&#8203;).</p>
-</li>
-<li>
-<p><strong>gamey (Rust)</strong>: Servicio backend que encapsula la lógica del juego y expone la API de partidas y movimientos.</p>
-</li>
-<li>
-<p><strong>MongoDB</strong>: Servicio de persistencia utilizado por el módulo de usuarios.</p>
+<p><code>/api/v1</code>, <code>/play</code> → gamey</p>
 </li>
 </ul>
 </div>
 </li>
+<li>
+<p><strong>webapp (React/Vite)</strong>: Aplicación frontend tipo SPA que implementa la interfaz de usuario. Se comunica con los servicios backend mediante peticiones HTTP (REST) y establece conexiones WebSocket para el modo multijugador online.</p>
+</li>
+<li>
+<p><strong>users (Node/Express)</strong>: Servicio backend encargado de la gestión de usuarios (autenticación, verificación, historial, estadísticas, ranking, etc.).</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Expone una API REST para operaciones CRUD y consulta de datos.</p>
+</li>
+<li>
+<p>Gestiona la comunicación en tiempo real mediante WebSockets (Socket.IO) para el modo multijugador (salas, movimientos, chat).</p>
+</li>
 </ul>
 </div>
-<div class="paragraph">
-<p>La comunicación técnica principal del sistema se realiza a través del gateway. El navegador carga la aplicación frontend a través de este componente, y tanto la interfaz web como los clientes externos acceden a los servicios backend mediante rutas HTTP diferenciadas.</p>
+</li>
+<li>
+<p><strong>gamey (Rust)</strong>: Servicio backend que encapsula la lógica del juego.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Gestiona la creación de partidas, validación de movimientos y detección de victoria.</p>
+</li>
+<li>
+<p>Expone una API REST (<code>/api/v1</code>) para partidas HvH y HvB.</p>
+</li>
+<li>
+<p>Expone el endpoint <code>/play</code> para interacción con bots externos.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>MongoDB</strong>: Servicio de persistencia utilizado por el módulo de usuarios para almacenar información de cuentas, estadísticas e historial de partidas.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>La comunicación técnica principal del sistema se realiza a través del gateway, que actúa como punto central de acceso externo.</p>
+</li>
+<li>
+<p>El navegador carga la aplicación frontend a través de este componente, y la webapp interactúa con los servicios backend (<code>users</code> y <code>gamey</code>) mediante REST/JSON.</p>
+</li>
+<li>
+<p>En el caso del modo multijugador online, se establece además una comunicación en tiempo real mediante WebSockets entre el cliente y el servicio <code>users</code>, permitiendo la sincronización de partidas, gestión de salas y envío de mensajes entre jugadores.</p>
+</li>
+<li>
+<p>Los bots externos acceden directamente al sistema a través del gateway, utilizando la API REST expuesta por <code>gamey</code>.</p>
+</li>
+</ul>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1091,6 +1287,9 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p>Node.js + Express por su simplicidad para crear APIs REST</p>
 </li>
 <li>
+<p>Socket.io para la comunicación en tiempo real del modo multijugador</p>
+</li>
+<li>
 <p>Swagger para documentar el API</p>
 </li>
 <li>
@@ -1136,7 +1335,10 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p>HTTP/REST con JSON</p>
+<p>HTTP/REST con JSON para las llamadas a la API</p>
+</li>
+<li>
+<p>WebSockets (Socket.io) para sincronización en tiempo real en partidas multijugador</p>
 </li>
 <li>
 <p>Notación YEN para las posiciones del tablero</p>
@@ -1149,7 +1351,7 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p>Azure para alojar la maquina virtual en la que se ejecuta la aplicación</p>
+<p>Azure para alojar la máquina virtual en la que se ejecuta la aplicación</p>
 </li>
 <li>
 <p>Docker para que funcione igual en todos los entornos</p>
@@ -1190,7 +1392,7 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="ulist">
 <ul>
 <li>
-<p><code>game_server/</code>: Servidor del juego con el servidor</p>
+<p><code>game_server/</code>: Servidor del juego con gestión de sesiones</p>
 </li>
 <li>
 <p><code>bot_server/</code>: Conexión del bot con el servidor</p>
@@ -1204,7 +1406,7 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="sect3">
 <h4 id="_estrategias_de_bot_módulo_bot">4.2.3. Estrategias de Bot (módulo <code>bot/</code>)</h4>
 <div class="paragraph">
-<p>El módulo de bots se estructura en torno al trait <code>YBot</code> y un registro centralizado (<code>YBotRegistry</code>) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de tres implementaciones:</p>
+<p>El módulo de bots se estructura en torno al trait <code>YBot</code> y un registro centralizado (<code>YBotRegistry</code>) que permite seleccionar el bot deseado en tiempo de ejecución por nombre. Actualmente se dispone de las siguientes implementaciones:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1212,17 +1414,17 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <p><strong><code>random_bot</code></strong> (<code>random.rs</code>): Elige una celda disponible al azar, sin ninguna heurística. Sirve como línea base de comparación para el resto de estrategias.</p>
 </li>
 <li>
-<p><strong><code>greedy_bot</code></strong> (<code>greedy.rs</code>): Aplica una heurística de <em>Potencial de Conectividad</em> basada en coordenadas triangulares. Puntúa cada celda disponible según su proximidad a los bordes del tablero y su centralidad estratégica, eligiendo siempre el movimiento de menor coste. Es más predecible que MCTS pero sensiblemente mejor que el bot aleatorio.</p>
-</li>
-<li>
-<p><strong><code>mcts_bot</code></strong> (<code>mcts.rs</code>): Implementa una versión simplificada de <em>Monte Carlo Tree Search</em>. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con dos niveles de dificultad:</p>
+<p><strong><code>mcts_bot</code></strong> (<code>mcts.rs</code>): Implementa una versión simplificada de <em>Monte Carlo Tree Search</em>. Para cada movimiento posible ejecuta un número configurable de simulaciones aleatorias hasta el final de la partida, acumulando estadísticas de victoria. Se registra con tres niveles de dificultad:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>5.000 iteraciones — respuesta rápida, calidad media-alta.</p>
+<p><code>mcts_medio</code> — 20.000 iteraciones: respuesta rápida, calidad media-alta.</p>
 </li>
 <li>
-<p>20.000 iteraciones — mayor precisión, tiempo de respuesta más elevado.</p>
+<p><code>mcts_dificil</code> — 30.000 iteraciones: mayor precisión, tiempo de respuesta más elevado.</p>
+</li>
+<li>
+<p><code>mcts_demencial</code> — 100.000 iteraciones: máxima precisión, tiempo de respuesta muy elevado.</p>
 </li>
 </ul>
 </div>
@@ -1231,9 +1433,15 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="_api_rest_del_motor_de_juego_game_server">4.2.4. API REST del Motor de Juego (<code>game_server/</code>)</h4>
+<h4 id="_gestión_de_sesiones_en_gamey">4.2.4. Gestión de Sesiones en gamey</h4>
 <div class="paragraph">
-<p>El servidor expone una API versionada bajo el prefijo <code>/v1</code> con los siguientes endpoints:</p>
+<p>El motor de juego mantiene el estado de cada partida activa en memoria mediante un <code>SessionStore</code>. Cada sesión almacena el estado del tablero (en notación YEN), el modo de juego, el bot asignado (en partidas HvB) y el jugador al que le toca mover. Las sesiones son de propiedad del cliente que las crea, identificado por un <code>client_id</code> enviado en las cabeceras HTTP.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_api_rest_del_motor_de_juego_game_server">4.2.5. API REST del Motor de Juego (<code>game_server/</code>)</h4>
+<div class="paragraph">
+<p>El servidor expone una API versionada bajo el prefijo <code>/api/v1</code> con los siguientes endpoints:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1250,32 +1458,105 @@ For documentation of your own system you use better the <em>plain</em> version.<
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/status</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/meta</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Comprueba que el servicio está en marcha.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve la versión de la API y la configuración del tablero (tamaño mínimo y máximo permitidos).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/config</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/config</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve la configuración del tablero: tamaño mínimo y máximo permitidos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve la configuración de partida actual del cliente (tamaño, bot, quién empieza).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/new</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Crea una nueva partida genérica a partir de un tamaño de tablero.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/config</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Actualiza la configuración de partida del cliente.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/hvb/new/{bot_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Inicia una partida Humano vs Bot seleccionando el bot por su identificador y el jugador que empieza.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crea una nueva partida Humano vs Bot. Acepta tamaño de tablero, bot y quién empieza.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/v1/game/hvb/move/{bot_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games/{game_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve el estado actual de una partida HvB.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games/{game_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DELETE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Elimina una partida HvB activa.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games/{game_id}/moves</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Recibe el movimiento del humano (en notación YEN), lo aplica, calcula la respuesta del bot y devuelve el nuevo estado del tablero.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aplica el movimiento del humano (por <code>cell_id</code>) y devuelve el nuevo estado.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games/{game_id}/bot-move</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Solicita al bot que realice su movimiento y devuelve el nuevo estado.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvb/games/{game_id}/hint</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consulta al bot qué movimiento elegiría sin aplicarlo (pista para el humano).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvh/games</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crea una nueva partida Humano vs Humano (en el mismo dispositivo).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvh/games/{game_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Devuelve el estado actual de una partida HvH.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvh/games/{game_id}</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DELETE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Elimina una partida HvH activa.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/v1/hvh/games/{game_id}/moves</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aplica el movimiento del jugador en turno y devuelve el nuevo estado.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/play</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint legado: recibe una posición YEN por query param y devuelve el movimiento del bot.</p></td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="sect3">
+<h4 id="_multijugador_en_tiempo_real_socket_io">4.2.6. Multijugador en tiempo real (Socket.io)</h4>
+<div class="paragraph">
+<p>El modo multijugador online se implementa mediante WebSockets a través de Socket.io, integrado en el servidor <code>users</code>. Los eventos principales son:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>createRoom</code></strong>: el host crea una sala con un código de 5 caracteres.</p>
+</li>
+<li>
+<p><strong><code>joinRoom</code></strong>: el invitado se une a la sala con el código.</p>
+</li>
+<li>
+<p><strong><code>startGame</code></strong>: el host notifica a la sala que la partida ha comenzado en gamey.</p>
+</li>
+<li>
+<p><strong><code>playMove</code></strong>: un jugador envía su movimiento, que se retransmite al rival.</p>
+</li>
+<li>
+<p><strong><code>finishGame</code></strong>: se notifica el resultado y se persiste el historial.</p>
+</li>
+<li>
+<p><strong><code>leaveRoom</code></strong> / <strong><code>disconnect</code></strong>: gestión de abandonos y desconexiones inesperadas.</p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -1325,8 +1606,8 @@ For documentation of your own system you use better the <em>plain</em> version.<
 <div class="sect2">
 <h3 id="_visión_general">5.1. Visión general</h3>
 <div class="paragraph">
-<p><span class="image"><img src="./images/03_2-ContextoTecnico.png" alt="Diagrama correspondiente a la visita de bloque general" width="90%"></span>
-Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios) y gamey (motor del juego).</p>
+<p><span class="image"><img src="./images/03_2-ContextoTecnico.png" alt="Diagrama correspondiente a la vista de bloque general" width="90%"></span>
+Vista general del sistema con tres microservicios independientes: webapp (interfaz), users (gestión de usuarios y multijugador) y gamey (motor del juego).</p>
 </div>
 <div class="sect3">
 <h4 id="_descripción_de_los_bloques">5.1.1. Descripción de los bloques</h4>
@@ -1346,22 +1627,22 @@ Vista general del sistema con tres microservicios independientes: webapp (interf
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>webapp</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Presenta la interfaz gráfica al usuario. Permite jugar partidas, registrarse e iniciar sesión.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Consume la API REST de <code>users</code> para autenticación y la API REST de <code>gamey</code> para los movimientos de juego (HTTP/REST + JSON con notación YEN).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Presenta la interfaz gráfica al usuario. Permite jugar partidas en sus distintas modalidades (HvB, HvH local, multijugador online), registrarse e iniciar sesión.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consume la API REST de <code>users</code> para autenticación y estadísticas. Consume la API REST de <code>gamey</code> para crear partidas y aplicar movimientos. Se comunica mediante WebSockets (Socket.io) con <code>users</code> para el modo multijugador.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>users</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Gestiona el registro, login y estadísticas de los usuarios. Expone una API REST documentada con Swagger.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se comunica con <code>MongoDB</code> para persistir datos. Expone endpoints REST consumidos por <code>webapp</code>. Métricas expuestas a Prometheus.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gestiona el registro, login, estadísticas y historial de los usuarios. Coordina las salas multijugador en tiempo real. Expone una API REST documentada con Swagger.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se comunica con <code>MongoDB</code> para persistir datos de usuarios e historial de partidas. Expone endpoints REST consumidos por <code>webapp</code>. Gestiona conexiones WebSocket (Socket.io) para el multijugador. Métricas expuestas a Prometheus.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gamey</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego. Valida movimientos, mantiene el estado de la partida en notación YEN y gestiona las estrategias de bot.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Expone una API REST consumida por <code>webapp</code>. No tiene persistencia propia.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Motor del juego. Valida movimientos, mantiene el estado de las partidas activas en memoria (sesiones), gestiona las estrategias de bot y expone una API REST versionada.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expone una API REST bajo <code>/api/v1/</code> consumida por <code>webapp</code>. No tiene persistencia propia; el estado de cada partida se guarda en memoria durante su duración.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>MongoDB</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Almacena los datos de usuarios y partidas.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Almacena los datos de usuarios, estadísticas e historial de partidas.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Solo accedida por <code>users</code> mediante lectura/escritura.</p></td>
 </tr>
 </tbody>
@@ -1382,7 +1663,7 @@ Vista general del sistema con tres microservicios independientes: webapp (interf
 </div>
 </div>
 <div class="paragraph">
-<p>Proceso de registrar un usuario.</p>
+<p>El usuario introduce sus datos en la webapp, que envía la petición al servicio <code>users</code>. Este valida los datos, inserta el nuevo usuario en MongoDB y devuelve confirmación. La webapp muestra el mensaje de bienvenida. Adicionalmente, el sistema envía un correo de validación de dirección de email que el usuario debe confirmar para activar su cuenta.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1393,7 +1674,7 @@ Vista general del sistema con tres microservicios independientes: webapp (interf
 </div>
 </div>
 <div class="paragraph">
-<p>Proceso de jugar una casilla.</p>
+<p>El usuario hace clic en una casilla del tablero. La webapp envía el movimiento a <code>gamey</code> indicando el identificador de celda. El motor valida el movimiento, actualiza el estado de la sesión en memoria (almacenada en notación YEN) y devuelve el nuevo estado. La webapp renderiza el tablero actualizado.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1404,7 +1685,7 @@ Vista general del sistema con tres microservicios independientes: webapp (interf
 </div>
 </div>
 <div class="paragraph">
-<p>Proceso de jugar una casilla en una partida contra un bot.</p>
+<p>El usuario hace clic en una casilla. La webapp envía el movimiento humano a <code>gamey</code>, que lo valida y actualiza el estado de la sesión. A continuación, en una segunda petición, el bot calcula su respuesta y aplica su movimiento sobre la misma sesión. <code>gamey</code> devuelve el estado resultante tras ambos movimientos. La webapp renderiza el tablero con las jugadas del humano y del bot reflejadas.</p>
 </div>
 <div style="page-break-after: always;"></div>
 </div>
@@ -1535,7 +1816,7 @@ when your infrastructure is more complex.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">users</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">API REST de gestión de usuarios y partidas. Accesible desde el gateway y desde bots externos a través de este.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">API REST de gestión de usuarios y servidor de WebSockets (Socket.io) para tiempo real. Accesible desde el gateway.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">gamey</p></td>
@@ -1623,13 +1904,13 @@ when your infrastructure is more complex.</p>
 <p><strong>webapp:</strong> Aplicación React/TypeScript compilada como contenido estático por Vite. El gateway la sirve directamente. La variable de entorno <code>VITE_API_URL</code> se configura en tiempo de build para apuntar al servicio <code>users</code> a través del gateway.</p>
 </li>
 <li>
-<p><strong>users (Puerto 3000):</strong> Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa como orquestador, recibiendo peticiones de la <code>webapp</code> y del <code>gateway</code>, y delegando la lógica del juego al servicio <code>gamey</code>. Expone métricas para Prometheus en el endpoint <code>/metrics</code>.</p>
+<p><strong>users (Puerto 3000):</strong> Microservicio Node.js/Express encargado de la gestión de usuarios (registro, login con verificación 2FA por email), historial de partidas y estadísticas. Actúa también como <strong>servidor de WebSockets (Socket.io)</strong> para la gestión de partidas multijugador en tiempo real, chat y sincronización de estados. Orquesta las llamadas al servicio <code>gamey</code> y expone métricas para Prometheus en el endpoint <code>/metrics</code>.</p>
 </li>
 <li>
 <p><strong>gamey (Puerto 4000):</strong> Microservicio Rust que encapsula la lógica del juego Y. Gestiona el estado del tablero, valida movimientos, calcula si hay un ganador y proporciona movimientos de bot mediante distintas estrategias (aleatoria, greedy y múltiples niveles de MCTS con paralelización via <code>rayon</code>). Soporta múltiples variantes del juego (Clásica, Tabu Y, Holey Y). Se comunica mediante JSON usando la notación <strong>YEN</strong>. Puede ejecutarse también en modo CLI para pruebas locales.</p>
 </li>
 <li>
-<p><strong>gateway (Puertos 80/443):</strong> Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia <code>webapp</code> y hacia la API de <code>users</code> según la ruta solicitada, gestionando también el acceso desde bots externos.</p>
+<p><strong>gateway (Puertos 80/443):</strong> Punto de entrada único al sistema que actúa como proxy inverso con terminación TLS. Enruta el tráfico hacia <code>webapp</code> y hacia la API de <code>users</code>, incluyendo el soporte para la actualización de protocolo de WebSockets necesaria para el multijugador.</p>
 </li>
 </ul>
 </div>
@@ -1867,7 +2148,7 @@ on this list.</p>
 <p><strong>Validación de entradas:</strong> El servicio <code>users</code> valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.</p>
 </li>
 <li>
-<p><strong>Control de acceso a la API:</strong> El API público para bots expone únicamente las operaciones necesarias (consultar estado, enviar movimiento), con comprobaciones de permisos para impedir acceso a datos de otros usuarios.</p>
+<p><strong>Seguridad en WebSockets:</strong> Las conexiones Socket.io están protegidas y asociadas a la sesión del usuario, asegurando que solo los participantes de una sala puedan interactuar con su estado.</p>
 </li>
 <li>
 <p><strong>Red interna de Docker:</strong> MongoDB no expone puertos públicos; solo es accesible desde la red interna de contenedores (<code>docker network</code>), reduciendo la superficie de ataque.</p>
@@ -1889,7 +2170,10 @@ on this list.</p>
 <p><strong>Formato de datos:</strong> JSON en todos los mensajes, incluyendo la representación del estado del juego en notación <strong>YEN</strong>.</p>
 </li>
 <li>
-<p><strong>Sincronía:</strong> Las llamadas son síncronas (petición-respuesta). La <code>webapp</code> llama al servicio <code>users</code>, que a su vez llama a <code>gamey</code> cuando necesita delegar lógica de juego.</p>
+<p><strong>Sincronía (REST):</strong> Las llamadas son síncronas (petición-respuesta) para operaciones de gestión (login, estadísticas, etc.).</p>
+</li>
+<li>
+<p><strong>Asincronía (WebSockets):</strong> Se utiliza <strong>Socket.io</strong> para la comunicación bidireccional en tiempo real durante las partidas multijugador. Esto permite la propagación instantánea de movimientos, mensajes de chat y cambios en el estado de la sala.</p>
 </li>
 <li>
 <p><strong>Documentación del API:</strong> El servicio <code>users</code> expone su API documentada con <strong>Swagger/OpenAPI</strong>, permitiendo que los desarrolladores de bots conozcan los endpoints disponibles, sus parámetros y los formatos de respuesta esperados.</p>
@@ -1903,18 +2187,30 @@ on this list.</p>
 <p>El sistema implementa un mecanismo de variantes que extiende las reglas del Juego Y clásico sin alterar el núcleo del motor. La arquitectura del frontend (<code>webapp</code>) modela cada variante como un componente independiente (<code>GameHvH</code>, <code>GameHvB</code>, <code>GameHoley</code>, <code>GameTabu</code>, etc.) que comparte la interfaz de tablero base y únicamente sobreescribe las reglas específicas (celdas deshabilitadas, agujeros, restricciones). La selección de variante se realiza antes de iniciar la partida mediante el componente <code>VariantSelect</code>, que muestra las variantes disponibles y marca con "Próximamente" aquellas aún no implementadas.</p>
 </div>
 <div class="paragraph">
-<p>Las variantes actualmente jugables son:</p>
+<p>Las variantes implementadas son:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Clásica:</strong> Reglas estándar del Juego Y. Base principal del sistema, tanto en modalidad humano contra humano como humano contra bot.</p>
+<p><strong>Clásica:</strong> Reglas estándar del Juego Y. Base principal del sistema.</p>
 </li>
 <li>
-<p><strong>Tabu Y:</strong> Ciertas celdas están marcadas como tabú y no pueden utilizarse durante la partida, alterando la estrategia de conexión.</p>
+<p><strong>Tabu Y:</strong> Ciertas celdas están marcadas como tabú y no pueden utilizarse.</p>
 </li>
 <li>
-<p><strong>Holey Y:</strong> El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad y obligan a buscar rutas alternativas.</p>
+<p><strong>Holey Y:</strong> El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad.</p>
+</li>
+<li>
+<p><strong>Fortune Dice:</strong> Variante que introduce un componente de azar mediante dados que pueden alterar el turno o el estado de las celdas.</p>
+</li>
+<li>
+<p><strong>Fortune Coin:</strong> Similar a Dice, pero con lanzamientos de moneda para decisiones binarias rápidas.</p>
+</li>
+<li>
+<p><strong>Pastel Y:</strong> Variante estética y funcional con una paleta de colores y reglas de puntuación suavizadas.</p>
+</li>
+<li>
+<p><strong>Master Y:</strong> Variante avanzada donde cada jugador coloca exactamente dos piezas por turno, aumentando la complejidad estratégica.</p>
 </li>
 </ul>
 </div>
@@ -1936,7 +2232,7 @@ on this list.</p>
 <p><strong>Bot aleatorio (<code>random_bot</code>):</strong> Elige una casilla válida aleatoria. Nivel de dificultad mínimo.</p>
 </li>
 <li>
-<p><strong>Bot MCTS (Monte Carlo Tree Search):</strong> Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (<code>mcts_random</code>, <code>mcts_medio</code>, <code>mcts_dificil</code>, <code>mcts_demencial</code>), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se implementa un límite de tiempo (timeout) para garantizar que el servicio siempre responde dentro de un umbral aceptable.</p>
+<p><strong>Bot MCTS (Monte Carlo Tree Search):</strong> Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (<code>mcts_random</code>, <code>mcts_medio</code>, <code>mcts_dificil</code>, <code>mcts_demencial</code>), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se emplea paralelización mediante la librería <code>rayon</code> para optimizar el rendimiento en procesadores multinúcleo.</p>
 </li>
 </ul>
 </div>
@@ -2028,6 +2324,44 @@ on this list.</p>
 </li>
 <li>
 <p><strong>Contenedorización (Docker + Docker Compose):</strong> Todos los servicios se empaquetan en imágenes Docker, garantizando la portabilidad y reproducibilidad del entorno en desarrollo, pruebas y producción.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_personalización_y_perfil_de_usuario">8.10. Personalización y Perfil de Usuario</h3>
+<div class="paragraph">
+<p>El sistema permite a los usuarios personalizar su experiencia dentro de la plataforma:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Gestión de Avatares:</strong> Los usuarios pueden seleccionar y cambiar su imagen de perfil (avatar) entre una selección predefinida o mediante integración con servicios externos. El cambio se refleja instantáneamente en la interfaz y en las partidas multijugador.</p>
+</li>
+<li>
+<p><strong>Cambio de Nombre de Usuario:</strong> Se permite la modificación del nombre público (handle) del usuario, manteniendo la integridad del historial de partidas y estadísticas vinculadas a su cuenta única.</p>
+</li>
+<li>
+<p><strong>Privacidad y Seguridad:</strong> Los cambios de credenciales (contraseña) y datos sensibles requieren confirmación adicional para asegurar la cuenta.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_comunicación_en_tiempo_real_y_chat">8.11. Comunicación en Tiempo Real y Chat</h3>
+<div class="paragraph">
+<p>Para fomentar la interactividad en el modo multijugador, se han implementado capacidades de comunicación en tiempo real:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Salas de Juego (Lobbies):</strong> Sistema de creación de salas privadas mediante códigos de invitación de 5 caracteres. Los usuarios pueden configurar la variante y el tamaño del tablero antes de que el oponente se una.</p>
+</li>
+<li>
+<p><strong>Chat Integrado:</strong> Durante las partidas multijugador, los jugadores disponen de un chat de texto para comunicarse. Los mensajes se envían de forma instantánea mediante WebSockets y se muestran en un panel lateral (<code>MultiplayerChatDrawer</code>).</p>
+</li>
+<li>
+<p><strong>Estado de Conexión:</strong> El sistema detecta y notifica la desconexión o el abandono de un rival, gestionando automáticamente la persistencia del resultado de la partida (derrota por abandono).</p>
 </li>
 </ul>
 </div>
@@ -2501,6 +2835,132 @@ There you will find links and examples about ADR.</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_adr_10_uso_de_socket_io_para_comunicación_multijugador">9.10. ADR 10: Uso de Socket.io para comunicación multijugador</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> El modo multijugador requiere una comunicación bidireccional de baja latencia para sincronizar los movimientos entre jugadores, gestionar el chat y actualizar el estado de la sala.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>HTTP Long Polling:</strong> Demasiado ineficiente y con alta latencia para un juego en tiempo real.</p>
+</li>
+<li>
+<p><strong>WebSockets puros:</strong> Requieren una gestión manual de reconexiones, salas y fallbacks en navegadores antiguos.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Socket.io</strong> proporciona una abstracción potente sobre WebSockets con gestión automática de salas (<strong>rooms</strong>), reconexión y fallbacks, lo que acelera el desarrollo del modo multijugador.</p>
+</li>
+<li>
+<p>Su integración con Node.js es natural y permite compartir la lógica de autenticación con el servicio <code>users</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Introduce una dependencia adicional en el stack de backend y frontend, y requiere configurar el gateway para permitir el <strong>upgrade</strong> de protocolo HTTP a WebSockets.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_11_estrategia_de_persistencia_de_partidas_en_tiempo_real">9.11. ADR 11: Estrategia de persistencia de partidas en tiempo real</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> En el modo multijugador, es crítico asegurar que los resultados de las partidas se guarden correctamente incluso si un jugador abandona o se desconecta inesperadamente.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Guardado solo al finalizar:</strong> Riesgo de pérdida de datos si el servidor se reinicia o el cliente no envía la señal de fin.</p>
+</li>
+<li>
+<p><strong>Persistencia en cada movimiento:</strong> Demasiada carga en la base de datos para una información que solo es relevante al final.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>El servidor de WebSockets gestiona eventos de <code>disconnect</code> y <code>leaveRoom</code>. Cuando se detecta una desconexión en una partida activa, el servidor calcula el resultado (derrota por abandono) y lo persiste inmediatamente en MongoDB.</p>
+</li>
+<li>
+<p>Esto garantiza la integridad de las estadísticas y del historial de partidas sin sobrecargar la base de datos durante el juego normal.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> El servidor <code>users</code> debe mantener un estado en memoria de las salas activas para poder procesar las desconexiones correctamente.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_adr_12_personalización_de_perfil_de_usuario_avatares">9.12. ADR 12: Personalización de perfil de usuario (Avatares)</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Estado:</strong> Aceptada.</p>
+</li>
+<li>
+<p><strong>Contexto:</strong> Se desea mejorar la retención de usuarios y la experiencia social permitiendo que cada jugador se identifique visualmente en la plataforma.</p>
+</li>
+<li>
+<p><strong>Alternativas consideradas:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Gravatar:</strong> Dependencia de un servicio externo y requiere que el usuario tenga cuenta allí.</p>
+</li>
+<li>
+<p><strong>Sin avatares:</strong> Experiencia más plana y menos personalizada.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Justificación:</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Se implementa un sistema interno de selección de avatares predefinidos, lo que garantiza el control sobre la estética de la aplicación y la privacidad de los usuarios al no requerir subida de imágenes propias inicialmente.</p>
+</li>
+<li>
+<p>Los cambios de avatar se sincronizan en tiempo real mediante WebSockets en las salas de juego, mejorando la sensación de presencia.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Consecuencias:</strong> Requiere ampliar el modelo de usuario en MongoDB y los endpoints del API para gestionar la actualización y recuperación de las preferencias estéticas.</p>
+</li>
+</ul>
+</div>
 <div style="page-break-after: always;"></div>
 </div>
 </div>
@@ -2546,7 +3006,7 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y, competición contra un bot y contra otro usuario en local. <strong>SC8</strong><a id="SC8"></a></p>
+<p>Completitud funcional: Se cubren los requisitos de jugabilidad implementando las acciones propias del juego Y y sus distintas variantes (como Tabu Y y Holey Y), competición contra diferentes niveles de dificultad de bot (Random, Greedy, MCTS), contra otro usuario en local y en online junto con chat. <strong>SC8</strong><a id="SC8"></a> <strong>SC12</strong><a id="SC12"></a></p>
 </li>
 <li>
 <p>Corrección funcional: Se contemplan las reglas de juego desde el motor, garantizando una validación precisa del estado de la partida en cada momento. Se guía al usuario a seguir correctamente el desarrollo de partida. <strong>SC1</strong><a id="SC1"></a></p>
@@ -2597,10 +3057,10 @@ concrete and measurable.</p>
 <p>Operabilidad: La propia interfaz te guía durante el juego mostrándote de quién es el turno, las casillas disponibles y opciones disponibles. <strong>SC2</strong><a id="SC2"></a></p>
 </li>
 <li>
-<p>Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego.</p>
+<p>Protección contra errores de usuario: Aquellas acciones que desencadenarían algún fallo, como por ejemplo jugar fuera de tu propio turno, están deshabilitadas, previendo una mala práctica del juego. Además, se realizan validaciones de seguridad en los datos de entrada (ej. username).</p>
 </li>
 <li>
-<p>Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario además de jugar al juego pueda registrar usuario y disponer de sus estadísticas.</p>
+<p>Participación del usuario: Se dispone de una interfaz interactiva con distintas funciones para que el usuario, además de jugar al juego, pueda registrarse, personalizar su perfil (como cambiar su avatar o nombre de usuario), comparar su nivel en un ranking global y disponer de sus estadísticas personales de manera muy visual y gráfica. <strong>SC13</strong><a id="SC13"></a> <strong>SC14</strong><a id="SC14"></a> <strong>SC15</strong><a id="SC15"></a></p>
 </li>
 <li>
 <p>Accesibilidad: Cualquier persona de habla hispana puede acceder al juego. No tiene soporte de idiomas. <strong>SC3</strong><a id="SC3"></a> El uso de un DNS permite que los usuarios accedan a la aplicación mediante un nombre legible (yovies4a.duckdns.org) en lugar de una dirección IP técnica y difícil de recordar. <strong>SC7</strong><a id="SC7"></a></p>
@@ -2648,7 +3108,10 @@ concrete and measurable.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a> <strong>*SC9</strong><a id="SC9"></a></p>
+<p>Modularidad: El proyecto está dividido en tres microservicios (gamey, users y webapp). A su vez, en cada uno se sigue una estructura con las resposabilidades bien definidas y una clara separación de capas. Así se garantiza que un mínimo cambio no provoca un efecto de cascada. <strong>SC6</strong><a id="SC6"></a> <strong>SC9</strong><a id="SC9"></a></p>
+</li>
+<li>
+<p>Extensibilidad: Se ha diseñado una API de Bots que permite incorporar nuevas estrategias de inteligencia artificial (ej. Random, Greedy, MCTS Completo) de manera modular sin afectar al núcleo del motor del juego. <strong>SC11</strong><a id="SC11"></a></p>
 </li>
 </ul>
 </div>
@@ -2764,6 +3227,31 @@ concrete and measurable.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No repudio</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Se afirma no haber utilizado nunca la aplicación, en la base de datos aparece el registro asociado a un correo autenticado en dos pasos, se mantiene un registro de uso.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC11">SC11</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extensibilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se desea agregar un nuevo nivel de dificultad para el bot con una estrategia diferente. Gracias a la API de Bots, el desarrollador puede implementar el nuevo bot de forma aislada y registrarlo en la API sin modificar las reglas del motor ni la comunicación.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC12">SC12</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adecuación funcional</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A dos personas les apetece jugar juntas pero están lejos, así que recurren al modo multijugador online, donde además pueden comunicarse a través de un chat en tiempo real.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC13">SC13</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un usuario quiere ver qué tal le va en comparación con el resto de jugadores, por lo que accede a la tabla de Ranking global donde se muestran los mejores jugadores y su puntuación de forma clara.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC14">SC14</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Un usuario decide que quiere cambiar su nombre de usuario o modificar su avatar para personalizar su cuenta, por lo que entra a su perfil y actualiza sus datos de forma sencilla e inmediata.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#SC15">SC15</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Usabilidad</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Al revisar su perfil tras varias partidas, el usuario puede observar sus estadísticas personales mostradas mediante gráficos visuales que ilustran claramente su ratio de victorias, derrotas y empates.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="sidebarblock arc42help">
@@ -2863,18 +3351,23 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tiempos de carga elevados</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol, lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Implementar límites de tiempo de respuesta y pruebas de carga en la máquina virtual con la aplicación desplegada.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">El juego utiliza un algoritmo de búsqueda en el que se valoran las mejores opciones recorriendo repetidamente un arbol (MCTS), lo que puede costar tiempos elevados de carga y hacer que se cuelgue el contenedor.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implementar límites de tiempo de respuesta, optimizar el algoritmo, y proveer distintos niveles de dificultad con algoritmos más ligeros (como Random o Greedy) para reducir la carga cuando no se necesite un nivel avanzado. Además, se realizan pruebas de carga en la máquina virtual con la aplicación desplegada.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seguridad en el servicio de usuarios</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Para acceder al juego hay que pasar por una ventana de registro en la que el usuario debe introducir sus datos.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real. Además de todo esto, la interfaz bloquea acciones que pueden desencadenar en error, como dejar campos vacíos.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se implementan dos medidas, la primera de verificación de integridad, para que el usuario corrobore que tiene acceso al correo que está usando se emplea una verificación en dos pasos. La segunda es que en nuestra base de datos almacenamos codigos hash creados a partir de la contraseña del usuario, por lo que no disponemos de su contraseña real. Además de todo esto, la interfaz bloquea acciones que pueden desencadenar en error e implementa una validación exhaustiva de los datos de entrada (como la validación del nombre de usuario o del correo) para evitar inyecciones o datos corruptos.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Correcta conexión entre todas las funcionalidades de la aplicación</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">El juego no consta solo de un tablero, se implementa ventana de registro, base de datos, usuarios con distintas características que van cambiando estadísticas según sus interacciones, distintos modos de juego y dinámicas con el bot y humano.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Además de unas pruebas exhaustivas con alta cobertura, se implementan tests E2E para comprobar un correcto flujo por todas las características de la aplicación.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Evolución de los algoritmos para bots</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">La integración de múltiples bots con diferentes estrategias y niveles de dificultad puede generar acoplamiento y dificultar el mantenimiento del código en el microservicio gamey.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Se ha implementado una "Bot API" con un patrón de registro que centraliza la interfaz de los bots. Esto permite añadir o modificar algoritmos (Random, Greedy, MCTS) de forma completamente modular sin alterar el motor de juego principal.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2980,15 +3473,284 @@ more precisely down to a level of scenarios that can be discussed and evaluated.
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Pruebas de carga</strong></em></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Evaluaciones de rendimiento que simulan tráfico real en aplicaciones, sitios web o estructuras para medir su comportamiento, estabilidad y resistencia bajo una carga de trabajo específica</em></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Bot API</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Interfaz y registro centralizado que permite la integración de diferentes algoritmos de inteligencia artificial (como Random, Greedy o MCTS) de forma modular, permitiendo seleccionar distintos niveles de dificultad.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Greedy (Algoritmo)</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Estrategia heurística de inteligencia artificial que toma la decisión óptima a nivel local en cada paso con la esperanza de encontrar un óptimo global. Se implementa como uno de los niveles de dificultad del bot.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Prometheus y Grafana</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Herramientas de monitorización utilizadas en conjunto; Prometheus recopila métricas de los microservicios (como el servicio de usuarios) y Grafana las visualiza mediante paneles interactivos para analizar el rendimiento del sistema.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>WebSockets / Socket.io</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Tecnología que permite una comunicación bidireccional en tiempo real entre el cliente (webapp) y el servidor, utilizada para la implementación del modo multijugador online y el chat en vivo durante las partidas.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Tabu Y</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Variante del juego base en la cual está prohibido colocar una ficha en una casilla adyacente al último movimiento realizado por el rival, forzando un cambio de estrategia.</em></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em><strong>Holey Y</strong></em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>Variante del juego que introduce agujeros generados aleatoriamente en el tablero, los cuales actúan como casillas permanentemente bloqueadas y alteran los caminos disponibles.</em></p></td>
+</tr>
 </tbody>
 </table>
+<div style="page-break-after: always;"></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="section-testing">13. Pruebas</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>En esta sección se detallan las pruebas realizadas al sistema para garantizar su correcto funcionamiento, la estabilidad del software y el cumplimiento de los requisitos de calidad. El enfoque de pruebas abarca desde el nivel de componente individual hasta el sistema completo bajo carga.</p>
+</div>
+<div class="sect2">
+<h3 id="_pruebas_unitarias">13.1. Pruebas Unitarias</h3>
+<div class="paragraph">
+<p>Las pruebas unitarias se encargan de verificar el funcionamiento de los componentes, funciones y servicios de forma aislada, asegurando que cada pieza de código se comporte según lo esperado.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Tecnología</strong>: Se utiliza <strong>Vitest</strong> como framework de ejecución de pruebas debido a su velocidad e integración nativa con Vite.</p>
+</li>
+<li>
+<p><strong>Alcance</strong>:</p>
+</li>
+<li>
+<p><strong>Backend (Users)</strong>: Pruebas de los modelos de Mongoose, servicios de lógica de negocio y controladores de API utilizando <code>supertest</code>.</p>
+</li>
+<li>
+<p><strong>Frontend (WebApp)</strong>: Pruebas de componentes React utilizando <code>React Testing Library</code>, hooks personalizados y utilidades de lógica de juego.</p>
+</li>
+<li>
+<p><strong>Motor de Juego (Gamey)</strong>: Pruebas unitarias de la lógica del motor (movimientos, reglas, estados) y pruebas de integración para el servidor de bots.</p>
+</li>
+<li>
+<p><strong>Ejecución</strong>:</p>
+</li>
+<li>
+<p>Para ejecutar las pruebas en local: <code>npm run test</code> (en webapp y users) y <code>cargo test</code> (en el motor de juego).</p>
+</li>
+<li>
+<p>Integración continua: Se ejecutan automáticamente en cada <strong>Push</strong> o <strong>Pull Request</strong> a través de GitHub Actions.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_pruebas_de_propiedades_y_rendimiento_rust">13.2. Pruebas de Propiedades y Rendimiento (Rust)</h3>
+<div class="paragraph">
+<p>Dado que el motor de juego es una pieza crítica desarrollada en <strong>Rust</strong>, se han aplicado técnicas avanzadas de validación:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Pruebas de Propiedades (Property-based Testing)</strong>: Se utiliza la librería <strong>proptest</strong> para generar casos de prueba aleatorios pero controlados, asegurando que las invariantes del motor de juego se mantienen bajo cualquier circunstancia.</p>
+</li>
+<li>
+<p><strong>Benchmarks</strong>: Se utiliza <strong>Criterion</strong> para realizar análisis de rendimiento y detectar regresiones en la velocidad de ejecución de los algoritmos de juego.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_pruebas_de_aceptación">13.3. Pruebas de Aceptación</h3>
+<div class="paragraph">
+<p>Las pruebas de aceptación (E2E) verifican que el sistema completo satisface los requisitos del negocio y funciona correctamente desde la perspectiva del usuario final.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Tecnología</strong>: Se utiliza <strong>Cucumber.js</strong> para la definición de escenarios en lenguaje natural (Gherkin) y <strong>Playwright</strong> para la automatización del navegador.</p>
+</li>
+<li>
+<p><strong>Metodología</strong>: Desarrollo guiado por comportamiento (BDD). Los escenarios se definen en archivos <code>.feature</code> que describen el comportamiento esperado sin entrar en detalles técnicos.</p>
+</li>
+<li>
+<p><strong>Escenarios Clave</strong>:</p>
+</li>
+<li>
+<p><strong>Flujo de Usuario</strong>: Registro exitoso, validación de email, inicio de sesión y gestión de perfil.</p>
+</li>
+<li>
+<p><strong>Jugabilidad</strong>: Inicio de partidas, turnos correctos, detección de victoria/empate y persistencia de resultados.</p>
+</li>
+<li>
+<p><strong>Social</strong>: Funcionamiento del chat, ranking global e historial de partidas.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_resultados_de_cobertura_de_código">13.4. Resultados de Cobertura de Código</h3>
+<div class="paragraph">
+<p>La cobertura de código nos permite identificar qué partes del sistema no están siendo validadas por los tests, permitiendo mejorar la robustez del software.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Herramientas</strong>: Se utiliza el motor de cobertura <strong>v8</strong> integrado en Vitest.</p>
+</li>
+<li>
+<p><strong>Estado Actual</strong>:</p>
+</li>
+<li>
+<p><strong>WebApp</strong>: Se mantiene una cobertura superior al <strong>85%</strong>, con especial atención a las vistas críticas y servicios de socket.</p>
+</li>
+<li>
+<p><strong>Users Microservice</strong>: La cobertura supera el <strong>87%</strong>, garantizando la seguridad en la gestión de cuentas y persistencia.</p>
+</li>
+<li>
+<p><strong>Motor de Juego (Rust)</strong>: Gracias al tipado fuerte y las pruebas exhaustivas (unitarias y de propiedades), el motor mantiene una alta fiabilidad, con métricas de cobertura integradas en el análisis global.</p>
+</li>
+<li>
+<p><strong>Calidad Continua</strong>: Los resultados se exportan a <strong>SonarCloud</strong>, donde se monitorizan métricas de complejidad ciclomática, duplicación de código y "code smells".</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_pruebas_de_carga_informe_de_pruebas_de_carga">13.5. Pruebas de Carga (Informe de Pruebas de Carga)</h3>
+<div class="paragraph">
+<p>Las pruebas de carga evalúan la capacidad del sistema para manejar múltiples usuarios simultáneos, picos de tráfico y situaciones de estrés sobre la infraestructura desplegada. Para ello se ha utilizado <strong>Gatling</strong> con simulaciones definidas mediante el SDK de Java.</p>
+</div>
+<div class="paragraph">
+<p>Se han definido tres tipos principales de simulación:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Smoke Test (<code>SmokeSimulation</code>)</strong>: prueba de humo orientada a validar rápidamente que las rutas principales de la aplicación funcionan correctamente. Se ejecuta con una carga mínima y recorre operaciones clave como obtención de metadatos, consulta de ranking, perfil, estadísticas, partidas contra bot, partidas multijugador y guardado de histórico.</p>
+</li>
+<li>
+<p><strong>Load Test (<code>LoadSimulation</code>)</strong>: prueba de carga que simula un entorno de uso más realista. Incrementa progresivamente el número de usuarios concurrentes hasta alcanzar un estado estable, permitiendo observar el comportamiento del sistema bajo una carga nominal. La simulación combina varios perfiles de uso: visitantes, jugadores contra bot, partidas multijugador y ráfagas de peticiones externas.</p>
+</li>
+<li>
+<p><strong>Stress Test (<code>StressSimulation</code>)</strong>: prueba de estrés diseñada para someter el sistema a una carga elevada y comprobar si mantiene la disponibilidad, los tiempos de respuesta y la tasa de éxito dentro de unos límites aceptables. Esta simulación genera una carga agresiva contra el API Gateway, incluyendo movimientos continuos, bots internos, visitantes pesados y ráfagas de peticiones. El objetivo es detectar el punto de degradación y analizar cómo responde la arquitectura ante condiciones extremas.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="_ejecución_en_local">13.5.1. Ejecución en local</h4>
+<div class="paragraph">
+<p>Antes de ejecutar las pruebas, se levanta el sistema completo mediante Docker Compose:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bash" data-lang="bash">docker compose up -d --build</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A continuación, desde el módulo de Gatling, se ejecutan las simulaciones indicando la URL base de la aplicación mediante la variable de entorno <code>YOVI_BASE_URL</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bash" data-lang="bash">YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+YOVI_BASE_URL=http://localhost ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>En Windows PowerShell, la variable de entorno se define de la siguiente forma:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-powershell" data-lang="powershell">$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.SmokeSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.LoadSimulation
+
+$env:YOVI_BASE_URL="http://localhost"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_ejecución_en_despliegue">13.5.2. Ejecución en despliegue</h4>
+<div class="paragraph">
+<p>Además de las pruebas locales, se ejecutó la simulación de estrés contra el despliegue real en la máquina virtual de Azure, accesible mediante HTTPS a través del dominio público de la aplicación.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bash" data-lang="bash">YOVI_BASE_URL=https://yovies4a.duckdns.org ./mvnw gatling:test -Dgatling.simulationClass=yovi.StressSimulation</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>En Windows PowerShell:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-powershell" data-lang="powershell">$env:YOVI_BASE_URL="https://yovies4a.duckdns.org"
+.\mvnw.cmd gatling:test -Dgatling.simulationClass=yovi.StressSimulation</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_resultados_obtenidos">13.5.3. Resultados obtenidos</h4>
+<div class="paragraph">
+<p>Los informes generados por Gatling se almacenan automáticamente en el directorio:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-bash" data-lang="bash">target/gatling/</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A continuación se muestran las capturas de los informes generados por Gatling para cada simulación:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/gatling-smoke.png" alt="Resultados de SmokeSimulation" width="80%">
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/gatling-load.png" alt="Resultados de LoadSimulation" width="80%">
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/gatling-stress-local.png" alt="Resultados de StressSimulation en local" width="80%">
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/gatling-stress-deploy.png" alt="Resultados de StressSimulation en despliegue" width="80%">
+</div>
+</div>
+<div class="paragraph">
+<p>En las pruebas realizadas se observa un comportamiento estable del sistema en los distintos niveles de carga. La prueba de humo (<code>SmokeSimulation</code>) ejecutó <strong>20 peticiones</strong>, todas ellas correctas, con <strong>0 errores</strong>. Esta prueba valida que las rutas principales de la aplicación responden correctamente antes de someter el sistema a escenarios de mayor carga.</p>
+</div>
+<div class="paragraph">
+<p>En la prueba de carga (<code>LoadSimulation</code>) se ejecutaron <strong>436 peticiones</strong>, también con <strong>0 errores</strong>. El sistema mantuvo un throughput aproximado de <strong>7,52 peticiones por segundo</strong>, con un tiempo medio de respuesta de <strong>73 ms</strong> y un percentil 95 de <strong>142 ms</strong>. Estos resultados muestran que, bajo una carga nominal, la aplicación mantiene tiempos de respuesta bajos y cumple correctamente las aserciones definidas en Gatling.</p>
+</div>
+<div class="paragraph">
+<p>En las pruebas de estrés se comparó el comportamiento entre el entorno local y el despliegue remoto. En local, la simulación ejecutó <strong>66.073 peticiones</strong>, todas ellas correctas, alcanzando un throughput aproximado de <strong>420,85 peticiones por segundo</strong>. El tiempo medio de respuesta fue de <strong>89 ms</strong>, con un percentil 95 de <strong>239 ms</strong> y un tiempo máximo de <strong>1.710 ms</strong>.</p>
+</div>
+<div class="paragraph">
+<p>En el despliegue remoto, la prueba de estrés ejecutó <strong>72.698 peticiones</strong>, también con <strong>0 errores</strong>, alcanzando un throughput aproximado de <strong>466,01 peticiones por segundo</strong>. En este caso, el tiempo medio de respuesta fue de <strong>69 ms</strong>, con un percentil 95 de <strong>158 ms</strong> y un tiempo máximo de <strong>1.437 ms</strong>.</p>
+</div>
+<div class="paragraph">
+<p>A diferencia de ejecuciones anteriores, en estas capturas no se observan errores <code>KO</code>, <code>502 Bad Gateway</code> ni timeouts TCP/SSL. Todas las aserciones configuradas en Gatling aparecen como superadas, incluyendo el porcentaje mínimo de eventos correctos y los límites máximos de tiempo de respuesta.</p>
+</div>
+<div class="paragraph">
+<p>Por tanto, los resultados muestran que el sistema mantiene un comportamiento robusto tanto en local como en despliegue. Incluso en escenarios de estrés, la aplicación conserva una tasa de éxito del <strong>100%</strong>, mantiene tiempos de respuesta aceptables y no presenta pérdida de disponibilidad durante la ejecución de las pruebas.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
 Version 8.2 EN<br>
-Last updated 2026-03-05 20:35:50 +0100
+Last updated 2026-04-27 21:23:20 +0200
 </div>
 </div>
 </body>
