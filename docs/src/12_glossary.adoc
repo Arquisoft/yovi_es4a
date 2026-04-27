@@ -72,4 +72,22 @@ endif::arc42help[]
 | **Pruebas de carga**
 | Evaluaciones de rendimiento que simulan tráfico real en aplicaciones, sitios web o estructuras para medir su comportamiento, estabilidad y resistencia bajo una carga de trabajo específica
 
+| **Bot API**
+| Interfaz y registro centralizado que permite la integración de diferentes algoritmos de inteligencia artificial (como Random, Greedy o MCTS) de forma modular, permitiendo seleccionar distintos niveles de dificultad.
+
+| **Greedy (Algoritmo)**
+| Estrategia heurística de inteligencia artificial que toma la decisión óptima a nivel local en cada paso con la esperanza de encontrar un óptimo global. Se implementa como uno de los niveles de dificultad del bot.
+
+| **Prometheus y Grafana**
+| Herramientas de monitorización utilizadas en conjunto; Prometheus recopila métricas de los microservicios (como el servicio de usuarios) y Grafana las visualiza mediante paneles interactivos para analizar el rendimiento del sistema.
+
+| **WebSockets / Socket.io**
+| Tecnología que permite una comunicación bidireccional en tiempo real entre el cliente (webapp) y el servidor, utilizada para la implementación del modo multijugador online y el chat en vivo durante las partidas.
+
+| **Tabu Y**
+| Variante del juego base en la cual está prohibido colocar una ficha en una casilla adyacente al último movimiento realizado por el rival, forzando un cambio de estrategia.
+
+| **Holey Y**
+| Variante del juego que introduce agujeros generados aleatoriamente en el tablero, los cuales actúan como casillas permanentemente bloqueadas y alteran los caminos disponibles.
+
 |===
