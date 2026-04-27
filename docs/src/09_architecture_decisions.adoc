@@ -158,3 +158,39 @@ En esta sección se documentan las decisiones arquitectónicas fundamentales que
 ** El gateway (`certbot` integrado en la imagen Docker) intenta obtener el certificado en el arranque mediante el modo `--standalone`. Si falla (entorno local, IP sin DNS público), genera automáticamente un certificado autofirmado con `openssl` como fallback, garantizando que el sistema arranca en cualquier entorno sin intervención manual.
 ** Esta lógica se encapsula en el `entrypoint.sh` del contenedor `gateway`, manteniendo la misma imagen Docker para todos los entornos.
 * **Consecuencias:** El puerto 80 debe estar libre en el momento del arranque del gateway para que `certbot` pueda completar el challenge de Let's Encrypt. En entorno local, el navegador mostrará una advertencia de seguridad por el certificado autofirmado, lo que es aceptable para desarrollo.
+
+=== ADR 10: Uso de Socket.io para comunicación multijugador
+
+* **Estado:** Aceptada.
+* **Contexto:** El modo multijugador requiere una comunicación bidireccional de baja latencia para sincronizar los movimientos entre jugadores, gestionar el chat y actualizar el estado de la sala.
+* **Alternativas consideradas:**
+** **HTTP Long Polling:** Demasiado ineficiente y con alta latencia para un juego en tiempo real.
+** **WebSockets puros:** Requieren una gestión manual de reconexiones, salas y fallbacks en navegadores antiguos.
+* **Justificación:**
+** **Socket.io** proporciona una abstracción potente sobre WebSockets con gestión automática de salas (*rooms*), reconexión y fallbacks, lo que acelera el desarrollo del modo multijugador.
+** Su integración con Node.js es natural y permite compartir la lógica de autenticación con el servicio `users`.
+* **Consecuencias:** Introduce una dependencia adicional en el stack de backend y frontend, y requiere configurar el gateway para permitir el *upgrade* de protocolo HTTP a WebSockets.
+
+=== ADR 11: Estrategia de persistencia de partidas en tiempo real
+
+* **Estado:** Aceptada.
+* **Contexto:** En el modo multijugador, es crítico asegurar que los resultados de las partidas se guarden correctamente incluso si un jugador abandona o se desconecta inesperadamente.
+* **Alternativas consideradas:**
+** **Guardado solo al finalizar:** Riesgo de pérdida de datos si el servidor se reinicia o el cliente no envía la señal de fin.
+** **Persistencia en cada movimiento:** Demasiada carga en la base de datos para una información que solo es relevante al final.
+* **Justificación:**
+** El servidor de WebSockets gestiona eventos de `disconnect` y `leaveRoom`. Cuando se detecta una desconexión en una partida activa, el servidor calcula el resultado (derrota por abandono) y lo persiste inmediatamente en MongoDB.
+** Esto garantiza la integridad de las estadísticas y del historial de partidas sin sobrecargar la base de datos durante el juego normal.
+* **Consecuencias:** El servidor `users` debe mantener un estado en memoria de las salas activas para poder procesar las desconexiones correctamente.
+
+=== ADR 12: Personalización de perfil de usuario (Avatares)
+
+* **Estado:** Aceptada.
+* **Contexto:** Se desea mejorar la retención de usuarios y la experiencia social permitiendo que cada jugador se identifique visualmente en la plataforma.
+* **Alternativas consideradas:**
+** **Gravatar:** Dependencia de un servicio externo y requiere que el usuario tenga cuenta allí.
+** **Sin avatares:** Experiencia más plana y menos personalizada.
+* **Justificación:**
+** Se implementa un sistema interno de selección de avatares predefinidos, lo que garantiza el control sobre la estética de la aplicación y la privacidad de los usuarios al no requerir subida de imágenes propias inicialmente.
+** Los cambios de avatar se sincronizan en tiempo real mediante WebSockets en las salas de juego, mejorando la sensación de presencia.
+* **Consecuencias:** Requiere ampliar el modelo de usuario en MongoDB y los endpoints del API para gestionar la actualización y recuperación de las preferencias estéticas.

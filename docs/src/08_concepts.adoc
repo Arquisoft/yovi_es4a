@@ -79,7 +79,7 @@ La seguridad es un concepto transversal que afecta principalmente al servicio `u
 * **Almacenamiento seguro de contraseñas:** Las contraseñas **nunca se almacenan en texto plano**. Se guardan en MongoDB como hashes criptográficos (usando algoritmos como bcrypt), de forma que incluso un acceso no autorizado a la base de datos no exponga las credenciales reales.
 * **Cifrado en tránsito (HTTPS):** Toda la comunicación entre el cliente y el servidor pasa por el gateway, que gestiona la terminación TLS. En producción se emplea un certificado válido de **Let's Encrypt**; en entorno local se genera un certificado autofirmado como fallback automático.
 * **Validación de entradas:** El servicio `users` valida todas las entradas recibidas (tanto de la webapp como de bots externos) para prevenir inyecciones y datos malformados.
-* **Control de acceso a la API:** El API público para bots expone únicamente las operaciones necesarias (consultar estado, enviar movimiento), con comprobaciones de permisos para impedir acceso a datos de otros usuarios.
+* **Seguridad en WebSockets:** Las conexiones Socket.io están protegidas y asociadas a la sesión del usuario, asegurando que solo los participantes de una sala puedan interactuar con su estado.
 * **Red interna de Docker:** MongoDB no expone puertos públicos; solo es accesible desde la red interna de contenedores (`docker network`), reduciendo la superficie de ataque.
 
 === Comunicación entre Servicios
@@ -88,18 +88,23 @@ La comunicación entre todos los componentes del sistema sigue un patrón unifor
 
 * **Protocolo:** HTTP/REST en todos los intercambios.
 * **Formato de datos:** JSON en todos los mensajes, incluyendo la representación del estado del juego en notación **YEN**.
-* **Sincronía:** Las llamadas son síncronas (petición-respuesta). La `webapp` llama al servicio `users`, que a su vez llama a `gamey` cuando necesita delegar lógica de juego.
+* **Sincronía (REST):** Las llamadas son síncronas (petición-respuesta) para operaciones de gestión (login, estadísticas, etc.).
+* **Asincronía (WebSockets):** Se utiliza **Socket.io** para la comunicación bidireccional en tiempo real durante las partidas multijugador. Esto permite la propagación instantánea de movimientos, mensajes de chat y cambios en el estado de la sala.
 * **Documentación del API:** El servicio `users` expone su API documentada con **Swagger/OpenAPI**, permitiendo que los desarrolladores de bots conozcan los endpoints disponibles, sus parámetros y los formatos de respuesta esperados.
 
 === Variantes del Juego Y
 
 El sistema implementa un mecanismo de variantes que extiende las reglas del Juego Y clásico sin alterar el núcleo del motor. La arquitectura del frontend (`webapp`) modela cada variante como un componente independiente (`GameHvH`, `GameHvB`, `GameHoley`, `GameTabu`, etc.) que comparte la interfaz de tablero base y únicamente sobreescribe las reglas específicas (celdas deshabilitadas, agujeros, restricciones). La selección de variante se realiza antes de iniciar la partida mediante el componente `VariantSelect`, que muestra las variantes disponibles y marca con "Próximamente" aquellas aún no implementadas.
 
-Las variantes actualmente jugables son:
+Las variantes implementadas son:
 
-* **Clásica:** Reglas estándar del Juego Y. Base principal del sistema, tanto en modalidad humano contra humano como humano contra bot.
-* **Tabu Y:** Ciertas celdas están marcadas como tabú y no pueden utilizarse durante la partida, alterando la estrategia de conexión.
-* **Holey Y:** El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad y obligan a buscar rutas alternativas.
+* **Clásica:** Reglas estándar del Juego Y. Base principal del sistema.
+* **Tabu Y:** Ciertas celdas están marcadas como tabú y no pueden utilizarse.
+* **Holey Y:** El tablero tiene agujeros (celdas inexistentes) que alteran la conectividad.
+* **Fortune Dice:** Variante que introduce un componente de azar mediante dados que pueden alterar el turno o el estado de las celdas.
+* **Fortune Coin:** Similar a Dice, pero con lanzamientos de moneda para decisiones binarias rápidas.
+* **Pastel Y:** Variante estética y funcional con una paleta de colores y reglas de puntuación suavizadas.
+* **Master Y:** Variante avanzada donde cada jugador coloca exactamente dos piezas por turno, aumentando la complejidad estratégica.
 
 El servicio `gamey` recibe la información de la variante activa a través de la notación YEN y aplica las restricciones correspondientes en la validación de movimientos.
 
@@ -110,7 +115,7 @@ El servicio `gamey` implementa un sistema de bot con múltiples estrategias inte
 Las estrategias disponibles son:
 
 * **Bot aleatorio (`random_bot`):** Elige una casilla válida aleatoria. Nivel de dificultad mínimo.
-* **Bot MCTS (Monte Carlo Tree Search):** Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (`mcts_random`, `mcts_medio`, `mcts_dificil`, `mcts_demencial`), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se implementa un límite de tiempo (timeout) para garantizar que el servicio siempre responde dentro de un umbral aceptable.
+* **Bot MCTS (Monte Carlo Tree Search):** Algoritmo probabilístico que simula miles de partidas aleatorias desde el estado actual para estimar estadísticamente la probabilidad de victoria de cada movimiento. Se implementa en múltiples niveles de dificultad (`mcts_random`, `mcts_medio`, `mcts_dificil`, `mcts_demencial`), diferenciados por el número de simulaciones y el tiempo de cómputo máximo. Se emplea paralelización mediante la librería `rayon` para optimizar el rendimiento en procesadores multinúcleo.
 
 === Monitorización y Observabilidad
 
@@ -152,3 +157,19 @@ El sistema adopta un enfoque *polyglot* (varios lenguajes y tecnologías), selec
 * **Base de Datos Documental (MongoDB):** La flexibilidad del esquema JSON/BSON facilita la evolución del modelo de datos sin migraciones complejas, y su integración nativa con el ecosistema JavaScript/TypeScript simplifica el desarrollo del servicio `users`.
 
 * **Contenedorización (Docker + Docker Compose):** Todos los servicios se empaquetan en imágenes Docker, garantizando la portabilidad y reproducibilidad del entorno en desarrollo, pruebas y producción.
+
+=== Personalización y Perfil de Usuario
+
+El sistema permite a los usuarios personalizar su experiencia dentro de la plataforma:
+
+* **Gestión de Avatares:** Los usuarios pueden seleccionar y cambiar su imagen de perfil (avatar) entre una selección predefinida o mediante integración con servicios externos. El cambio se refleja instantáneamente en la interfaz y en las partidas multijugador.
+* **Cambio de Nombre de Usuario:** Se permite la modificación del nombre público (handle) del usuario, manteniendo la integridad del historial de partidas y estadísticas vinculadas a su cuenta única.
+* **Privacidad y Seguridad:** Los cambios de credenciales (contraseña) y datos sensibles requieren confirmación adicional para asegurar la cuenta.
+
+=== Comunicación en Tiempo Real y Chat
+
+Para fomentar la interactividad en el modo multijugador, se han implementado capacidades de comunicación en tiempo real:
+
+* **Salas de Juego (Lobbies):** Sistema de creación de salas privadas mediante códigos de invitación de 5 caracteres. Los usuarios pueden configurar la variante y el tamaño del tablero antes de que el oponente se una.
+* **Chat Integrado:** Durante las partidas multijugador, los jugadores disponen de un chat de texto para comunicarse. Los mensajes se envían de forma instantánea mediante WebSockets y se muestran en un panel lateral (`MultiplayerChatDrawer`).
+* **Estado de Conexión:** El sistema detecta y notifica la desconexión o el abandono de un rival, gestionando automáticamente la persistencia del resultado de la partida (derrota por abandono).
