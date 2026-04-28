@@ -21,7 +21,6 @@ import GamePastel from "./vistas/game/GamePastel";
 import GamePolyY from "./vistas/game/GamePolyY";
 import GameTabu from "./vistas/game/GameTabu";
 import GameWhyNot from "./vistas/game/GameWhyNot";
-import Game3DY from "./vistas/game/Game3DY";
 import GameHvB from "./vistas/game/GameHvB";
 import GameHvH from "./vistas/game/GameHvH";
 import {
@@ -74,7 +73,6 @@ export default function App() {
         <Route path="/game-holey" element={<GameHoley />} />
         <Route path="/game-poly-y" element={<GamePolyY />} />
         <Route path="/game-why-not" element={<GameWhyNot />} />
-        <Route path="/game-3dy" element={<Game3DY />} />
 
         <Route path="/multiplayer" element={<MultiplayerLobby />} />
         <Route path="/multiplayer/:code" element={<GameMultiplayer />} />

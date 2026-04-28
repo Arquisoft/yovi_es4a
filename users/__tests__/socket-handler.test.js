@@ -485,6 +485,7 @@ describe('Socket Handler', () => {
       expect.any(Object)
     );
   }, 100000);
+
   it('retransmite variantUpdate al rival en la sala', async () => {
     await setup();
     connectionCallback(socketHost);
@@ -519,6 +520,181 @@ describe('Socket Handler', () => {
         swapped: false,
         firstPlayer: 'player0',
       },
+    });
+  });
+
+  describe('Edge Cases and Additional Coverage', () => {
+    it('normalizeUsername debería manejar entradas no válidas', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ username: 123, profilePicture: 456 }, cb);
+      // username y profilePicture serán null internamente
+      expect(cb).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('normalizeUsername debería manejar strings vacíos', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ username: '   ', profilePicture: '' }, cb);
+      expect(cb).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('persistRoomHistory debería evitar guardados duplicados o inválidos', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ mode: 'invalid_mode', size: 0 }, cb);
+      const code = cb.mock.calls[0][0].code;
+
+      // Intentar finalizar partida inválida
+      await socketHost.handlers['finishGame']({ code, winner: 'player0' });
+      expect(findOneMock).not.toHaveBeenCalled();
+    });
+
+    it('joinRoom debería manejar payload como string (solo código)', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      const cbCreate = vi.fn();
+      socketHost.handlers['createRoom']({}, cbCreate);
+      const code = cbCreate.mock.calls[0][0].code;
+
+      connectionCallback(socketGuest);
+      const cbJoin = vi.fn();
+      socketGuest.handlers['joinRoom'](code, cbJoin);
+      expect(cbJoin).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('finishGame debería manejar empates (winner null)', async () => {
+      findOneMock
+        .mockResolvedValueOnce({
+          _id: 'u1',
+          username: 'hostUser',
+          stats: { currentWinStreak: 2 },
+          gameHistory: [],
+        })
+        .mockResolvedValueOnce({
+          _id: 'u2',
+          username: 'guestUser',
+          stats: { currentWinStreak: 5 },
+          gameHistory: [],
+        });
+      findByIdAndUpdateMock.mockResolvedValue({});
+
+      await setup();
+      connectionCallback(socketHost);
+      connectionCallback(socketGuest);
+
+      const cbCreate = vi.fn();
+      socketHost.handlers['createRoom'](
+        { size: 11, mode: 'classic_hvh', username: 'hostUser' },
+        cbCreate
+      );
+      const code = cbCreate.mock.calls[0][0].code;
+
+      socketGuest.handlers['joinRoom'](
+        { code, username: 'guestUser' },
+        vi.fn()
+      );
+
+      socketHost.handlers['startGame']({
+        code,
+        gameId: 'game-draw',
+        hostClientId: 'c1',
+      });
+
+      await socketHost.handlers['finishGame']({ code, winner: null });
+
+      expect(findByIdAndUpdateMock).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({
+          $inc: expect.objectContaining({ 'stats.gamesDrawn': 1 }),
+          $set: { 'stats.currentWinStreak': 0 },
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('leaveRoom debería manejar payload como string', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      const cbCreate = vi.fn();
+      socketHost.handlers['createRoom']({}, cbCreate);
+      const code = cbCreate.mock.calls[0][0].code;
+
+      await socketHost.handlers['leaveRoom'](code);
+      expect(socketHost.leave).toHaveBeenCalledWith(code);
+    });
+
+    it('createRoom debería eliminar salas antiguas del mismo host', async () => {
+      await setup();
+      connectionCallback(socketHost);
+      
+      const cb1 = vi.fn();
+      socketHost.handlers['createRoom']({}, cb1);
+      const code1 = cb1.mock.calls[0][0].code;
+
+      const cb2 = vi.fn();
+      socketHost.handlers['createRoom']({}, cb2);
+      const code2 = cb2.mock.calls[0][0].code;
+
+      // La sala 1 debería haber sido eliminada de la variable interna rooms
+      // Podemos verificar esto intentando unirnos a ella
+      connectionCallback(socketGuest);
+      const cbJoin = vi.fn();
+      socketGuest.handlers['joinRoom']({ code: code1 }, cbJoin);
+      expect(cbJoin).toHaveBeenCalledWith({ error: 'Sala no encontrada.' });
+    });
+
+    it('saveGameForUser debería retornar si no hay username', async () => {
+      // Esta función es interna pero se llama desde persistRoomHistory
+      // Si forzamos un persistRoomHistory con usernames nulos
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ mode: 'classic_hvh', size: 11, username: null }, cb);
+      const code = cb.mock.calls[0][0].code;
+
+      socketHost.handlers['startGame']({ code, gameId: 'g-no-user' });
+      await socketHost.handlers['finishGame']({ code, winner: 'player0' });
+      
+      expect(findOneMock).not.toHaveBeenCalled();
+    });
+
+    it('saveGameForUser debería retornar si el juego ya existe', async () => {
+      findOneMock.mockResolvedValueOnce({
+        username: 'hostUser',
+        gameHistory: [{ gameId: 'g-exists' }]
+      });
+
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ mode: 'classic_hvh', size: 11, username: 'hostUser' }, cb);
+      const code = cb.mock.calls[0][0].code;
+
+      socketHost.handlers['startGame']({ code, gameId: 'g-exists' });
+      await socketHost.handlers['finishGame']({ code, winner: 'player0' });
+      
+      expect(findByIdAndUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it('persistRoomHistory debería manejar errores de base de datos suavemente', async () => {
+      findOneMock.mockRejectedValue(new Error('DB Error'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await setup();
+      connectionCallback(socketHost);
+      const cb = vi.fn();
+      socketHost.handlers['createRoom']({ mode: 'classic_hvh', size: 11, username: 'hostUser' }, cb);
+      const code = cb.mock.calls[0][0].code;
+
+      socketHost.handlers['startGame']({ code, gameId: 'g-error' });
+      await socketHost.handlers['finishGame']({ code, winner: 'player0' });
+      
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Error guardando historial'), expect.any(Error));
+      consoleSpy.mockRestore();
     });
   });
 });
