@@ -9,9 +9,11 @@ info:
 
 servers:
   - url: https://yovies4a.duckdns.org
-    description: Servidor de producción
+    description: Servidor de producción (Gateway)
   - url: http://localhost:8001
-    description: Servidor de desarrollo (users service directo)
+    description: Servidor de desarrollo (Users service directo)
+  - url: http://localhost:4000
+    description: Servidor de desarrollo (Gamey service directo)
 
 paths:
 
@@ -19,7 +21,7 @@ paths:
   # AUTH & REGISTRO
   # ──────────────────────────────────────────────────────────────
 
-  /createuser:
+  /api/users/createuser:
     post:
       summary: Registrar un nuevo usuario
       description: Crea un nuevo usuario con username, contraseña y email. Envía un correo de verificación.
@@ -68,7 +70,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /login:
+  /api/users/login:
     post:
       summary: Iniciar sesión
       description: Autentica a un usuario registrado y verificado.
@@ -118,7 +120,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /verify:
+  /api/users/verify:
     get:
       summary: Verificar correo electrónico
       description: Verifica la cuenta de un usuario mediante el token enviado por email.
@@ -150,7 +152,7 @@ paths:
   # GESTIÓN DE PERFIL
   # ──────────────────────────────────────────────────────────────
 
-  /users/{username}/profile:
+  /api/users/users/{username}/profile:
     get:
       summary: Obtener perfil de usuario
       description: Devuelve la información básica y el avatar de un usuario (sin contraseñas).
@@ -190,7 +192,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{username}/password:
+  /api/users/users/{username}/password:
     put:
       summary: Cambiar contraseña
       description: Actualiza la contraseña validando la contraseña actual.
@@ -245,7 +247,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{username}/username:
+  /api/users/users/{username}/username:
     patch:
       summary: Cambiar nombre de usuario
       description: Permite a un usuario cambiar su nombre de usuario de forma única en el sistema.
@@ -292,7 +294,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{username}/avatar:
+  /api/users/users/{username}/avatar:
     patch:
       summary: Cambiar avatar de perfil
       description: Permite seleccionar un nuevo avatar de la lista predefinida.
@@ -344,7 +346,7 @@ paths:
   # PARTIDAS Y ESTADÍSTICAS DE USUARIO
   # ──────────────────────────────────────────────────────────────
 
-  /users/{username}/games:
+  /api/users/users/{username}/games:
     post:
       summary: Registrar una partida y actualizar estadísticas
       description: >
@@ -437,7 +439,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{username}/history:
+  /api/users/users/{username}/history:
     get:
       summary: Historial de partidas paginado
       description: >
@@ -529,7 +531,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /users/{username}/stats:
+  /api/users/users/{username}/stats:
     get:
       summary: Obtener estadísticas individuales de un usuario
       parameters:
@@ -604,7 +606,7 @@ paths:
   # RANKING
   # ──────────────────────────────────────────────────────────────
 
-  /ranking:
+  /api/users/ranking:
     get:
       summary: Obtener ranking de usuarios y podio semanal
       description: >
@@ -637,6 +639,12 @@ paths:
             maximum: 100
             default: 20
           description: Tamaño de la página (limitado a 100)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Alias de pageSize
       responses:
         '200':
           description: Ranking devuelto correctamente
@@ -653,14 +661,11 @@ paths:
                     description: Información en base a los últimos 7 días para destacar logros.
                     properties:
                       mostGames:
-                        type: object
-                        description: Jugador con más partidas jugadas esta semana.
+                        $ref: '#/components/schemas/PodiumEntry'
                       mostWins:
-                        type: object
-                        description: Jugador con más partidas ganadas esta semana.
+                        $ref: '#/components/schemas/PodiumEntry'
                       bestRate:
-                        type: object
-                        description: Jugador con mayor % de victorias.
+                        $ref: '#/components/schemas/PodiumEntry'
                   pagination:
                     type: object
                     properties:
@@ -704,23 +709,29 @@ paths:
         - name: position
           in: query
           required: true
-          schema:
-            type: string
           description: >
             Estado del tablero en notación YEN, serializado como JSON y codificado
-            en la URL. Ejemplo: `{"size":5,"layout":"00000...","turn":3}`
-          example: '{"size":5,"layout":"0000000000000000000000000","turn":0}'
+            en la URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YEN'
+              example:
+                size: 3
+                turn: 0
+                players: ["B", "R"]
+                layout: "./../..."
         - name: bot_id
           in: query
           required: false
           schema:
             type: string
-            enum: [random, greedy, mcts_random, mcts_medio, mcts_dificil, mcts_demencial]
-            default: random
+            enum: [random_bot, mcts_medio, mcts_dificil, mcts_demencial, mcts_completo_medio, mcts_completo_dificil]
+            default: random_bot
           description: >
             Identificador del bot / estrategia a utilizar.
-            Si se omite, se usa la estrategia por defecto (`random`).
-          example: "greedy"
+            Si se omite, se usa la estrategia por defecto (`random_bot`).
+          example: "mcts_medio"
         - name: api_version
           in: query
           required: false
@@ -757,6 +768,119 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlayErrorResponse'
 
+  # ──────────────────────────────────────────────────────────────
+  # ENDPOINTS DE JUEGO (GAMEY)
+  # ──────────────────────────────────────────────────────────────
+
+  /status:
+    get:
+      summary: Verificar estado del servidor de juego
+      description: Devuelve "OK" si el servicio gamey está respondiendo.
+      responses:
+        '200':
+          description: Servidor en funcionamiento
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+
+  /api/v1/meta:
+    get:
+      summary: Obtener metadatos del juego
+      description: Devuelve los límites del tablero y la lista de bots disponibles.
+      responses:
+        '200':
+          description: Metadatos devueltos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_version:
+                    type: string
+                  min_board_size:
+                    type: integer
+                  max_board_size:
+                    type: integer
+                  bots:
+                    type: array
+                    items:
+                      type: string
+
+  /api/v1/config:
+    get:
+      summary: Obtener configuración guardada del usuario
+      description: Devuelve la configuración de partida preferida (basada en X-Client-Id).
+      responses:
+        '200':
+          description: Configuración devuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameConfig'
+    put:
+      summary: Actualizar configuración guardada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameConfig'
+      responses:
+        '200':
+          description: Configuración actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameConfig'
+
+  /api/v1/hvh/games:
+    post:
+      summary: Crear una nueva partida Humano vs Humano
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                size:
+                  type: integer
+                hvh_starter:
+                  type: string
+                  enum: [player0, player1, random]
+      responses:
+        '200':
+          description: Partida creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+
+  /api/v1/hvb/games:
+    post:
+      summary: Crear una nueva partida Humano vs Bot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                size:
+                  type: integer
+                hvb_starter:
+                  type: string
+                  enum: [human, bot, random]
+                bot_id:
+                  type: string
+      responses:
+        '200':
+          description: Partida creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+
 # ──────────────────────────────────────────────────────────────
 # SCHEMAS
 # ──────────────────────────────────────────────────────────────
@@ -768,32 +892,35 @@ components:
       type: object
       description: >
         Estado de una partida en notación YEN (Y Exchange Notation).
-        Formato JSON inspirado en FEN del ajedrez, representa el estado
-        completo del tablero para su transmisión entre servicios.
+        Formato JSON inspirado en FEN del ajedrez.
       required:
         - size
         - layout
+        - turn
+        - players
       properties:
         size:
           type: integer
           description: Tamaño del tablero (número de casillas por lado)
-          example: 5
+          example: 3
         layout:
           type: string
           description: >
-            Representación lineal del tablero. Cada carácter representa una casilla:
-            '0' = vacía, '1' = jugador 1, '2' = jugador 2.
-          example: "0000000000000000000000000"
+            Representación lineal del tablero con filas separadas por '/'.
+            Cada carácter representa una casilla: '.' para vacía, o el símbolo
+            del jugador correspondiente.
+          example: "B/BR/.R."
         turn:
           type: integer
-          description: Número de turno actual (0-indexed)
-          example: 3
+          description: Índice del jugador al que le toca mover (0 o 1)
+          example: 0
         players:
           type: array
           items:
             type: string
-          description: Identificadores de los jugadores
-          example: ["human", "bot"]
+            maxLength: 1
+          description: Símbolos de los jugadores (ej. ['B', 'R'])
+          example: ["B", "R"]
 
     Coordinates:
       type: object
@@ -814,37 +941,34 @@ components:
           example: 1
 
     PlayResponse:
-      type: object
-      description: Respuesta del endpoint /play con el movimiento calculado por el bot
-      properties:
-        api_version:
-          type: string
-          description: Versión del API utilizada
-          example: "v1"
-        bot_id:
-          type: string
-          description: Identificador del bot que calculó el movimiento
-          example: "greedy"
-        coords:
-          $ref: '#/components/schemas/Coordinates'
-        position:
-          $ref: '#/components/schemas/YEN'
+      oneOf:
+        - type: object
+          description: Respuesta con las coordenadas del movimiento calculado.
+          required: [coords]
+          properties:
+            coords:
+              $ref: '#/components/schemas/Coordinates'
+        - type: object
+          description: Respuesta con una acción especial (swap o resign).
+          required: [action]
+          properties:
+            action:
+              type: string
+              enum: [swap, resign]
 
     PlayErrorResponse:
       type: object
       description: Respuesta de error del endpoint /play
+      required: [message, code]
       properties:
-        api_version:
-          type: string
-          example: "v1"
-        bot_id:
-          type: string
-          nullable: true
-          example: "random"
         message:
           type: string
-          description: Descripción del error
+          description: Descripción legible del error
           example: "Missing required query parameter: position"
+        code:
+          type: string
+          description: Código interno del error
+          example: "missing_position"
 
     GameStats:
       type: object
@@ -959,6 +1083,45 @@ components:
           description: Porcentaje de partidas ganadas (0–100)
           example: 60
 
+    GameConfig:
+      type: object
+      properties:
+        size:
+          type: integer
+        hvb_starter:
+          type: string
+          enum: [human, bot, random]
+        hvh_starter:
+          type: string
+          enum: [player0, player1, random]
+          nullable: true
+        bot_id:
+          type: string
+          nullable: true
+
+    GameState:
+      type: object
+      properties:
+        game_id:
+          type: string
+        mode:
+          type: string
+          enum: [hvh, hvb]
+        yen:
+          $ref: '#/components/schemas/YEN'
+        status:
+          type: object
+          properties:
+            state:
+              type: string
+              enum: [ongoing, finished]
+            next:
+              type: string
+              nullable: true
+            winner:
+              type: string
+              nullable: true
+
     ErrorResponse:
       type: object
       properties:
@@ -966,3 +1129,15 @@ components:
           type: string
           description: Descripción del error
           example: "Usuario no encontrado"
+
+    PodiumEntry:
+      type: object
+      nullable: true
+      description: Información de un usuario destacado en el podio semanal.
+      properties:
+        username:
+          type: string
+        profilePicture:
+          type: string
+        stats:
+          $ref: '#/components/schemas/GameStats'
